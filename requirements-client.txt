@@ -1,0 +1,6 @@
+# Dipendenze del client Windows (in alternativa usa l'eseguibile compilato)
+requests
+pyperclip
+pystray
+pillow
+keyboard

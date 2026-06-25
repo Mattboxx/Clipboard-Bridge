@@ -1,0 +1,14 @@
+services:
+  clipboard-bridge:
+    build: .
+    container_name: clipboard-bridge
+    ports:
+      - "5088:5088"
+    volumes:
+      # la cronologia resta sull'host e sopravvive ai riavvii
+      - ./data:/data
+    environment:
+      - CLIPBOARD_MAX_HISTORY=200
+      # Decommenta per proteggere il server con un token:
+      # - CLIPBOARD_TOKEN=cambia_questo_token
+    restart: unless-stopped
