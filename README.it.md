@@ -28,7 +28,7 @@ servizi esterni. L'interfaccia è disponibile in **inglese (predefinita)** e in 
 | File | Descrizione |
 |------|-------------|
 | `clipboard_bridge-Server.py` | server (Flask): API, interfaccia web, storico |
-| `clipboard_manager_windows.py` | client Windows (icona nella tray) |
+| `clipboard_bridge_windows.py` | client Windows (icona nella tray) |
 | `Dockerfile`, `docker-compose.yml` | esecuzione del server in container |
 | `requirements-server.txt`, `requirements-client.txt` | dipendenze |
 | `build_client.bat` | compila il client in un singolo `.exe` |
@@ -81,7 +81,7 @@ Compila il client con `build_client.bat` (richiede Python). Otterrai
 ### Da sorgente
 ```bash
 pip install -r requirements-client.txt
-python clipboard_manager_windows.py
+python clipboard_bridge_windows.py
 ```
 
 Compare un'icona nella tray (clic destro per il menu):
