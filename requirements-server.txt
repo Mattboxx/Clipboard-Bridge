@@ -1,0 +1,2 @@
+# Dipendenze del server
+flask>=3.0
