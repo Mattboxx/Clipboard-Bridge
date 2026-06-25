@@ -89,7 +89,7 @@ Build it once with `build_client.bat` (requires Python), then run
 ### Option B — From source
 ```bash
 pip install -r requirements-client.txt
-python clipboard_manager_windows.py
+python clipboard_bridge_windows.py
 ```
 
 ### Configure

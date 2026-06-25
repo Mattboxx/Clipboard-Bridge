@@ -16,7 +16,7 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
   --add-data "icon.ico;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
-  clipboard_manager_windows.py
+  clipboard_bridge_windows.py
 
 echo.
 echo Fatto. Eseguibile in:  dist\Clipboard Bridge.exe
