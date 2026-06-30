@@ -16,6 +16,7 @@ import json
 import uuid
 import base64
 import hashlib
+import queue
 import threading
 import ctypes
 from ctypes import wintypes
@@ -62,7 +63,9 @@ DEFAULT_CONFIG = {
 }
 
 stop_event = threading.Event()
-_icon = None  # reference to the tray icon, used for notifications
+_icon = None   # tray icon (pystray runs on its own thread)
+_root = None   # the single hidden Tk root that owns the GUI event loop (main thread)
+_cmd_q = queue.Queue()  # GUI commands from the tray thread, run on the Tk thread
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -99,6 +102,7 @@ STRINGS = {
         "tab_server": "Server",
         "tab_local": "Local",
         "refresh": "Refresh",
+        "loading": "Loading…",
         "use": "Use",
         "delete": "Delete",
         "send_to_server": "Send to server",
@@ -153,6 +157,7 @@ STRINGS = {
         "tab_server": "Server",
         "tab_local": "Locale",
         "refresh": "Aggiorna",
+        "loading": "Caricamento…",
         "use": "Usa",
         "delete": "Elimina",
         "send_to_server": "Invia al server",
@@ -468,20 +473,19 @@ def action_get_latest(icon=None, item=None):
 
 
 def action_send_file(icon=None, item=None):
-    root = tk.Tk()
-    root.withdraw()
-    apply_window_icon(root)
-    paths = filedialog.askopenfilenames(parent=root, title=t("choose_files"))
-    root.destroy()
+    paths = filedialog.askopenfilenames(parent=_root, title=t("choose_files"))
     if not paths:
         return
-    try:
-        for p in paths:
-            push_file(p)
-            record_local_file(p)
-        notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
-    except Exception as e:
-        notify(t("send_err", e=e))
+
+    def work():
+        try:
+            for p in paths:
+                push_file(p)
+                record_local_file(p)
+            notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
+        except Exception as e:
+            notify(t("send_err", e=e))
+    _run_bg(work)
 
 
 def open_received_folder(icon=None, item=None):
@@ -505,6 +509,11 @@ def sync_loop():
                         last_files, last_text, last_img = key, None, None
                         for p in files:
                             record_local_file(p)
+                            if config.get("auto_sync"):
+                                try:
+                                    push_file(p)
+                                except Exception:
+                                    pass
                 else:
                     img = get_clipboard_image()
                     if img is not None:
@@ -553,60 +562,92 @@ def sync_loop():
 
 # ---------------------------------------------------------------- history window
 def open_history_window(icon=None, item=None):
-    root = tk.Tk()
+    root = tk.Toplevel(_root)
     root.title(t("win_history"))
     root.geometry("620x440")
     apply_window_icon(root)
 
+    # UI updates from worker threads are queued and applied on the Tk thread.
+    ui_q = queue.Queue()
+
+    def _pump():
+        try:
+            while True:
+                ui_q.get_nowait()()
+        except queue.Empty:
+            pass
+        except Exception:
+            pass
+        try:
+            root.after(100, _pump)
+        except Exception:
+            pass
+
     nb = ttk.Notebook(root)
     nb.pack(fill="both", expand=True, padx=8, pady=8)
 
+    # ----- server tab -----
     tab_srv = ttk.Frame(nb)
     nb.add(tab_srv, text=t("tab_server"))
     srv_list = tk.Listbox(tab_srv)
     srv_list.pack(fill="both", expand=True, padx=4, pady=4)
     srv_items = []
 
-    def srv_refresh():
+    def _srv_fill(items):
         srv_list.delete(0, tk.END)
         srv_items.clear()
-        try:
-            for it in fetch_history(100):
-                srv_items.append(it)
-                srv_list.insert(tk.END, f"[{it['type']}] {it.get('timestamp','')}  {it.get('preview','')}")
-        except Exception as e:
-            messagebox.showerror(t("err_title"), str(e), parent=root)
+        for it in items:
+            srv_items.append(it)
+            srv_list.insert(tk.END, f"[{it['type']}] {it.get('timestamp','')}  {it.get('preview','')}")
+
+    def srv_refresh():
+        srv_list.delete(0, tk.END)
+        srv_list.insert(tk.END, t("loading"))
+        srv_items.clear()
+
+        def work():
+            try:
+                items = fetch_history(100)
+                ui_q.put(lambda: _srv_fill(items))
+            except Exception as e:
+                ui_q.put(lambda: srv_list.delete(0, tk.END))
+                notify(t("recv_err", e=e))
+        threading.Thread(target=work, daemon=True).start()
 
     def srv_use():
         sel = srv_list.curselection()
-        if not sel:
+        if not sel or sel[0] >= len(srv_items):
             return
         it = srv_items[sel[0]]
-        try:
-            full = fetch_item(it["id"])
-            if full.get("type") == "text":
-                set_clipboard_text(full.get("text", ""))
-                notify(t("copied"))
-            elif full.get("type") == "image":
-                set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"]))))
-                notify(t("copied"))
-            else:
-                dest = save_received(full.get("filename", "file.bin"),
-                                     base64.b64decode(full["data"]))
-                notify(t("file_saved", name=os.path.basename(dest)))
-        except Exception as e:
-            messagebox.showerror(t("err_title"), str(e), parent=root)
+
+        def work():
+            try:
+                full = fetch_item(it["id"])
+                if full.get("type") == "text":
+                    set_clipboard_text(full.get("text", "")); notify(t("copied"))
+                elif full.get("type") == "image":
+                    set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"])))); notify(t("copied"))
+                else:
+                    dest = save_received(full.get("filename", "file.bin"), base64.b64decode(full["data"]))
+                    notify(t("file_saved", name=os.path.basename(dest)))
+            except Exception as e:
+                notify(t("recv_err", e=e))
+        threading.Thread(target=work, daemon=True).start()
 
     def srv_delete():
         sel = srv_list.curselection()
-        if not sel:
+        if not sel or sel[0] >= len(srv_items):
             return
-        try:
-            requests.delete(f"{server_url()}/clipboard/item/{srv_items[sel[0]]['id']}",
-                            headers=auth_headers(), timeout=5)
-            srv_refresh()
-        except Exception as e:
-            messagebox.showerror(t("err_title"), str(e), parent=root)
+        item_id = srv_items[sel[0]]["id"]
+
+        def work():
+            try:
+                requests.delete(f"{server_url()}/clipboard/item/{item_id}",
+                                headers=auth_headers(), timeout=5)
+                ui_q.put(srv_refresh)
+            except Exception as e:
+                notify(t("recv_err", e=e))
+        threading.Thread(target=work, daemon=True).start()
 
     b = ttk.Frame(tab_srv)
     b.pack(fill="x", padx=4, pady=4)
@@ -614,6 +655,7 @@ def open_history_window(icon=None, item=None):
     ttk.Button(b, text=t("use"), command=srv_use).pack(side="left", padx=4)
     ttk.Button(b, text=t("delete"), command=srv_delete).pack(side="left")
 
+    # ----- local tab -----
     tab_loc = ttk.Frame(nb)
     nb.add(tab_loc, text=t("tab_local"))
     loc_list = tk.Listbox(tab_loc)
@@ -629,36 +671,38 @@ def open_history_window(icon=None, item=None):
 
     def loc_send():
         sel = loc_list.curselection()
-        if not sel:
+        if not sel or sel[0] >= len(loc_items):
             return
         it = loc_items[sel[0]]
-        try:
-            if it["type"] == "text":
-                push_text(it.get("text", ""))
-            elif it["type"] == "image" and it.get("file"):
-                push_image(Image.open(os.path.join(LOCAL_DIR, it["file"])))
-            elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
-                push_file(it["path"])
-            else:
-                messagebox.showinfo(t("info_title"), t("unavailable"), parent=root)
-                return
-            notify(t("sent_server"))
-        except Exception as e:
-            messagebox.showerror(t("err_title"), str(e), parent=root)
+
+        def work():
+            try:
+                if it["type"] == "text":
+                    push_text(it.get("text", ""))
+                elif it["type"] == "image" and it.get("file"):
+                    push_image(Image.open(os.path.join(LOCAL_DIR, it["file"])))
+                elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
+                    push_file(it["path"])
+                else:
+                    notify(t("unavailable")); return
+                notify(t("sent_server"))
+            except Exception as e:
+                notify(t("send_err", e=e))
+        threading.Thread(target=work, daemon=True).start()
 
     b2 = ttk.Frame(tab_loc)
     b2.pack(fill="x", padx=4, pady=4)
     ttk.Button(b2, text=t("refresh"), command=loc_refresh).pack(side="left")
     ttk.Button(b2, text=t("send_to_server"), command=loc_send).pack(side="left", padx=4)
 
-    srv_refresh()
     loc_refresh()
-    root.mainloop()
+    root.after(0, srv_refresh)   # window draws first, then loads in background
+    root.after(100, _pump)
 
 
 # ---------------------------------------------------------------- settings window
 def open_settings(icon=None, item=None):
-    root = tk.Tk()
+    root = tk.Toplevel(_root)
     root.title(t("win_settings"))
     root.geometry("400x460")
     root.attributes("-topmost", True)
@@ -732,7 +776,6 @@ def open_settings(icon=None, item=None):
     bar.grid(row=base + 4, column=0, columnspan=2, pady=16)
     ttk.Button(bar, text=t("save"), command=save).pack(side="left", padx=6)
     ttk.Button(bar, text=t("cancel"), command=root.destroy).pack(side="left")
-    root.mainloop()
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
@@ -802,6 +845,10 @@ def do_exit(icon, item):
     unregister_hotkeys()
     stop_event.set()
     icon.stop()
+    try:
+        _cmd_q.put(_root.quit)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------- icon and menu
@@ -817,13 +864,13 @@ def create_tray_icon():
 
 def build_menu():
     return Menu(
-        MenuItem(lambda i: t("send"), action_send_clipboard, default=True),
-        MenuItem(lambda i: t("recv"), action_get_latest),
+        MenuItem(lambda i: t("send"), lambda icon, item: _run_bg(action_send_clipboard), default=True),
+        MenuItem(lambda i: t("recv"), lambda icon, item: _run_bg(action_get_latest)),
         Menu.SEPARATOR,
-        MenuItem(lambda i: t("send_file"), action_send_file),
+        MenuItem(lambda i: t("send_file"), lambda icon, item: _cmd_q.put(action_send_file)),
         MenuItem(lambda i: t("open_recv"), open_received_folder),
         Menu.SEPARATOR,
-        MenuItem(lambda i: t("history"), open_history_window),
+        MenuItem(lambda i: t("history"), lambda icon, item: _cmd_q.put(open_history_window)),
         MenuItem(lambda i: t("autosync"), toggle_auto_sync,
                  checked=lambda i: config.get("auto_sync", False)),
         MenuItem(lambda i: t("monitor"), toggle_monitor,
@@ -837,7 +884,7 @@ def build_menu():
                      checked=lambda i: config.get("lang", "en") == "it", radio=True),
         )),
         Menu.SEPARATOR,
-        MenuItem(lambda i: t("settings"), open_settings),
+        MenuItem(lambda i: t("settings"), lambda icon, item: _cmd_q.put(open_settings)),
         MenuItem(lambda i: t("exit"), do_exit),
     )
 
@@ -859,13 +906,34 @@ def _log_crash(exc):
         pass
 
 
+def _tk_poll():
+    # Runs on the Tk main thread: executes GUI commands queued by the tray thread.
+    try:
+        while True:
+            _cmd_q.get_nowait()()
+    except queue.Empty:
+        pass
+    except Exception as e:
+        _log_crash(e)
+    try:
+        _root.after(120, _tk_poll)
+    except Exception:
+        pass
+
+
 def main():
-    global _icon
+    global _icon, _root
     _set_app_id()
+    # Tkinter owns the main thread (windows behave like normal Windows windows).
+    _root = tk.Tk()
+    _root.withdraw()
     threading.Thread(target=sync_loop, daemon=True).start()
     register_hotkeys()
     _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
-    _icon.run()
+    # pystray runs on its own thread; it asks the Tk thread to open windows via _cmd_q.
+    threading.Thread(target=_icon.run, daemon=True).start()
+    _root.after(120, _tk_poll)
+    _root.mainloop()
 
 
 if __name__ == "__main__":

@@ -322,6 +322,57 @@ def latest_any():
     return jsonify(_entry_with_content(index[0]))
 
 
+@app.route("/clipboard/latest/raw", methods=["GET"])
+def latest_raw():
+    """Ultimo elemento (qualsiasi tipo) come contenuto grezzo: testo o file binario."""
+    index = _load_index()
+    if not index:
+        return Response("", mimetype="text/plain")
+    e = index[0]
+    if e["type"] == "text":
+        return Response(_read_text(e), mimetype="text/plain")
+    return send_file(os.path.join(ITEMS_DIR, e["file"]),
+                     mimetype=e["mime"], download_name=e["filename"])
+
+
+@app.route("/clipboard", methods=["POST"])
+def push_any():
+    """Endpoint unico: salva ciò che arriva (testo o binario) senza distinzione.
+    Pensato per un'unica Shortcut iPhone che invia gli appunti qualunque sia il tipo."""
+    if request.is_json:
+        d = request.get_json(silent=True) or {}
+        if d.get("data"):
+            raw, fn, mime = _extract_upload()
+            if raw is not None:
+                e = _add_binary(raw, fn or "clipboard", mime)
+                return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+        e = _add_text(d.get("text", ""))
+        return jsonify({"status": "ok", "id": e["id"], "type": "text"})
+
+    if request.files:
+        raw, fn, mime = _extract_upload()
+        e = _add_binary(raw, fn or "clipboard", mime)
+        return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+
+    if request.form and "text" in request.form:
+        e = _add_text(request.form.get("text", ""))
+        return jsonify({"status": "ok", "id": e["id"], "type": "text"})
+
+    raw = request.get_data(cache=False)
+    if not raw:
+        return jsonify({"error": "nessun dato"}), 400
+    ctype = (request.content_type or "").split(";")[0].strip().lower()
+    if ctype.startswith("text/") or ctype in ("", "application/x-www-form-urlencoded"):
+        try:
+            e = _add_text(raw.decode("utf-8"))
+            return jsonify({"status": "ok", "id": e["id"], "type": "text"})
+        except UnicodeDecodeError:
+            pass
+    fn = request.headers.get("X-Filename") or ("clipboard" + (mimetypes.guess_extension(ctype) or ".bin"))
+    e = _add_binary(raw, fn, ctype or None)
+    return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+
+
 @app.route("/clipboard/history", methods=["GET", "DELETE"])
 def history():
     if request.method == "DELETE":
@@ -508,11 +559,9 @@ WEB_STRINGS = {
         "empty": "Nothing yet. Save some text or upload a file above.",
         "no_preview": "(no preview)",
         "h_iphone": "iPhone (Shortcuts)",
-        "iphone_intro": "Use the “Get Contents of URL” action with these addresses:",
-        "ip_send_text": "Send text", "ip_send_text_sub": "JSON body, field",
-        "ip_recv_text": "Receive text", "ip_recv_text_sub": "&rarr; Copy to clipboard",
-        "ip_send_file": "Send photo or file", "ip_send_file_sub": "body: File",
-        "ip_recv_img": "Receive latest image", "ip_recv_img_sub": "&rarr; Save to album",
+        "iphone_intro": "Just two shortcuts (Get Contents of URL) — they always send or fetch the most recent item:",
+        "ip_send": "Send &mdash; clipboard to server (body: File)",
+        "ip_recv": "Receive &mdash; latest item to clipboard",
         "token_note": "Token enabled: in the Shortcuts add the header",
         "foot": "This page also works from the iPhone browser.",
         "js_copied": "Copied to the clipboard", "js_del": "Delete this item?",
@@ -530,11 +579,9 @@ WEB_STRINGS = {
         "empty": "Ancora niente. Salva del testo o carica un file qui sopra.",
         "no_preview": "(senza anteprima)",
         "h_iphone": "iPhone (Comandi rapidi)",
-        "iphone_intro": "Usa l’azione «Ottieni contenuto dell’URL» con questi indirizzi:",
-        "ip_send_text": "Invia testo", "ip_send_text_sub": "corpo JSON, campo",
-        "ip_recv_text": "Ricevi testo", "ip_recv_text_sub": "&rarr; Copia negli appunti",
-        "ip_send_file": "Invia foto o file", "ip_send_file_sub": "corpo: File",
-        "ip_recv_img": "Ricevi ultima immagine", "ip_recv_img_sub": "&rarr; Salva nell’album",
+        "iphone_intro": "Bastano due comandi (Ottieni contenuto dell’URL): inviano o recuperano sempre l’ultimo elemento:",
+        "ip_send": "Invia &mdash; appunti al server (corpo: File)",
+        "ip_recv": "Ricevi &mdash; ultimo elemento negli appunti",
         "token_note": "Token attivo: nelle Shortcut aggiungi l’intestazione",
         "foot": "Questa pagina funziona anche dal browser dell’iPhone.",
         "js_copied": "Copiato negli appunti", "js_del": "Eliminare questo elemento?",
@@ -626,14 +673,10 @@ def render_home():
 <h2>{IC_PHONE} {S["h_iphone"]}</h2>
 {nota}
 <p style="color:#64748b;font-size:13px;margin:0 0 8px">{S["iphone_intro"]}</p>
-<div style="font-size:13px"><b>{S["ip_send_text"]}</b> &middot; {S["ip_send_text_sub"]} <code>text</code></div>
-{_urlrow("POST", base + "/clipboard/text", S["copy"])}
-<div style="font-size:13px"><b>{S["ip_recv_text"]}</b> {S["ip_recv_text_sub"]}</div>
-{_urlrow("GET", base + "/clipboard/text/raw" + tq, S["copy"])}
-<div style="font-size:13px"><b>{S["ip_send_file"]}</b> &middot; {S["ip_send_file_sub"]}</div>
-{_urlrow("POST", base + "/clipboard/image", S["copy"])}
-<div style="font-size:13px"><b>{S["ip_recv_img"]}</b> {S["ip_recv_img_sub"]}</div>
-{_urlrow("GET", base + "/clipboard/image/latest/raw" + tq, S["copy"])}
+<div style="font-size:13px"><b>{S["ip_send"]}</b></div>
+{_urlrow("POST", base + "/clipboard", S["copy"])}
+<div style="font-size:13px"><b>{S["ip_recv"]}</b></div>
+{_urlrow("GET", base + "/clipboard/latest/raw" + tq, S["copy"])}
 </div>
 
 <div class="foot">{S["foot"]}</div>
