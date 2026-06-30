@@ -23,7 +23,7 @@ Switch anytime from the tray icon (**right-click → Mode**):
 | **The iPhone connects to** | your PC, directly | the server |
 | **Extra setup** | none — just flip the switch | run the server somewhere |
 | **Web page** | no (minimal) | yes |
-| **Best for** | quick PC ↔ iPhone, zero extra setup | always available, even when your PC is off |
+| **Best for** | quick PC ↔ iPhone, zero extra setup | always available, even when your PC is off o even to share clipboard over more PC's |
 
 > 📖 **New here?** Follow the step-by-step [Setup & Usage Guide](GUIDE.md).
 
