@@ -120,12 +120,14 @@ Create shortcuts using the **Get Contents of URL** action. If you use a token, a
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | server status (public) |
+| POST | `/clipboard` | save anything (text or binary), type auto-detected |
 | POST | `/clipboard/text` | save text (JSON, form or raw body) |
 | GET | `/clipboard/text/raw` | latest text as text/plain |
 | POST | `/clipboard/image` | save a file/image (base64, multipart or binary) |
 | GET | `/clipboard/image/latest/raw` | latest image as binary |
 | POST | `/clipboard/file` | save a file (JSON `{filename, data}`) |
 | GET | `/clipboard/latest` | latest item of any type, content included |
+| GET | `/clipboard/latest/raw` | latest item (any type) as raw content / file |
 | GET | `/clipboard/history?limit=N` | history list (metadata) |
 | GET/DELETE | `/clipboard/item/<id>` | read or delete an item |
 | DELETE | `/clipboard/history` | clear the history |

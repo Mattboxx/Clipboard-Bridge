@@ -27,9 +27,9 @@ A small **server** keeps the last items you copied (text, images, files). Any de
 the same network can **send** items to it or **receive** the latest one, over plain HTTP.
 
 ```
-   iPhone (Shortcuts)  ─┐                          ┌─  Windows client (tray app)
+   iPhone (Shortcuts)  ─┐                            ┌─  Windows client (tray app)
                         ├──►   SERVER (port 5088)  ◄─┤
-   Any web browser     ─┘      stores history       └─  Web interface (browser)
+   Any web browser     ─┘      stores history        └─  Web interface (browser)
 ```
 
 There is no cloud and no account: everything stays on your local network.
@@ -105,6 +105,8 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **Receive latest ← server**: puts the latest item back on your clipboard (files are
   saved to the `ricevuti` folder). Also bound to `Ctrl+Alt+V`.
 - **Send a file…**: pick any file(s) to upload.
+- **Auto-sync** (tray menu, off by default): when enabled, anything you copy — text,
+  images **and files** — is sent to the server automatically, without clicking.
 - **History…**: browse the server and local history; re-use or delete items.
 
 To start the client automatically with Windows, press `Win+R`, type `shell:startup`, and
@@ -114,41 +116,35 @@ put a shortcut to the executable in that folder.
 
 ## 5. Set up iPhone Shortcuts
 
-Open the **Shortcuts** app and create the shortcuts below. Each uses the built‑in
-**Get Contents of URL** action. If your server uses a token, add a **Header** named
-`X-Auth-Token` with the value `YOUR_TOKEN` in every shortcut.
+You only need **two** shortcuts. They make no distinction between text and photos: they
+always send, or fetch, the **most recent** item. Both use the built-in **Get Contents of
+URL** action. If your server uses a token, add a **Header** `X-Auth-Token` = `YOUR_TOKEN`
+to each shortcut.
 
-### 5.1 Send text to the server
-1. Tap **+** → **Add Action**.
+### 5.1 Send (clipboard → server)
+1. Open **Shortcuts**, tap **+** → **Add Action**.
 2. Add **Get Clipboard**.
 3. Add **Get Contents of URL**, then tap **Show More**:
-   - URL: `http://SERVER_IP:5088/clipboard/text`
+   - URL: `http://SERVER_IP:5088/clipboard`
    - Method: **POST**
-   - Request Body: **JSON** → add a field, type *Text*, key `text`, value = the
-     **Clipboard** variable.
-4. Rename it (e.g. "Send to PC"). Optionally add it to the Home Screen.
+   - Request Body: **File** → set it to the **Clipboard** variable.
+4. Name it (e.g. "Send") and add it to the Home Screen for one-tap use.
 
-### 5.2 Receive text from the server
+Copy anything — text or a photo — and run it: it is sent to the server as is.
+
+### 5.2 Receive (server → clipboard)
 1. Tap **+** → add **Get Contents of URL**:
-   - URL: `http://SERVER_IP:5088/clipboard/text/raw`
+   - URL: `http://SERVER_IP:5088/clipboard/latest/raw`
    - Method: **GET**
-2. Add **Copy to Clipboard** (it uses the previous result).
-3. Rename it (e.g. "Get from PC"). Now run it and paste anywhere.
+2. Add **Copy to Clipboard** (it uses the result).
+3. Name it (e.g. "Receive"). Run it, then paste anywhere.
 
-### 5.3 Send a photo or file
-1. Tap **+**, open the shortcut settings and enable **Show in Share Sheet**
-   (accept *Images* and *Files*).
-2. Add **Get Contents of URL**:
-   - URL: `http://SERVER_IP:5088/clipboard/image`
-   - Method: **POST**
-   - Request Body: **File** → set it to **Shortcut Input**.
-3. Now open Photos or Files, tap **Share**, and choose this shortcut.
+It always copies the latest item from the server — text or photo — to your clipboard.
 
-### 5.4 Receive the latest image
-1. Tap **+** → add **Get Contents of URL**:
-   - URL: `http://SERVER_IP:5088/clipboard/image/latest/raw`
-   - Method: **GET**
-2. Add **Save to Photo Album** (or **Quick Look** to preview).
+> **Optional — other file types:** these two shortcuts cover text and photos through the
+> clipboard. To send an arbitrary file, make a Share-Sheet shortcut that POSTs the file to
+> `http://SERVER_IP:5088/clipboard`; to receive one, GET
+> `http://SERVER_IP:5088/clipboard/latest/raw` and use **Save File** instead of Copy to Clipboard.
 
 ---
 

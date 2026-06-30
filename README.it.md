@@ -120,12 +120,14 @@ l'intestazione `X-Auth-Token`.
 | Metodo | Endpoint | Descrizione |
 |--------|----------|-------------|
 | GET | `/health` | stato del server (pubblico) |
+| POST | `/clipboard` | salva qualsiasi cosa (testo o binario), tipo rilevato in automatico |
 | POST | `/clipboard/text` | salva testo (JSON, form o corpo grezzo) |
 | GET | `/clipboard/text/raw` | ultimo testo come text/plain |
 | POST | `/clipboard/image` | salva un file/immagine (base64, multipart o binario) |
 | GET | `/clipboard/image/latest/raw` | ultima immagine come binario |
 | POST | `/clipboard/file` | salva un file (JSON `{filename, data}`) |
 | GET | `/clipboard/latest` | ultimo elemento di qualsiasi tipo, contenuto incluso |
+| GET | `/clipboard/latest/raw` | ultimo elemento (qualsiasi tipo) come contenuto grezzo |
 | GET | `/clipboard/history?limit=N` | elenco dello storico (metadati) |
 | GET/DELETE | `/clipboard/item/<id>` | legge o elimina un elemento |
 | DELETE | `/clipboard/history` | svuota lo storico |
