@@ -38,7 +38,7 @@ Switch anytime from the tray icon (**right-click → Mode**):
   (tray → **Mode → Server**) — the iPhone connects straight to your PC.
 - Optional **token** for the API and an optional **password** for the web page.
 - Run the server directly or with **Docker**.
-- 
+
 <img width="296" height="216" alt="features" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" />
 
 <img width="264" height="356" alt="settings" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" />
