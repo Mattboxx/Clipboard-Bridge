@@ -1,4 +1,4 @@
-# Clipboard Bridge
+# Clipboard Bridge<img width="48" height="48" alt="icon-3" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
 
 **English** · [Italiano](README.it.md)
 
@@ -6,7 +6,7 @@
 ![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/network-local%20only-2ea44f)
 ![license](https://img.shields.io/badge/license-MIT-555)
-                                                                    <img width="48" height="48" alt="icon-3" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
+                                                                    
 
 Share your clipboard — text, images and **files of any type** — between **Windows and
 iPhone** over your local network, using the iOS Shortcuts app. No cloud, no account.
