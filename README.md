@@ -1,4 +1,4 @@
-# Clipboard Bridge<img width="48" height="48" alt="icon-3" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
+# Clipboard Bridge                    <img width="38" height="38" alt="icon-3" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
 
 **English** · [Italiano](README.it.md)
 
