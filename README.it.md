@@ -39,9 +39,11 @@ Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
 - **Token** opzionale per l'API e **password** opzionale per la pagina web.
 - Server eseguibile direttamente oppure in **Docker**.
 
-<img width="296" height="216" alt="features" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" />
+<img width="888" height="650" alt="features" src="https://github.com/user-attachments/assets/6894847e-004d-4f2e-8f5d-9c3c4b226ae7" />
 
-<img width="264" height="356" alt="settings" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" />
+<img width="790" height="1060" alt="settings" src="https://github.com/user-attachments/assets/dfdaafd8-1611-4dfa-8640-33cb9228ab68" />
+
+
 
 
 ## Struttura del repository
