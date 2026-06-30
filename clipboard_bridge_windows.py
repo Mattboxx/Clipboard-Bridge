@@ -17,7 +17,10 @@ import uuid
 import base64
 import hashlib
 import queue
+import socket
+import mimetypes
 import threading
+import http.server
 import ctypes
 from ctypes import wintypes
 
@@ -45,13 +48,18 @@ CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 LOCAL_DIR = os.path.join(APP_DIR, "local_history")
 LOCAL_INDEX = os.path.join(LOCAL_DIR, "local_history.json")
 RECEIVED_DIR = os.path.join(APP_DIR, "ricevuti")
+HOST_DIR = os.path.join(APP_DIR, "server_data")          # store used when this PC IS the server
+HOST_ITEMS = os.path.join(HOST_DIR, "items")
+HOST_INDEX = os.path.join(HOST_DIR, "index.json")
 ICON_PATH = os.path.join(RES_DIR, "icon.ico")
 os.makedirs(LOCAL_DIR, exist_ok=True)
 
 DEFAULT_CONFIG = {
     "lang": "en",
-    "server_ip": "127.0.0.1",
+    "mode": "client",          # "client" = connect to an external server; "server" = be the server
+    "server_ip": "127.0.0.1",  # external server address (client mode)
     "server_port": 5088,
+    "host_port": 5088,         # port this PC listens on in server mode
     "token": "",
     "auto_sync": False,
     "monitor_clipboard": True,
@@ -79,6 +87,15 @@ STRINGS = {
         "monitor": "Local history",
         "hotkeys": "Keyboard shortcuts",
         "language": "Language",
+        "mode": "Mode",
+        "mode_client": "Client (use external server)",
+        "mode_server": "Server (this PC)",
+        "server_on": "Server mode ON — connect to {addr}",
+        "client_on": "Client mode ON",
+        "server_addr": "Server: {addr}  (click to copy)",
+        "addr_copied": "Address copied: {addr}",
+        "server_err": "Cannot start server: {e}",
+        "lbl_host_port": "Server port (server mode)",
         "settings": "Settings…",
         "exit": "Exit",
         "image_sent": "Image sent",
@@ -134,6 +151,15 @@ STRINGS = {
         "monitor": "Cronologia locale",
         "hotkeys": "Scorciatoie da tastiera",
         "language": "Lingua",
+        "mode": "Modalità",
+        "mode_client": "Client (usa server esterno)",
+        "mode_server": "Server (questo PC)",
+        "server_on": "Modalità server attiva — connettiti a {addr}",
+        "client_on": "Modalità client attiva",
+        "server_addr": "Server: {addr}  (clic per copiare)",
+        "addr_copied": "Indirizzo copiato: {addr}",
+        "server_err": "Impossibile avviare il server: {e}",
+        "lbl_host_port": "Porta server (modalità server)",
         "settings": "Impostazioni…",
         "exit": "Esci",
         "image_sent": "Immagine inviata",
@@ -212,6 +238,9 @@ config = load_config()
 
 
 def server_url():
+    # In server mode the client talks to its own embedded server on localhost.
+    if config.get("mode") == "server":
+        return f"http://127.0.0.1:{config.get('host_port', 5088)}"
     return f"http://{config['server_ip']}:{config['server_port']}"
 
 
@@ -369,6 +398,243 @@ def fetch_item(item_id):
                      headers=auth_headers(), timeout=30)
     r.raise_for_status()
     return r.json()
+
+
+# ---------------------------------------------------------------- embedded server (server mode)
+# A minimal HTTP server (standard library only) so this PC can be the server itself,
+# keeping the history and the latest item. No web interface, on purpose.
+_host_lock = threading.Lock()
+_host_server = None
+_host_thread = None
+
+
+def _host_load():
+    if os.path.exists(HOST_INDEX):
+        try:
+            with open(HOST_INDEX, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
+    return []
+
+
+def _host_save(index):
+    os.makedirs(HOST_ITEMS, exist_ok=True)
+    with open(HOST_INDEX, "w", encoding="utf-8") as f:
+        json.dump(index, f, ensure_ascii=False, indent=2)
+
+
+def _host_meta(e):
+    return {k: e.get(k) for k in ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
+
+
+def _host_with_content(e):
+    out = _host_meta(e)
+    path = os.path.join(HOST_ITEMS, e["file"])
+    if e["type"] == "text":
+        with open(path, "r", encoding="utf-8") as f:
+            out["text"] = f.read()
+    else:
+        with open(path, "rb") as f:
+            out["data"] = base64.b64encode(f.read()).decode()
+    return out
+
+
+def _host_add(kind, payload, filename=None, mime=None):
+    os.makedirs(HOST_ITEMS, exist_ok=True)
+    iid = uuid.uuid4().hex[:12]
+    if kind == "text":
+        fn = iid + ".txt"
+        with open(os.path.join(HOST_ITEMS, fn), "w", encoding="utf-8") as f:
+            f.write(payload)
+        entry = {"id": iid, "type": "text", "timestamp": _now(), "file": fn, "filename": None,
+                 "mime": "text/plain", "size": len(payload.encode("utf-8")), "preview": payload[:140]}
+    else:
+        ext = os.path.splitext(filename or "")[1].lower() or (mimetypes.guess_extension(mime or "") or ".bin")
+        fn = iid + ext
+        with open(os.path.join(HOST_ITEMS, fn), "wb") as f:
+            f.write(payload)
+        if not mime:
+            mime = mimetypes.guess_type(filename or fn)[0] or "application/octet-stream"
+        entry = {"id": iid, "type": "image" if mime.startswith("image/") else "file",
+                 "timestamp": _now(), "file": fn, "filename": filename or fn,
+                 "mime": mime, "size": len(payload), "preview": filename or fn}
+    with _host_lock:
+        index = _host_load()
+        index.insert(0, entry)
+        while len(index) > config.get("max_local_history", 100):
+            old = index.pop()
+            try:
+                os.remove(os.path.join(HOST_ITEMS, old["file"]))
+            except OSError:
+                pass
+        _host_save(index)
+    return entry
+
+
+class _SrvHandler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass  # keep the console quiet
+
+    def _send(self, code, body=b"", ctype="application/json", filename=None):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        if filename:
+            self.send_header("Content-Disposition", f'inline; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if body:
+            self.wfile.write(body)
+
+    def _json(self, obj, code=200):
+        self._send(code, json.dumps(obj).encode("utf-8"))
+
+    def _raw(self, e):
+        path = os.path.join(HOST_ITEMS, e["file"])
+        if e["type"] == "text":
+            with open(path, "r", encoding="utf-8") as f:
+                self._send(200, f.read().encode("utf-8"), "text/plain; charset=utf-8")
+        else:
+            with open(path, "rb") as f:
+                self._send(200, f.read(), e.get("mime") or "application/octet-stream", e.get("filename"))
+
+    def do_GET(self):
+        try:
+            path = self.path.split("?", 1)[0]
+            index = _host_load()
+            if path == "/health":
+                return self._json({"status": "ok", "items": len(index)})
+            if path == "/clipboard/latest":
+                return self._json(_host_with_content(index[0]) if index else {"type": "empty"})
+            if path == "/clipboard/latest/raw":
+                return self._raw(index[0]) if index else self._send(200, b"", "text/plain; charset=utf-8")
+            if path == "/clipboard/history":
+                return self._json({"items": [_host_meta(e) for e in index], "count": len(index)})
+            if path.startswith("/clipboard/item/"):
+                e = next((x for x in index if x["id"] == path.split("/")[3]), None)
+                if not e:
+                    return self._json({"error": "not found"}, 404)
+                return self._raw(e) if path.endswith("/raw") else self._json(_host_with_content(e))
+            self._json({"error": "not found"}, 404)
+        except Exception as ex:
+            try:
+                self._json({"error": str(ex)}, 500)
+            except Exception:
+                pass
+
+    def do_POST(self):
+        try:
+            path = self.path.split("?", 1)[0]
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            body = self.rfile.read(n) if n else b""
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if path == "/clipboard/text":
+                e = _host_add("text", (json.loads(body or b"{}")).get("text", ""))
+                return self._json({"status": "ok", "id": e["id"]})
+            if path == "/clipboard/file":
+                d = json.loads(body or b"{}")
+                raw = base64.b64decode((d.get("data") or "").encode())
+                e = _host_add("bin", raw, d.get("filename") or "file.bin")
+                return self._json({"status": "ok", "id": e["id"]})
+            if path in ("/clipboard", "/clipboard/image"):
+                if ctype == "application/json":
+                    d = json.loads(body or b"{}")
+                    if d.get("data"):
+                        e = _host_add("bin", base64.b64decode(d["data"].encode()),
+                                      d.get("filename") or "clipboard", d.get("mime"))
+                        return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+                    e = _host_add("text", d.get("text", ""))
+                    return self._json({"status": "ok", "id": e["id"], "type": "text"})
+                if ctype.startswith("text/") or ctype in ("", "application/x-www-form-urlencoded"):
+                    try:
+                        e = _host_add("text", body.decode("utf-8"))
+                        return self._json({"status": "ok", "id": e["id"], "type": "text"})
+                    except UnicodeDecodeError:
+                        pass
+                fn = self.headers.get("X-Filename") or ("clipboard" + (mimetypes.guess_extension(ctype) or ".bin"))
+                e = _host_add("bin", body, fn, ctype or None)
+                return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+            self._json({"error": "not found"}, 404)
+        except Exception as ex:
+            try:
+                self._json({"error": str(ex)}, 500)
+            except Exception:
+                pass
+
+    def do_DELETE(self):
+        try:
+            path = self.path.split("?", 1)[0]
+            if path == "/clipboard/history":
+                with _host_lock:
+                    for e in _host_load():
+                        try:
+                            os.remove(os.path.join(HOST_ITEMS, e["file"]))
+                        except OSError:
+                            pass
+                    _host_save([])
+                return self._json({"status": "cleared"})
+            if path.startswith("/clipboard/item/"):
+                iid = path.split("/")[3]
+                with _host_lock:
+                    index = _host_load()
+                    e = next((x for x in index if x["id"] == iid), None)
+                    _host_save([x for x in index if x["id"] != iid])
+                if e:
+                    try:
+                        os.remove(os.path.join(HOST_ITEMS, e["file"]))
+                    except OSError:
+                        pass
+                return self._json({"status": "deleted"})
+            self._json({"error": "not found"}, 404)
+        except Exception as ex:
+            try:
+                self._json({"error": str(ex)}, 500)
+            except Exception:
+                pass
+
+
+def _lan_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+
+def server_address():
+    return f"{_lan_ip()}:{config.get('host_port', 5088)}"
+
+
+def start_host_server():
+    global _host_server, _host_thread
+    if _host_server is not None:
+        return True
+    try:
+        _host_server = http.server.ThreadingHTTPServer(("0.0.0.0", int(config.get("host_port", 5088))),
+                                                       _SrvHandler)
+    except OSError as e:
+        notify(t("server_err", e=e))
+        _host_server = None
+        return False
+    _host_thread = threading.Thread(target=_host_server.serve_forever, daemon=True)
+    _host_thread.start()
+    return True
+
+
+def stop_host_server():
+    global _host_server, _host_thread
+    if _host_server is not None:
+        try:
+            _host_server.shutdown()
+            _host_server.server_close()
+        except Exception:
+            pass
+    _host_server = None
+    _host_thread = None
 
 
 # ---------------------------------------------------------------- local history
@@ -704,7 +970,7 @@ def open_history_window(icon=None, item=None):
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("400x460")
+    root.geometry("400x500")
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
@@ -714,6 +980,7 @@ def open_settings(icon=None, item=None):
     fields = [
         (t("lbl_ip"), "server_ip"),
         (t("lbl_port"), "server_port"),
+        (t("lbl_host_port"), "host_port"),
         (t("lbl_token"), "token"),
         (t("lbl_interval"), "poll_interval"),
         (t("lbl_hk_send"), "hotkey_send"),
@@ -746,12 +1013,15 @@ def open_settings(icon=None, item=None):
     def save():
         try:
             port = int(entries["server_port"].get())
+            host_port = int(entries["host_port"].get())
             interval = int(entries["poll_interval"].get())
         except ValueError:
             msg.config(text=t("err_numbers"))
             return
+        old_host_port = config.get("host_port", 5088)
         config["server_ip"] = entries["server_ip"].get().strip()
         config["server_port"] = port
+        config["host_port"] = host_port
         config["token"] = entries["token"].get().strip()
         config["poll_interval"] = interval if interval > 0 else 3
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
@@ -764,6 +1034,10 @@ def open_settings(icon=None, item=None):
             register_hotkeys()
         else:
             unregister_hotkeys()
+        # if the server port changed while running as server, restart it
+        if config.get("mode") == "server" and host_port != old_host_port:
+            stop_host_server()
+            start_host_server()
         if icon is not None:
             try:
                 icon.update_menu()
@@ -841,7 +1115,30 @@ def _set_lang(code):
     return handler
 
 
+def _set_mode(new_mode):
+    def handler(icon, item):
+        if config.get("mode", "client") == new_mode:
+            return
+        config["mode"] = new_mode
+        save_config(config)
+        if new_mode == "server":
+            if start_host_server():
+                notify(t("server_on", addr=server_address()))
+        else:
+            stop_host_server()
+            notify(t("client_on"))
+        icon.update_menu()
+    return handler
+
+
+def copy_server_addr(icon=None, item=None):
+    addr = "http://" + server_address()
+    set_clipboard_text(addr)
+    notify(t("addr_copied", addr=addr))
+
+
 def do_exit(icon, item):
+    stop_host_server()
     unregister_hotkeys()
     stop_event.set()
     icon.stop()
@@ -883,6 +1180,14 @@ def build_menu():
             MenuItem("Italiano", _set_lang("it"),
                      checked=lambda i: config.get("lang", "en") == "it", radio=True),
         )),
+        MenuItem(lambda i: t("mode"), Menu(
+            MenuItem(lambda i: t("mode_client"), _set_mode("client"),
+                     checked=lambda i: config.get("mode", "client") == "client", radio=True),
+            MenuItem(lambda i: t("mode_server"), _set_mode("server"),
+                     checked=lambda i: config.get("mode", "client") == "server", radio=True),
+        )),
+        MenuItem(lambda i: t("server_addr", addr=server_address()), copy_server_addr,
+                 visible=lambda i: config.get("mode", "client") == "server"),
         Menu.SEPARATOR,
         MenuItem(lambda i: t("settings"), lambda icon, item: _cmd_q.put(open_settings)),
         MenuItem(lambda i: t("exit"), do_exit),
@@ -927,6 +1232,8 @@ def main():
     # Tkinter owns the main thread (windows behave like normal Windows windows).
     _root = tk.Tk()
     _root.withdraw()
+    if config.get("mode") == "server":
+        start_host_server()
     threading.Thread(target=sync_loop, daemon=True).start()
     register_hotkeys()
     _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())

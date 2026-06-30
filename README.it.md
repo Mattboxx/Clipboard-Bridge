@@ -61,7 +61,8 @@ qualsiasi ambiente Docker.
 | Variabile | Default | Descrizione |
 |-----------|---------|-------------|
 | `CLIPBOARD_PORT` | `5088` | porta di ascolto |
-| `CLIPBOARD_TOKEN` | *(vuoto)* | se impostato, ogni richiesta richiede l'header `X-Auth-Token` |
+| `CLIPBOARD_TOKEN` | *(vuoto)* | se impostato, l'API (`/clipboard/*`) richiede l'header `X-Auth-Token` |
+| `CLIPBOARD_PASSWORD` | *(vuoto)* | se impostato, la pagina web richiede il login (sessione lunga per dispositivo) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | numero di elementi tenuti nello storico |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | cartella dei dati |
 

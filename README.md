@@ -61,7 +61,8 @@ environment.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CLIPBOARD_PORT` | `5088` | listening port |
-| `CLIPBOARD_TOKEN` | *(empty)* | if set, every request needs the `X-Auth-Token` header |
+| `CLIPBOARD_TOKEN` | *(empty)* | if set, the API (`/clipboard/*`) needs the `X-Auth-Token` header |
+| `CLIPBOARD_PASSWORD` | *(empty)* | if set, the web page requires a login (long-lived per-device session) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | number of items kept in the history |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | data folder |
 

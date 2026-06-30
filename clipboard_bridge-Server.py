@@ -3,30 +3,30 @@
 Clipboard Bridge - Server
 =========================
 
-Server HTTP (Flask) che fa da "ponte" per gli appunti tra Windows e iPhone
-(tramite le Shortcuts/Comandi rapidi di iOS).
+HTTP server (Flask) that acts as a "bridge" for the clipboard between Windows and iPhone
+(through the iOS Shortcuts app).
 
-Caratteristiche:
-  - Testo, immagini e file generici
-  - Cronologia (history) con N elementi, file salvati su disco + index.json
-  - Endpoint "raw" pensati per le Shortcuts (testo come text/plain, immagini come binario)
-  - Token opzionale per proteggere il server (header X-Auth-Token oppure ?token=...)
+Features:
+  - Text, images and generic files
+  - History of N items, files stored on disk + index.json
+  - "raw" endpoints made for Shortcuts (text as text/plain, images as binary)
+  - Optional token to protect the server (X-Auth-Token header or ?token=...)
 
-Avvio:
+Start:
     pip install flask
     python clipboard_bridge-Server.py
 
-Configurazione tramite variabili d'ambiente (tutte opzionali):
-    CLIPBOARD_PORT          porta di ascolto         (default 5088)
-    CLIPBOARD_TOKEN         token di sicurezza       (default: vuoto = nessuna auth)
-    CLIPBOARD_MAX_HISTORY   n. max elementi storico  (default 200)
-    CLIPBOARD_DATA_DIR      cartella dei dati        (default ./clipboard_data)
+Configuration via environment variables (all optional):
+    CLIPBOARD_PORT          listening port           (default 5088)
+    CLIPBOARD_TOKEN         security token           (default: empty = no auth)
+    CLIPBOARD_MAX_HISTORY   max history items        (default 200)
+    CLIPBOARD_DATA_DIR      data folder              (default ./clipboard_data)
 
-Esempio con token (PowerShell):
-    $env:CLIPBOARD_TOKEN="ilmiosegreto"; python clipboard_bridge-Server.py
+Example with a token (PowerShell):
+    $env:CLIPBOARD_TOKEN="mysecret"; python clipboard_bridge-Server.py
 """
 
-from flask import Flask, request, jsonify, Response, send_file, redirect
+from flask import Flask, request, jsonify, Response, send_file, redirect, session
 from markupsafe import escape
 import base64
 import os
@@ -35,27 +35,42 @@ import time
 import uuid
 import mimetypes
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# ---------- Configurazione ----------
+# ---------- Configuration ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
 INDEX_FILE = os.path.join(DATA_DIR, "index.json")
 
 PORT = int(os.environ.get("CLIPBOARD_PORT", "5088"))
-AUTH_TOKEN = os.environ.get("CLIPBOARD_TOKEN", "").strip()
+AUTH_TOKEN = os.environ.get("CLIPBOARD_TOKEN", "").strip()      # API token (Shortcuts/clients)
+WEB_PASSWORD = os.environ.get("CLIPBOARD_PASSWORD", "").strip()  # optional password for the web page
 MAX_HISTORY = int(os.environ.get("CLIPBOARD_MAX_HISTORY", "200"))
 
 os.makedirs(ITEMS_DIR, exist_ok=True)
-app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB per richiesta
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB per request
+
+# Persistent secret key so login sessions survive server restarts.
+_key_path = os.path.join(DATA_DIR, "secret.key")
+try:
+    with open(_key_path, "rb") as _kf:
+        app.secret_key = _kf.read()
+except OSError:
+    app.secret_key = os.urandom(32)
+    try:
+        with open(_key_path, "wb") as _kf:
+            _kf.write(app.secret_key)
+    except OSError:
+        pass
+app.permanent_session_lifetime = timedelta(days=3650)  # keep the device logged in ~10 years
 
 _lock = threading.Lock()
 
 
-# ---------- Gestione indice / storico ----------
+# ---------- Index / history management ----------
 def _load_index():
     if os.path.exists(INDEX_FILE):
         try:
@@ -70,11 +85,11 @@ def _save_index(index):
     tmp = INDEX_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, INDEX_FILE)  # scrittura atomica
+    os.replace(tmp, INDEX_FILE)  # atomic write
 
 
 def _trim(index):
-    """Mantiene al massimo MAX_HISTORY elementi, cancellando i file dei più vecchi."""
+    """Keep at most MAX_HISTORY items, deleting the files of the oldest ones."""
     while len(index) > MAX_HISTORY:
         old = index.pop()
         fname = old.get("file")
@@ -86,7 +101,7 @@ def _trim(index):
 
 
 def _meta(entry):
-    """Restituisce solo i metadati (senza contenuto) di un elemento."""
+    """Return only an item's metadata (without the content)."""
     return {k: entry.get(k) for k in
             ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
 
@@ -100,7 +115,7 @@ def _read_text(entry):
 
 
 def _entry_with_content(entry):
-    """Metadati + contenuto: 'text' per il testo, 'data' (base64) per binari."""
+    """Metadata + content: 'text' for text, 'data' (base64) for binaries."""
     out = _meta(entry)
     if entry["type"] == "text":
         out["text"] = _read_text(entry)
@@ -144,7 +159,7 @@ def _add_text(text):
 
 def _add_binary(raw, orig_filename=None, mime=None):
     entry_id = uuid.uuid4().hex[:12]
-    # Estensione: dal nome file originale, altrimenti dal mime
+    # Extension: from the original filename, otherwise from the mime type
     ext = ""
     if orig_filename and "." in orig_filename:
         ext = "." + orig_filename.rsplit(".", 1)[1].lower()
@@ -176,9 +191,9 @@ def _add_binary(raw, orig_filename=None, mime=None):
     return entry
 
 
-# ---------- Estrazione dati dalle richieste ----------
+# ---------- Request data extraction ----------
 def _get_posted_text():
-    """Accetta JSON {text:...}, form 'text=...' oppure corpo grezzo (text/plain)."""
+    """Accept JSON {text:...}, form 'text=...' or a raw body (text/plain)."""
     if request.is_json:
         data = request.get_json(silent=True) or {}
         return data.get("text", "")
@@ -193,10 +208,10 @@ def _get_posted_text():
 
 def _extract_upload():
     """
-    Estrae (bytes, filename, mime) da:
-      - multipart/form-data (campo file qualsiasi)
+    Extract (bytes, filename, mime) from:
+      - multipart/form-data (any file field)
       - JSON {filename, data(base64), mime}
-      - corpo binario grezzo (Content-Type immagine, header X-Filename opzionale)
+      - raw binary body (image Content-Type, optional X-Filename header)
     """
     if request.files:
         f = next(iter(request.files.values()))
@@ -222,42 +237,84 @@ def _extract_upload():
     return None, None, None
 
 
-# ---------- Autenticazione (opzionale) ----------
+# ---------- Authentication (optional) ----------
+# Web page: protected by CLIPBOARD_PASSWORD (login form + long-lived session cookie).
+# API (/clipboard/*): protected by CLIPBOARD_TOKEN (X-Auth-Token header or ?token=).
 @app.before_request
 def _check_auth():
-    if not AUTH_TOKEN:
-        return  # auth disabilitata
-    if request.path == "/health":
-        return  # endpoint pubblici per il diagnostico
-    token = request.headers.get("X-Auth-Token") or request.args.get("token", "")
-    if token != AUTH_TOKEN:
+    p = request.path
+    if p in ("/health", "/login"):
+        return
+    if p == "/" or p.startswith("/ui/"):          # web routes
+        if WEB_PASSWORD and not session.get("auth"):
+            token = request.args.get("token", "")
+            if not (AUTH_TOKEN and token == AUTH_TOKEN):
+                return redirect("/login")
+        return
+    if AUTH_TOKEN:                                  # API routes
+        token = request.headers.get("X-Auth-Token") or request.args.get("token", "")
+        if token == AUTH_TOKEN or session.get("auth"):
+            return
         return jsonify({"error": "unauthorized"}), 401
+    return  # no API token configured -> API open
 
 
-# ---------- TESTO ----------
+LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipboard Bridge</title>
+<style>body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(180deg,#eef2ff,#f8fafc);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}}
+form{{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;width:300px;
+box-shadow:0 10px 30px -20px rgba(15,23,42,.3);text-align:center}}
+h1{{font-size:18px;margin:0 0 16px;color:#1e293b}}
+input{{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:15px;margin-bottom:10px}}
+button{{width:100%;border:0;background:#4f46e5;color:#fff;padding:11px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}}
+button:hover{{background:#4338ca}}.err{{color:#b91c1c;font-size:13px;margin-bottom:10px}}</style></head>
+<body><form method="post" action="/login">
+<h1>&#128274; Clipboard Bridge</h1>
+{err}
+<input type="password" name="password" placeholder="Password" autofocus>
+<button type="submit">Enter</button>
+</form></body></html>"""
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if not WEB_PASSWORD:
+        return redirect("/")
+    err = ""
+    if request.method == "POST":
+        if request.form.get("password", "") == WEB_PASSWORD:
+            session.permanent = True
+            session["auth"] = True
+            return redirect("/")
+        err = '<div class="err">Wrong password</div>'
+    return Response(LOGIN_HTML.format(err=err), mimetype="text/html")
+
+
+# ---------- TEXT ----------
 @app.route("/clipboard/text", methods=["GET", "POST"])
 def clipboard_text():
     if request.method == "POST":
         entry = _add_text(_get_posted_text())
         return jsonify({"status": "ok", "id": entry["id"]})
-    # GET -> ultimo testo (compatibile con il vecchio client)
+    # GET -> latest text (compatible with the old client)
     e = _latest_of(("text",))
     return jsonify({"text": _read_text(e) if e else ""})
 
 
 @app.route("/clipboard/text/raw", methods=["GET"])
 def clipboard_text_raw():
-    """Testo puro (text/plain): comodo per incollare nelle Shortcuts."""
+    """Plain text (text/plain): handy for pasting into Shortcuts."""
     e = _latest_of(("text",))
     return Response(_read_text(e) if e else "", mimetype="text/plain")
 
 
-# ---------- IMMAGINI ----------
+# ---------- IMAGES ----------
 @app.route("/clipboard/image", methods=["POST"])
 def push_image():
     raw, filename, mime = _extract_upload()
     if raw is None:
-        return jsonify({"error": "nessun dato immagine"}), 400
+        return jsonify({"error": "no image data"}), 400
     if not mime:
         mime = "image/png"
     if not filename:
@@ -278,7 +335,7 @@ def image_latest():
 
 @app.route("/clipboard/image/latest/raw", methods=["GET"])
 def image_latest_raw():
-    """Immagine come binario: le Shortcuts la ricevono direttamente come foto."""
+    """Image as binary: Shortcuts receive it directly as a photo."""
     e = _latest_of(("image",))
     if not e:
         return jsonify({"error": "no images"}), 404
@@ -286,18 +343,18 @@ def image_latest_raw():
                      mimetype=e["mime"], download_name=e["filename"])
 
 
-# ---------- FILE GENERICI (retro-compatibilità) ----------
+# ---------- GENERIC FILES (backwards compatibility) ----------
 @app.route("/clipboard/file", methods=["POST"])
 def push_file():
     content = request.get_json(silent=True) or {}
     filename = content.get("filename")
     b64 = (content.get("data") or "").replace("\n", "").replace("\r", "")
     if not filename or not b64:
-        return jsonify({"error": "filename o data mancante"}), 400
+        return jsonify({"error": "filename or data missing"}), 400
     try:
         raw = base64.b64decode(b64)
     except (ValueError, base64.binascii.Error):
-        return jsonify({"error": "base64 non valido"}), 400
+        return jsonify({"error": "invalid base64"}), 400
     entry = _add_binary(raw, filename, mimetypes.guess_type(filename)[0])
     return jsonify({"status": "ok", "saved": entry["filename"], "id": entry["id"]})
 
@@ -312,10 +369,10 @@ def file_latest():
     return jsonify({"filename": e["filename"], "data": b64})
 
 
-# ---------- UNIVERSALE / STORICO ----------
+# ---------- UNIVERSAL / HISTORY ----------
 @app.route("/clipboard/latest", methods=["GET"])
 def latest_any():
-    """Ultimo elemento di qualsiasi tipo, contenuto incluso."""
+    """Latest item of any type, content included."""
     index = _load_index()
     if not index:
         return jsonify({"type": "empty"})
@@ -324,7 +381,7 @@ def latest_any():
 
 @app.route("/clipboard/latest/raw", methods=["GET"])
 def latest_raw():
-    """Ultimo elemento (qualsiasi tipo) come contenuto grezzo: testo o file binario."""
+    """Latest item (any type) as raw content: text or binary file."""
     index = _load_index()
     if not index:
         return Response("", mimetype="text/plain")
@@ -337,8 +394,8 @@ def latest_raw():
 
 @app.route("/clipboard", methods=["POST"])
 def push_any():
-    """Endpoint unico: salva ciò che arriva (testo o binario) senza distinzione.
-    Pensato per un'unica Shortcut iPhone che invia gli appunti qualunque sia il tipo."""
+    """Single endpoint: store whatever arrives (text or binary) with no distinction.
+    Made for a single iPhone Shortcut that sends the clipboard whatever its type."""
     if request.is_json:
         d = request.get_json(silent=True) or {}
         if d.get("data"):
@@ -360,7 +417,7 @@ def push_any():
 
     raw = request.get_data(cache=False)
     if not raw:
-        return jsonify({"error": "nessun dato"}), 400
+        return jsonify({"error": "no data"}), 400
     ctype = (request.content_type or "").split(";")[0].strip().lower()
     if ctype.startswith("text/") or ctype in ("", "application/x-www-form-urlencoded"):
         try:
@@ -423,13 +480,13 @@ def item_raw(item_id):
                      mimetype=e["mime"], download_name=e["filename"])
 
 
-# ---------- Diagnostica ----------
+# ---------- Diagnostics ----------
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "items": len(_load_index()), "auth": bool(AUTH_TOKEN)})
 
 
-# Logo e icone inline (SVG): nessuna immagine esterna, funziona offline.
+# Inline logo and icons (SVG): no external images, works offline.
 LOGO_SVG = ('<svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">'
             '<rect x="9" y="6" width="30" height="38" rx="6" fill="#4f46e5"/>'
             '<rect x="14" y="11" width="20" height="28" rx="3" fill="#ffffff"/>'
@@ -500,12 +557,12 @@ code{background:#eef2ff;padding:2px 6px;border-radius:5px;font-size:13px}
 _HOME_JS = """
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
 clearTimeout(window._t);window._t=setTimeout(function(){t.classList.remove('show');},1400);}
-function copia(s){var a=document.createElement('textarea');a.value=s;a.style.position='fixed';
+function copyText(s){var a=document.createElement('textarea');a.value=s;a.style.position='fixed';
 a.style.opacity='0';document.body.appendChild(a);a.focus();a.select();
 try{document.execCommand('copy');}catch(e){}document.body.removeChild(a);toast(T_COPIED);}
-function elimina(id){if(!confirm(T_DEL))return;
+function deleteItem(id){if(!confirm(T_DEL))return;
 fetch('/clipboard/item/'+id+TOKENQS,{method:'DELETE'}).then(function(){location.reload();});}
-function svuota(){if(!confirm(T_CLEAR))return;
+function clearHistory(){if(!confirm(T_CLEAR))return;
 fetch('/clipboard/history'+TOKENQS,{method:'DELETE'}).then(function(){location.reload();});}
 (function(){var z=document.getElementById('drop'),f=document.getElementById('file'),
 fm=document.getElementById('upform');if(!z)return;z.onclick=function(){f.click();};
@@ -529,7 +586,7 @@ def _human(n):
 def _urlrow(method, url, copy_label):
     return (f'<div class="url"><span class="method">{method}</span>'
             f'<code>{escape(url)}</code>'
-            f"<button class=\"btn small ghost\" type=\"button\" onclick=\"copia('{url}')\">{copy_label}</button></div>")
+            f"<button class=\"btn small ghost\" type=\"button\" onclick=\"copyText('{url}')\">{copy_label}</button></div>")
 
 
 def _ui_token():
@@ -615,7 +672,7 @@ def render_home():
                  f'<div class="meta"><div class="prev">{prev}</div><div class="sub">{sub}</div></div>'
                  f'<div class="actions">'
                  f'<a class="btn small ghost" href="/clipboard/item/{tid}/raw{tq}">{S["download"]}</a>'
-                 f"<button class=\"btn small ghost\" type=\"button\" onclick=\"elimina('{tid}')\">{S['delete']}</button>"
+                 f"<button class=\"btn small ghost\" type=\"button\" onclick=\"deleteItem('{tid}')\">{S['delete']}</button>"
                  f'</div></div>')
     if not rows:
         rows = f'<div class="empty">{S["empty"]}</div>'
@@ -650,7 +707,7 @@ def render_home():
 <textarea id="txt" name="text" placeholder="{S["ph_text"]}">{escape(latest_text)}</textarea>
 <div class="row">
 <button class="btn" type="submit">{S["save"]}</button>
-<button class="btn ghost" type="button" onclick="copia(document.getElementById('txt').value)">{S["copy"]}</button>
+<button class="btn ghost" type="button" onclick="copyText(document.getElementById('txt').value)">{S["copy"]}</button>
 </div>
 </form>
 </div>
@@ -665,7 +722,7 @@ def render_home():
 </div>
 
 <div class="card">
-<h2>{IC_HIST} {S["h_history"]} <span style="margin-left:auto;display:flex;gap:6px"><button class="btn small ghost" type="button" onclick="location.reload()">{S["refresh"]}</button><button class="btn small ghost" type="button" onclick="svuota()">{S["clear"]}</button></span></h2>
+<h2>{IC_HIST} {S["h_history"]} <span style="margin-left:auto;display:flex;gap:6px"><button class="btn small ghost" type="button" onclick="location.reload()">{S["refresh"]}</button><button class="btn small ghost" type="button" onclick="clearHistory()">{S["clear"]}</button></span></h2>
 {rows}
 </div>
 
@@ -708,9 +765,10 @@ def ui_upload():
 if __name__ == "__main__":
     print("=" * 52)
     print(" Clipboard Bridge - Server")
-    print(f"   In ascolto su:  http://0.0.0.0:{PORT}")
-    print(f"   Cartella dati:  {DATA_DIR}")
-    print(f"   Storico max:    {MAX_HISTORY} elementi")
-    print(f"   Autenticazione: {'ATTIVA (token)' if AUTH_TOKEN else 'disattivata'}")
+    print(f"   Listening on:   http://0.0.0.0:{PORT}")
+    print(f"   Data folder:    {DATA_DIR}")
+    print(f"   Max history:    {MAX_HISTORY} items")
+    print(f"   API token:      {'ON' if AUTH_TOKEN else 'disabled'}")
+    print(f"   Web password:   {'ON' if WEB_PASSWORD else 'disabled'}")
     print("=" * 52)
     app.run(host="0.0.0.0", port=PORT)
