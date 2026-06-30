@@ -11,6 +11,16 @@ servizi esterni. L'interfaccia è disponibile in **inglese (predefinita)** e in 
      copia / incolla         storico + testo/file/img         invia / ricevi / storico
 ```
 
+> ⭐ **Non serve un server a parte — due modi per usarlo:**
+> - **Con un server** — un Raspberry Pi, un NAS, un PC sempre acceso o Docker; tutti i dispositivi si collegano a esso.
+> - **Windows come server** — basta mettere l'app Windows in **modalità Server** e l'iPhone si
+>   connette **direttamente al tuo PC** in rete locale. Niente altro da installare o tenere acceso.
+>
+> ```
+>    iPhone (Shortcuts)  <----------------->   App Windows in modalità SERVER
+>      copia / incolla                         è il server (storico + ultimo elemento)
+> ```
+
 > 📖 **Prima volta?** Segui la [guida passo-passo](GUIDE.md) (in inglese).
 
 ## Funzionalità
@@ -20,7 +30,9 @@ servizi esterni. L'interfaccia è disponibile in **inglese (predefinita)** e in 
 - **Interfaccia web** del server (utilizzabile anche dal browser dell'iPhone) per
   incollare testo e caricare/scaricare file.
 - Integrazione con le **Shortcuts iPhone** tramite semplici richieste HTTP.
-- **Token** opzionale per proteggere il server.
+- **Nessun server a parte (opzionale):** l'app Windows può fare da server (tray → **Modalità → Server**),
+  così l'iPhone si connette direttamente al tuo PC.
+- **Token** opzionale per l'API e **password** opzionale per la pagina web.
 - Server eseguibile direttamente oppure in **Docker**.
 
 ## Struttura del repository
