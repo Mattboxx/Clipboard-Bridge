@@ -2,24 +2,28 @@
 
 [English](README.md) · **Italiano**
 
-Condividi gli appunti (testo, immagini e **file di qualsiasi tipo**) tra Windows, un
-server e iPhone, tramite l'app Comandi rapidi / Shortcuts. Tutto in rete locale, senza
-servizi esterni. L'interfaccia è disponibile in **inglese (predefinita)** e in italiano.
+![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
+![modes](https://img.shields.io/badge/modalit%C3%A0-Server%20%C2%B7%20Client-6f42c1)
+![network](https://img.shields.io/badge/rete-solo%20locale-2ea44f)
+![license](https://img.shields.io/badge/licenza-MIT-555)
 
-```
-   iPhone (Shortcuts)  <->        SERVER (Flask)        <->   Windows (client tray)
-     copia / incolla         storico + testo/file/img         invia / ricevi / storico
-```
+Condividi gli appunti — testo, immagini e **file di qualsiasi tipo** — tra **Windows e
+iPhone** in rete locale, tramite l'app Comandi rapidi (Shortcuts). Niente cloud, niente
+account. Interfaccia in **inglese (predefinita)** e in italiano.
 
-> ⭐ **Non serve un server a parte — due modi per usarlo:**
-> - **Con un server** — un Raspberry Pi, un NAS, un PC sempre acceso o Docker; tutti i dispositivi si collegano a esso.
-> - **Windows come server** — basta mettere l'app Windows in **modalità Server** e l'iPhone si
->   connette **direttamente al tuo PC** in rete locale. Niente altro da installare o tenere acceso.
->
-> ```
->    iPhone (Shortcuts)  <----------------->   App Windows in modalità SERVER
->      copia / incolla                         è il server (storico + ultimo elemento)
-> ```
+## ⚡ Funziona in due modalità distinte
+
+![Modalità Server vs Modalità Client](docs/modes.png)
+
+Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
+
+| | 🖥️ Modalità Server | 🔌 Modalità Client |
+|---|---|---|
+| **Chi fa da server** | la **stessa app Windows** | un **server a parte** (PC, NAS, Raspberry Pi, Docker) |
+| **L'iPhone si connette a** | il tuo PC, direttamente | il server |
+| **Configurazione extra** | nessuna — basta l'interruttore | far girare il server da qualche parte |
+| **Pagina web** | no (minimale) | sì |
+| **Ideale per** | PC ↔ iPhone al volo, zero setup | sempre disponibile, anche a PC spento |
 
 > 📖 **Prima volta?** Segui la [guida passo-passo](GUIDE.md) (in inglese).
 
