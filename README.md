@@ -11,6 +11,16 @@ external services. The app interface is available in **English (default)** and I
      copy / paste            history + text/file/img         send / receive / history
 ```
 
+> ⭐ **No separate server required — two ways to run it:**
+> - **With a server** — a Raspberry Pi, a NAS, any always-on PC, or Docker; every device connects to it.
+> - **Windows as the server** — switch the Windows app to **Server mode** and your iPhone
+>   connects **directly to your PC** on the local network. Nothing else to install or keep running.
+>
+> ```
+>    iPhone (Shortcuts)  <----------------->   Windows app in SERVER mode
+>      copy / paste                            is the server (history + latest item)
+> ```
+
 > 📖 **New here?** Follow the step-by-step [Setup & Usage Guide](GUIDE.md).
 
 ## Features
@@ -20,7 +30,9 @@ external services. The app interface is available in **English (default)** and I
 - **Web interface** on the server (usable from the iPhone browser too) to paste text and
   upload/download files.
 - Integration with **iPhone Shortcuts** via simple HTTP requests.
-- Optional **token** to protect the server.
+- **No separate server needed (optional):** the Windows app can be the server itself
+  (tray → **Mode → Server**) — the iPhone connects straight to your PC.
+- Optional **token** for the API and an optional **password** for the web page.
 - Run the server directly or with **Docker**.
 
 ## Repository layout
