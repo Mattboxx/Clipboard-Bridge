@@ -26,8 +26,9 @@ Example with a token (PowerShell):
     $env:CLIPBOARD_TOKEN="mysecret"; python clipboard_bridge-Server.py
 """
 
-from flask import Flask, request, jsonify, Response, send_file, redirect, session
+from flask import Flask, request, jsonify, Response, send_file, redirect, session, g
 from markupsafe import escape
+from urllib.parse import quote
 import base64
 import os
 import json
@@ -46,9 +47,40 @@ ITEMS_DIR = os.path.join(DATA_DIR, "items")
 INDEX_FILE = os.path.join(DATA_DIR, "index.json")
 
 PORT = int(os.environ.get("CLIPBOARD_PORT", "5088"))
-AUTH_TOKEN = os.environ.get("CLIPBOARD_TOKEN", "").strip()      # API token (Shortcuts/clients)
-WEB_PASSWORD = os.environ.get("CLIPBOARD_PASSWORD", "").strip()  # optional password for the web page
+AUTH_TOKEN = os.environ.get("CLIPBOARD_TOKEN", "").strip()      # API token for the GENERAL/shared space
+WEB_PASSWORD = os.environ.get("CLIPBOARD_PASSWORD", "").strip()  # web password for the GENERAL space
 MAX_HISTORY = int(os.environ.get("CLIPBOARD_MAX_HISTORY", "200"))
+
+
+def _parse_accounts(raw):
+    """Parse "user1:pass1,user2:pass2" into {name: password}.
+
+    Accepts both commas and newlines as separators, so the same parser works
+    for the CLIPBOARD_ACCOUNTS variable and for a one-per-line accounts file.
+    Lines starting with '#' are treated as comments. No limit on the count.
+    """
+    accounts = {}
+    for part in (raw or "").replace("\r", "\n").replace("\n", ",").split(","):
+        part = part.strip()
+        if not part or part.startswith("#"):
+            continue
+        if ":" in part:
+            name, pw = part.split(":", 1)
+            name = name.strip()
+            if name:
+                accounts[name] = pw
+    return accounts
+
+
+# Extra accounts (besides the always-available general space). Each one has its own
+# isolated history, stored under DATA_DIR/users/<name>/. There is no limit on how many
+# accounts can be defined. For many users, prefer CLIPBOARD_ACCOUNTS_FILE (one
+# "user:password" per line) over the inline CLIPBOARD_ACCOUNTS variable.
+ACCOUNTS = _parse_accounts(os.environ.get("CLIPBOARD_ACCOUNTS", ""))
+_ACCOUNTS_FILE = os.environ.get("CLIPBOARD_ACCOUNTS_FILE", "").strip()
+if _ACCOUNTS_FILE and os.path.isfile(_ACCOUNTS_FILE):
+    with open(_ACCOUNTS_FILE, encoding="utf-8") as _f:
+        ACCOUNTS.update(_parse_accounts(_f.read()))   # file entries extend / override
 
 os.makedirs(ITEMS_DIR, exist_ok=True)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB per request
@@ -70,11 +102,37 @@ app.permanent_session_lifetime = timedelta(days=3650)  # keep the device logged 
 _lock = threading.Lock()
 
 
+# ---------- Accounts / per-request data location ----------
+# Each request works on one space: the general/shared one (DATA_DIR) or an account's
+# own folder (DATA_DIR/users/<name>). The current paths live on Flask's request `g`.
+def _items_dir():
+    return getattr(g, "items_dir", ITEMS_DIR)
+
+
+def _index_file():
+    return getattr(g, "index_file", INDEX_FILE)
+
+
+def _use_general():
+    g.account = None
+    g.items_dir = ITEMS_DIR
+    g.index_file = INDEX_FILE
+
+
+def _use_account(name):
+    base = os.path.join(DATA_DIR, "users", name)
+    g.account = name
+    g.items_dir = os.path.join(base, "items")
+    g.index_file = os.path.join(base, "index.json")
+    os.makedirs(g.items_dir, exist_ok=True)
+
+
 # ---------- Index / history management ----------
 def _load_index():
-    if os.path.exists(INDEX_FILE):
+    index_file = _index_file()
+    if os.path.exists(index_file):
         try:
-            with open(INDEX_FILE, "r", encoding="utf-8") as f:
+            with open(index_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
             return []
@@ -82,10 +140,12 @@ def _load_index():
 
 
 def _save_index(index):
-    tmp = INDEX_FILE + ".tmp"
+    index_file = _index_file()
+    os.makedirs(os.path.dirname(index_file), exist_ok=True)
+    tmp = index_file + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, INDEX_FILE)  # atomic write
+    os.replace(tmp, index_file)  # atomic write
 
 
 def _trim(index):
@@ -95,7 +155,7 @@ def _trim(index):
         fname = old.get("file")
         if fname:
             try:
-                os.remove(os.path.join(ITEMS_DIR, fname))
+                os.remove(os.path.join(_items_dir(), fname))
             except OSError:
                 pass
 
@@ -107,7 +167,7 @@ def _meta(entry):
 
 
 def _read_text(entry):
-    path = os.path.join(ITEMS_DIR, entry["file"])
+    path = os.path.join(_items_dir(), entry["file"])
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
@@ -120,7 +180,7 @@ def _entry_with_content(entry):
     if entry["type"] == "text":
         out["text"] = _read_text(entry)
     else:
-        path = os.path.join(ITEMS_DIR, entry["file"])
+        path = os.path.join(_items_dir(), entry["file"])
         with open(path, "rb") as f:
             out["data"] = base64.b64encode(f.read()).decode()
     return out
@@ -136,7 +196,7 @@ def _latest_of(types):
 def _add_text(text):
     entry_id = uuid.uuid4().hex[:12]
     fname = entry_id + ".txt"
-    with open(os.path.join(ITEMS_DIR, fname), "w", encoding="utf-8") as f:
+    with open(os.path.join(_items_dir(), fname), "w", encoding="utf-8") as f:
         f.write(text)
     entry = {
         "id": entry_id,
@@ -166,7 +226,7 @@ def _add_binary(raw, orig_filename=None, mime=None):
     elif mime:
         ext = mimetypes.guess_extension(mime) or ""
     fname = entry_id + (ext or ".bin")
-    with open(os.path.join(ITEMS_DIR, fname), "wb") as f:
+    with open(os.path.join(_items_dir(), fname), "wb") as f:
         f.write(raw)
 
     if not mime:
@@ -237,33 +297,56 @@ def _extract_upload():
     return None, None, None
 
 
-# ---------- Authentication (optional) ----------
-# Web page: protected by CLIPBOARD_PASSWORD (login form + long-lived session cookie).
-# API (/clipboard/*): protected by CLIPBOARD_TOKEN (X-Auth-Token header or ?token=).
+# ---------- Authentication & account selection ----------
+# General/shared space: optional CLIPBOARD_TOKEN (API) and CLIPBOARD_PASSWORD (web page).
+# Extra accounts (CLIPBOARD_ACCOUNTS): selected per request with ?user=NAME&password=PASS
+# (handy at the end of a Shortcut URL) or via the web login. Each account is isolated.
 @app.before_request
 def _check_auth():
     p = request.path
-    if p in ("/health", "/login"):
+    if p in ("/health", "/login", "/logout"):
         return
-    if p == "/" or p.startswith("/ui/"):          # web routes
+    web = (p == "/" or p.startswith("/ui/"))
+
+    # 1) Explicit account in the URL: ?user=NAME&password=PASS  (Shortcuts / Windows client)
+    u = request.args.get("user")
+    if u:
+        if u in ACCOUNTS and ACCOUNTS[u] == request.args.get("password", ""):
+            _use_account(u)
+            if web:  # remember it so the browser stays on this account
+                session.permanent = True
+                session["acct"] = u
+            return
+        if web:
+            return redirect("/login")
+        return jsonify({"error": "unauthorized"}), 401
+
+    # 2) Web session already logged into an account
+    if session.get("acct") in ACCOUNTS:
+        _use_account(session["acct"])
+        return
+
+    # 3) General / shared space
+    _use_general()
+    if web:
         if WEB_PASSWORD and not session.get("auth"):
             token = request.args.get("token", "")
             if not (AUTH_TOKEN and token == AUTH_TOKEN):
                 return redirect("/login")
         return
-    if AUTH_TOKEN:                                  # API routes
+    if AUTH_TOKEN:
         token = request.headers.get("X-Auth-Token") or request.args.get("token", "")
         if token == AUTH_TOKEN or session.get("auth"):
             return
         return jsonify({"error": "unauthorized"}), 401
-    return  # no API token configured -> API open
+    return  # general space open (no token configured)
 
 
 LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipboard Bridge</title>
 <style>body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
 background:linear-gradient(180deg,#eef2ff,#f8fafc);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}}
-form{{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;width:300px;
+form{{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;width:320px;
 box-shadow:0 10px 30px -20px rgba(15,23,42,.3);text-align:center}}
 h1{{font-size:18px;margin:0 0 16px;color:#1e293b}}
 input{{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:15px;margin-bottom:10px}}
@@ -272,23 +355,46 @@ button:hover{{background:#4338ca}}.err{{color:#b91c1c;font-size:13px;margin-bott
 <body><form method="post" action="/login">
 <h1>&#128274; Clipboard Bridge</h1>
 {err}
-<input type="password" name="password" placeholder="Password" autofocus>
+{user_field}
+<input type="password" name="password" placeholder="Password"{pw_autofocus}>
 <button type="submit">Enter</button>
 </form></body></html>"""
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if not WEB_PASSWORD:
+    if not (WEB_PASSWORD or ACCOUNTS):
         return redirect("/")
     err = ""
     if request.method == "POST":
-        if request.form.get("password", "") == WEB_PASSWORD:
+        u = request.form.get("username", "").strip()
+        pw = request.form.get("password", "")
+        if u:
+            if u in ACCOUNTS and ACCOUNTS[u] == pw:
+                session.permanent = True
+                session["acct"] = u
+                session.pop("auth", None)
+                return redirect("/")
+        elif not WEB_PASSWORD:               # shared space is open, no password
+            session.clear()
+            return redirect("/")
+        elif pw == WEB_PASSWORD:             # shared space password
             session.permanent = True
             session["auth"] = True
+            session.pop("acct", None)
             return redirect("/")
-        err = '<div class="err">Wrong password</div>'
-    return Response(LOGIN_HTML.format(err=err), mimetype="text/html")
+        err = '<div class="err">Wrong username or password</div>'
+    user_field = ('<input name="username" placeholder="Username (empty = shared space)" autofocus>'
+                  if ACCOUNTS else '')
+    pw_autofocus = '' if ACCOUNTS else ' autofocus'
+    return Response(LOGIN_HTML.format(err=err, user_field=user_field, pw_autofocus=pw_autofocus),
+                    mimetype="text/html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login" if (WEB_PASSWORD or ACCOUNTS) else "/")
 
 
 # ---------- TEXT ----------
@@ -328,7 +434,7 @@ def image_latest():
     e = _latest_of(("image",))
     if not e:
         return jsonify({"error": "no images"}), 404
-    with open(os.path.join(ITEMS_DIR, e["file"]), "rb") as f:
+    with open(os.path.join(_items_dir(), e["file"]), "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     return jsonify({"filename": e["filename"], "data": b64, "mime": e["mime"], "id": e["id"]})
 
@@ -339,7 +445,7 @@ def image_latest_raw():
     e = _latest_of(("image",))
     if not e:
         return jsonify({"error": "no images"}), 404
-    return send_file(os.path.join(ITEMS_DIR, e["file"]),
+    return send_file(os.path.join(_items_dir(), e["file"]),
                      mimetype=e["mime"], download_name=e["filename"])
 
 
@@ -364,7 +470,7 @@ def file_latest():
     e = _latest_of(("image", "file"))
     if not e:
         return jsonify({"error": "no files"}), 404
-    with open(os.path.join(ITEMS_DIR, e["file"]), "rb") as f:
+    with open(os.path.join(_items_dir(), e["file"]), "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     return jsonify({"filename": e["filename"], "data": b64})
 
@@ -388,7 +494,7 @@ def latest_raw():
     e = index[0]
     if e["type"] == "text":
         return Response(_read_text(e), mimetype="text/plain")
-    return send_file(os.path.join(ITEMS_DIR, e["file"]),
+    return send_file(os.path.join(_items_dir(), e["file"]),
                      mimetype=e["mime"], download_name=e["filename"])
 
 
@@ -436,7 +542,7 @@ def history():
         with _lock:
             for e in _load_index():
                 try:
-                    os.remove(os.path.join(ITEMS_DIR, e["file"]))
+                    os.remove(os.path.join(_items_dir(), e["file"]))
                 except OSError:
                     pass
             _save_index([])
@@ -462,7 +568,7 @@ def item(item_id):
             index = [x for x in _load_index() if x["id"] != item_id]
             _save_index(index)
         try:
-            os.remove(os.path.join(ITEMS_DIR, e["file"]))
+            os.remove(os.path.join(_items_dir(), e["file"]))
         except OSError:
             pass
         return jsonify({"status": "deleted"})
@@ -476,7 +582,7 @@ def item_raw(item_id):
         return jsonify({"error": "not found"}), 404
     if e["type"] == "text":
         return Response(_read_text(e), mimetype="text/plain")
-    return send_file(os.path.join(ITEMS_DIR, e["file"]),
+    return send_file(os.path.join(_items_dir(), e["file"]),
                      mimetype=e["mime"], download_name=e["filename"])
 
 
@@ -620,6 +726,8 @@ WEB_STRINGS = {
         "ip_send": "Send &mdash; clipboard to server (body: File)",
         "ip_recv": "Receive &mdash; latest item to clipboard",
         "token_note": "Token enabled: in the Shortcuts add the header",
+        "login": "Log in", "logout": "Log out", "shared": "shared",
+        "acct_note": "You are in account <b>{name}</b> — these links carry its user &amp; password.",
         "foot": "This page also works from the iPhone browser.",
         "js_copied": "Copied to the clipboard", "js_del": "Delete this item?",
         "js_clear": "Clear the whole history?",
@@ -640,6 +748,8 @@ WEB_STRINGS = {
         "ip_send": "Invia &mdash; appunti al server (corpo: File)",
         "ip_recv": "Ricevi &mdash; ultimo elemento negli appunti",
         "token_note": "Token attivo: nelle Shortcut aggiungi l’intestazione",
+        "login": "Accedi", "logout": "Esci", "shared": "condiviso",
+        "acct_note": "Sei nell'account <b>{name}</b> — questi link includono utente e password.",
         "foot": "Questa pagina funziona anche dal browser dell’iPhone.",
         "js_copied": "Copiato negli appunti", "js_del": "Eliminare questo elemento?",
         "js_clear": "Svuotare tutta la cronologia?",
@@ -654,6 +764,9 @@ def render_home():
     tq = ("?token=" + tok) if tok else ""                       # token only (raw / API / img)
     fq = "?lang=" + lang + (("&token=" + tok) if tok else "")   # forms / redirect (lang + token)
     base = request.host_url.rstrip("/")
+    acct = getattr(g, "account", None)                          # current account (or None = shared)
+    # Suffix for the iPhone URLs: account credentials, or the general token.
+    suffix = ("?user=" + quote(acct) + "&password=" + quote(ACCOUNTS.get(acct, ""))) if acct else tq
 
     e = _latest_of(("text",))
     latest_text = _read_text(e) if e else ""
@@ -681,6 +794,8 @@ def render_home():
     if tok:
         nota = (f'<div class="nota">{S["token_note"]} '
                 f'<code>X-Auth-Token: {escape(tok)}</code>.</div>')
+    if acct:
+        nota += f'<div class="nota">{S["acct_note"].format(name=escape(acct))}</div>'
 
     en_href = "/?lang=en" + (("&token=" + tok) if tok else "")
     it_href = "/?lang=it" + (("&token=" + tok) if tok else "")
@@ -688,6 +803,18 @@ def render_home():
     it_on = "on" if lang == "it" else ""
     lang_toggle = (f'<div class="lang"><a href="{en_href}" class="{en_on}">EN</a>'
                    f'<a href="{it_href}" class="{it_on}">IT</a></div>')
+
+    # Current space + login/logout link
+    if acct:
+        account_bar = (f'<div class="lang"><span class="on">{escape(acct)}</span>'
+                       f'<a href="/logout">{S["logout"]}</a></div>')
+    elif session.get("auth"):
+        account_bar = (f'<div class="lang"><span class="on">{S["shared"]}</span>'
+                       f'<a href="/logout">{S["logout"]}</a></div>')
+    elif ACCOUNTS or WEB_PASSWORD:
+        account_bar = f'<div class="lang"><a href="/login">{S["login"]}</a></div>'
+    else:
+        account_bar = ""
 
     js_consts = (f'const TOKENQS="{tq}";const T_COPIED="{S["js_copied"]}";'
                  f'const T_DEL="{S["js_del"]}";const T_CLEAR="{S["js_clear"]}";')
@@ -699,7 +826,7 @@ def render_home():
 
 <div class="head">{LOGO_SVG}
 <div><h1>Clipboard Bridge</h1><p>{S["subtitle"]}</p></div>
-<div style="margin-left:auto;text-align:right"><span class="badge">&#9679; {S["online"].format(n=len(items))}</span>{lang_toggle}</div></div>
+<div style="margin-left:auto;text-align:right"><span class="badge">&#9679; {S["online"].format(n=len(items))}</span>{lang_toggle}{account_bar}</div></div>
 
 <div class="card">
 <h2>{IC_TEXT} {S["h_text"]}</h2>
@@ -731,9 +858,9 @@ def render_home():
 {nota}
 <p style="color:#64748b;font-size:13px;margin:0 0 8px">{S["iphone_intro"]}</p>
 <div style="font-size:13px"><b>{S["ip_send"]}</b></div>
-{_urlrow("POST", base + "/clipboard", S["copy"])}
+{_urlrow("POST", base + "/clipboard" + suffix, S["copy"])}
 <div style="font-size:13px"><b>{S["ip_recv"]}</b></div>
-{_urlrow("GET", base + "/clipboard/latest/raw" + tq, S["copy"])}
+{_urlrow("GET", base + "/clipboard/latest/raw" + suffix, S["copy"])}
 </div>
 
 <div class="foot">{S["foot"]}</div>
@@ -770,5 +897,9 @@ if __name__ == "__main__":
     print(f"   Max history:    {MAX_HISTORY} items")
     print(f"   API token:      {'ON' if AUTH_TOKEN else 'disabled'}")
     print(f"   Web password:   {'ON' if WEB_PASSWORD else 'disabled'}")
+    if ACCOUNTS:
+        names = list(ACCOUNTS)
+        shown = ", ".join(names[:10]) + (f", +{len(names) - 10} more" if len(names) > 10 else "")
+        print(f"   Accounts:       {len(ACCOUNTS)} ({shown}) + shared")
     print("=" * 52)
     app.run(host="0.0.0.0", port=PORT)

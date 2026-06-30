@@ -84,11 +84,47 @@ environment.
 | `CLIPBOARD_PORT` | `5088` | listening port |
 | `CLIPBOARD_TOKEN` | *(empty)* | if set, the API (`/clipboard/*`) needs the `X-Auth-Token` header |
 | `CLIPBOARD_PASSWORD` | *(empty)* | if set, the web page requires a login (long-lived per-device session) |
+| `CLIPBOARD_ACCOUNTS` | *(empty)* | extra isolated accounts, format `user1:pass1,user2:pass2` (see below) |
+| `CLIPBOARD_ACCOUNTS_FILE` | *(empty)* | path to a file with one `user:password` per line (for many accounts) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | number of items kept in the history |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | data folder |
 
 > For use outside the local network, set a token and use a VPN or a reverse proxy with
 > HTTPS. On the local network, allow port 5088 through the firewall.
+
+### Multiple accounts (optional)
+
+The **shared space** is always available. To add extra, **isolated** spaces (each with its
+own history), set `CLIPBOARD_ACCOUNTS`:
+
+```bash
+CLIPBOARD_ACCOUNTS="alice:secret1,bob:secret2"
+```
+
+There is **no limit** on the number of accounts. For many users, instead of a long variable
+use an accounts **file** (one `user:password` per line, `#` for comments) and point
+`CLIPBOARD_ACCOUNTS_FILE` to it:
+
+```bash
+# accounts.txt
+alice:secret1
+bob:secret2
+# ...as many as you want
+```
+```bash
+CLIPBOARD_ACCOUNTS_FILE=/data/accounts.txt python clipboard_bridge-Server.py
+```
+
+Pick an account by adding its credentials **at the end of the URL** — handy in a Shortcut or
+in the Windows client:
+
+```
+http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret1
+```
+
+In a browser, open `http://SERVER_IP:5088/` and **log in** (username = account, or leave it
+empty for the shared space). The session is remembered per device. The shared space keeps
+using `CLIPBOARD_TOKEN` / `CLIPBOARD_PASSWORD` as before.
 
 ---
 
@@ -110,7 +146,9 @@ A tray icon appears (right-click for the menu):
 - **Send clipboard -> server** / **Receive latest <- server** (text, images, files).
 - **Send a file...** and **Open received folder** (received files go into `ricevuti`).
 - **History...**, **Keyboard shortcuts** (default `Ctrl+Alt+C` sends, `Ctrl+Alt+V` receives).
-- **Language** (English / Italiano) and **Settings...** (server IP, port, token).
+- **Language** (English / Italiano) and **Settings...** (server IP, port, token, account).
+  Leave **Account** empty for the shared space, or enter an account name + password to use
+  an isolated space.
 
 ### Start with Windows
 `Win+R` -> `shell:startup`, then put a shortcut to the executable there.
@@ -136,6 +174,8 @@ Create shortcuts using the **Get Contents of URL** action. If you use a token, a
 - **Receive text** — GET `http://SERVER_IP:5088/clipboard/text/raw`, then *Copy to Clipboard*.
 - **Send photo/file** — POST to `http://SERVER_IP:5088/clipboard/image` (body: File).
 - **Receive image** — GET `http://SERVER_IP:5088/clipboard/image/latest/raw`, then *Save to Album*.
+
+> Using an account? Just append `?user=NAME&password=PASS` to the end of each URL.
 
 ---
 

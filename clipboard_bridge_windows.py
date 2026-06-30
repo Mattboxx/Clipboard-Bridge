@@ -61,6 +61,8 @@ DEFAULT_CONFIG = {
     "server_port": 5088,
     "host_port": 5088,         # port this PC listens on in server mode
     "token": "",
+    "username": "",            # server account name (empty = shared space)
+    "password": "",            # server account password
     "auto_sync": False,
     "monitor_clipboard": True,
     "poll_interval": 3,
@@ -130,6 +132,8 @@ STRINGS = {
         "lbl_ip": "Server IP",
         "lbl_port": "Port",
         "lbl_token": "Token (empty = none)",
+        "lbl_user": "Account (empty = shared)",
+        "lbl_pass": "Account password",
         "lbl_interval": "Clipboard check interval (s)",
         "lbl_hk_send": "Send hotkey",
         "lbl_hk_recv": "Receive hotkey",
@@ -194,6 +198,8 @@ STRINGS = {
         "lbl_ip": "IP server",
         "lbl_port": "Porta",
         "lbl_token": "Token (vuoto = nessuno)",
+        "lbl_user": "Account (vuoto = condiviso)",
+        "lbl_pass": "Password account",
         "lbl_interval": "Intervallo controllo appunti (s)",
         "lbl_hk_send": "Hotkey invio",
         "lbl_hk_recv": "Hotkey ricezione",
@@ -246,6 +252,18 @@ def server_url():
 
 def auth_headers():
     return {"X-Auth-Token": config["token"]} if config.get("token") else {}
+
+
+def auth_params(extra=None):
+    # When a server account is configured, append ?user=&password= so the
+    # server routes the request to that account (ignored by the shared space
+    # and by the built-in server). Optionally merge extra query params.
+    p = dict(extra) if extra else {}
+    user = config.get("username", "").strip()
+    if user:
+        p["user"] = user
+        p["password"] = config.get("password", "")
+    return p
 
 
 def notify(message):
@@ -359,14 +377,16 @@ def save_received(filename, raw):
 # ---------------------------------------------------------------- network
 def push_text(text):
     r = requests.post(f"{server_url()}/clipboard/text",
-                      json={"text": text}, headers=auth_headers(), timeout=5)
+                      json={"text": text}, headers=auth_headers(),
+                      params=auth_params(), timeout=5)
     r.raise_for_status()
 
 
 def push_bytes(filename, raw):
     payload = {"filename": filename, "data": base64.b64encode(raw).decode()}
     r = requests.post(f"{server_url()}/clipboard/file",
-                      json=payload, headers=auth_headers(), timeout=30)
+                      json=payload, headers=auth_headers(),
+                      params=auth_params(), timeout=30)
     r.raise_for_status()
 
 
@@ -381,21 +401,21 @@ def push_image(img):
 
 def pull_latest():
     r = requests.get(f"{server_url()}/clipboard/latest",
-                     headers=auth_headers(), timeout=5)
+                     headers=auth_headers(), params=auth_params(), timeout=5)
     r.raise_for_status()
     return r.json()
 
 
 def fetch_history(limit=100):
     r = requests.get(f"{server_url()}/clipboard/history",
-                     params={"limit": limit}, headers=auth_headers(), timeout=5)
+                     params=auth_params({"limit": limit}), headers=auth_headers(), timeout=5)
     r.raise_for_status()
     return r.json().get("items", [])
 
 
 def fetch_item(item_id):
     r = requests.get(f"{server_url()}/clipboard/item/{item_id}",
-                     headers=auth_headers(), timeout=30)
+                     headers=auth_headers(), params=auth_params(), timeout=30)
     r.raise_for_status()
     return r.json()
 
@@ -909,7 +929,7 @@ def open_history_window(icon=None, item=None):
         def work():
             try:
                 requests.delete(f"{server_url()}/clipboard/item/{item_id}",
-                                headers=auth_headers(), timeout=5)
+                                headers=auth_headers(), params=auth_params(), timeout=5)
                 ui_q.put(srv_refresh)
             except Exception as e:
                 notify(t("recv_err", e=e))
@@ -970,7 +990,7 @@ def open_history_window(icon=None, item=None):
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("400x500")
+    root.geometry("400x580")
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
@@ -982,6 +1002,8 @@ def open_settings(icon=None, item=None):
         (t("lbl_port"), "server_port"),
         (t("lbl_host_port"), "host_port"),
         (t("lbl_token"), "token"),
+        (t("lbl_user"), "username"),
+        (t("lbl_pass"), "password"),
         (t("lbl_interval"), "poll_interval"),
         (t("lbl_hk_send"), "hotkey_send"),
         (t("lbl_hk_recv"), "hotkey_receive"),
@@ -990,7 +1012,8 @@ def open_settings(icon=None, item=None):
     for i, (label, key) in enumerate(fields):
         ttk.Label(frm, text=label).grid(row=i, column=0, sticky="w", pady=5)
         var = tk.StringVar(value=str(config.get(key, "")))
-        ttk.Entry(frm, textvariable=var, width=20).grid(row=i, column=1, pady=5, sticky="e")
+        ttk.Entry(frm, textvariable=var, width=20,
+                  show="*" if key == "password" else "").grid(row=i, column=1, pady=5, sticky="e")
         entries[key] = var
 
     ttk.Label(frm, text=t("hint_hk"), foreground="#6b7280").grid(
@@ -1023,6 +1046,8 @@ def open_settings(icon=None, item=None):
         config["server_port"] = port
         config["host_port"] = host_port
         config["token"] = entries["token"].get().strip()
+        config["username"] = entries["username"].get().strip()
+        config["password"] = entries["password"].get()
         config["poll_interval"] = interval if interval > 0 else 3
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
         config["hotkey_receive"] = entries["hotkey_receive"].get().strip().lower() or "ctrl+alt+v"
