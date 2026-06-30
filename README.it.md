@@ -132,7 +132,7 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 Crea dei comandi con l'azione **Ottieni contenuto dell'URL**. Se usi un token, aggiungi
 l'intestazione `X-Auth-Token`.
 - **Invio Generale** - POST to `http://SERVER_IP:5088/clipboard` (Request body : File, File -> Clipboard).
-- **Ricezione Generale** - GET contents of `http://SERVER_IP:5088/clipboard/raw`(Method : GET ; Copy "Contents of URL" to clipboard).
+- **Ricezione Generale** - GET contents of `http://SERVER_IP:5088/clipboard/latest/raw`(Method : GET ; Copy "Contents of URL" to clipboard).
 - **Invia testo** — POST a `http://SERVER_IP:5088/clipboard/text` (corpo JSON, campo `text`).
 - **Ricevi testo** — GET a `http://SERVER_IP:5088/clipboard/text/raw`, poi *Copia negli appunti*.
 - **Invia foto/file** — POST a `http://SERVER_IP:5088/clipboard/image` (corpo: File).
