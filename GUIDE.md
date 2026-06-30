@@ -109,6 +109,20 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   images **and files** — is sent to the server automatically, without clicking.
 - **History…**: browse the server and local history; re-use or delete items.
 
+### Modes: connect to a server, or BE the server
+Right-click the tray icon → **Mode**:
+- **Client (use external server)** — the default; connects to a separate Clipboard Bridge
+  server (set its address in Settings).
+- **Server (this PC)** — no external server needed: this PC becomes the server and the
+  iPhone connects to it directly on the local network. A **Server: `<ip>:<port>`** entry
+  appears in the tray menu (click it to copy the address); use that address in your iPhone
+  shortcuts instead of `SERVER_IP`. The port is `5088` by default and can be changed in
+  Settings. In this mode only the essentials run (history + the latest text/image/file);
+  there is no web page.
+
+> The first time you enable Server mode, allow the app through the Windows firewall on the
+> private network so the iPhone can reach it.
+
 To start the client automatically with Windows, press `Win+R`, type `shell:startup`, and
 put a shortcut to the executable in that folder.
 
@@ -179,8 +193,18 @@ With Docker, uncomment the `CLIPBOARD_TOKEN` line in `docker-compose.yml`.
 Then provide the same token in the Windows client (Settings → Token) and in the iPhone
 shortcuts (header `X-Auth-Token`).
 
-> The token travels in plain text over HTTP, which is fine on a trusted LAN. To use the
-> server over the internet, put it behind a VPN or an HTTPS reverse proxy.
+### Password for the web page
+The token protects the API; to also protect the **web page** with a login, set
+`CLIPBOARD_PASSWORD`:
+```bash
+CLIPBOARD_PASSWORD=YOUR_PASSWORD python clipboard_bridge-Server.py
+```
+Opening the page now shows a login form; after you enter the password once, that device
+stays logged in for a long time (a persistent session cookie). This applies only to the
+external server's web page (the Windows "server mode" has no web page).
+
+> The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
+> use the server over the internet, put it behind a VPN or an HTTPS reverse proxy.
 
 ---
 

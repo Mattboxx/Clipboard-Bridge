@@ -5,10 +5,10 @@ services:
     ports:
       - "5088:5088"
     volumes:
-      # la cronologia resta sull'host e sopravvive ai riavvii
+      # directory of hystory
       - ./data:/data
     environment:
       - CLIPBOARD_MAX_HISTORY=200
-      # Decommenta per proteggere il server con un token:
-      # - CLIPBOARD_TOKEN=cambia_questo_token
+      # uncomment to protect your server with token:
+      # - CLIPBOARD_TOKEN=change_this_token
     restart: unless-stopped
