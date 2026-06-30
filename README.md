@@ -129,6 +129,8 @@ paste text, upload and download files, and read the Shortcuts instructions. With
 Create shortcuts using the **Get Contents of URL** action. If you use a token, add the
 `X-Auth-Token` header.
 
+- **General send** - POST to `http://SERVER_IP:5088/clipboard` (Request body : File, File -> Clipboard).
+- **General Recieve** - GET contents of `http://SERVER_IP:5088/clipboard/raw`(Method : GET ; Copy "Contents of URL" to clipboard).
 - **Send text** — POST to `http://SERVER_IP:5088/clipboard/text` (JSON body, field `text`).
 - **Receive text** — GET `http://SERVER_IP:5088/clipboard/text/raw`, then *Copy to Clipboard*.
 - **Send photo/file** — POST to `http://SERVER_IP:5088/clipboard/image` (body: File).
