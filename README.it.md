@@ -23,7 +23,7 @@ Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
 | **L'iPhone si connette a** | il tuo PC, direttamente | il server |
 | **Configurazione extra** | nessuna — basta l'interruttore | far girare il server da qualche parte |
 | **Pagina web** | no (minimale) | sì |
-| **Ideale per** | PC ↔ iPhone al volo, zero setup | sempre disponibile, anche a PC spento |
+| **Ideale per** | PC ↔ iPhone al volo, zero setup | sempre disponibile, anche a PC spento o anche tra molteplici PC |
 
 > 📖 **Prima volta?** Segui la [guida passo-passo](GUIDE.md) (in inglese).
 
