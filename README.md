@@ -2,24 +2,28 @@
 
 **English** · [Italiano](README.it.md)
 
-Share your clipboard (text, images and **files of any type**) between Windows, a server
-and iPhone, through the Shortcuts app. Everything stays on your local network, with no
-external services. The app interface is available in **English (default)** and Italian.
+![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
+![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)
+![network](https://img.shields.io/badge/network-local%20only-2ea44f)
+![license](https://img.shields.io/badge/license-MIT-555)
 
-```
-   iPhone (Shortcuts)  <->        SERVER (Flask)        <->   Windows (client tray)
-     copy / paste            history + text/file/img         send / receive / history
-```
+Share your clipboard — text, images and **files of any type** — between **Windows and
+iPhone** over your local network, using the iOS Shortcuts app. No cloud, no account.
+Interface in **English (default)** and Italian.
 
-> ⭐ **No separate server required — two ways to run it:**
-> - **With a server** — a Raspberry Pi, a NAS, any always-on PC, or Docker; every device connects to it.
-> - **Windows as the server** — switch the Windows app to **Server mode** and your iPhone
->   connects **directly to your PC** on the local network. Nothing else to install or keep running.
->
-> ```
->    iPhone (Shortcuts)  <----------------->   Windows app in SERVER mode
->      copy / paste                            is the server (history + latest item)
-> ```
+## ⚡ It works in two distinct modes
+
+![Server mode vs Client mode](docs/modes.png)
+
+Switch anytime from the tray icon (**right-click → Mode**):
+
+| | 🖥️ Server mode | 🔌 Client mode |
+|---|---|---|
+| **Who is the server** | the **Windows app itself** | a **separate server** (PC, NAS, Raspberry Pi, Docker) |
+| **The iPhone connects to** | your PC, directly | the server |
+| **Extra setup** | none — just flip the switch | run the server somewhere |
+| **Web page** | no (minimal) | yes |
+| **Best for** | quick PC ↔ iPhone, zero extra setup | always available, even when your PC is off |
 
 > 📖 **New here?** Follow the step-by-step [Setup & Usage Guide](GUIDE.md).
 
