@@ -1,16 +1,16 @@
 @echo off
 REM ================================================================
-REM  Compila il client Windows in un singolo .exe (cartella dist\).
-REM  Richiede Python installato. Per cambiare icona sostituisci
-REM  icon.ico con la tua e rilancia questo file.
+REM  Compile Windows client  in a .exe ( dist\  folder).
+REM  You need Python installed. To change icon replace
+REM  icon.ico with your icon and run this file.
 REM ================================================================
 cd /d "%~dp0"
 
-echo Installazione/aggiornamento dipendenze...
+echo Installing/updating dependencies...
 python -m pip install --upgrade pyinstaller requests pyperclip pystray pillow keyboard
 
 echo.
-echo Compilazione...
+echo Compiling...
 python -m PyInstaller --noconfirm --onefile --windowed ^
   --icon icon.ico --name "Clipboard Bridge" ^
   --add-data "icon.ico;." ^
@@ -19,5 +19,5 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
   clipboard_bridge_windows.py
 
 echo.
-echo Fatto. Eseguibile in:  dist\Clipboard Bridge.exe
+echo Done. executable file directory:  dist\Clipboard Bridge.exe
 pause
