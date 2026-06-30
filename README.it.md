@@ -86,11 +86,47 @@ qualsiasi ambiente Docker.
 | `CLIPBOARD_PORT` | `5088` | porta di ascolto |
 | `CLIPBOARD_TOKEN` | *(vuoto)* | se impostato, l'API (`/clipboard/*`) richiede l'header `X-Auth-Token` |
 | `CLIPBOARD_PASSWORD` | *(vuoto)* | se impostato, la pagina web richiede il login (sessione lunga per dispositivo) |
+| `CLIPBOARD_ACCOUNTS` | *(vuoto)* | account isolati aggiuntivi, formato `user1:pass1,user2:pass2` (vedi sotto) |
+| `CLIPBOARD_ACCOUNTS_FILE` | *(vuoto)* | percorso di un file con un `user:password` per riga (per tanti account) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | numero di elementi tenuti nello storico |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | cartella dei dati |
 
 > Per l'uso fuori dalla rete locale imposta un token e usa una VPN o un reverse proxy con
 > HTTPS. Sulla rete locale, consenti la porta 5088 nel firewall.
+
+### Account multipli (opzionale)
+
+Lo **spazio condiviso** è sempre disponibile. Per aggiungere spazi **isolati** (ognuno con
+il proprio storico), imposta `CLIPBOARD_ACCOUNTS`:
+
+```bash
+CLIPBOARD_ACCOUNTS="alice:secret1,bob:secret2"
+```
+
+**Non c'è alcun limite** al numero di account. Per molti utenti, invece di una variabile
+lunghissima usa un **file** di account (un `user:password` per riga, `#` per i commenti) e
+indicalo con `CLIPBOARD_ACCOUNTS_FILE`:
+
+```bash
+# accounts.txt
+alice:secret1
+bob:secret2
+# ...quanti ne vuoi
+```
+```bash
+CLIPBOARD_ACCOUNTS_FILE=/data/accounts.txt python clipboard_bridge-Server.py
+```
+
+Scegli un account aggiungendone le credenziali **alla fine dell'URL** — comodo in una
+Shortcut o nel client Windows:
+
+```
+http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret1
+```
+
+Dal browser apri `http://SERVER_IP:5088/` ed **esegui il login** (nome utente = account,
+oppure lascialo vuoto per lo spazio condiviso). La sessione viene ricordata per dispositivo.
+Lo spazio condiviso continua a usare `CLIPBOARD_TOKEN` / `CLIPBOARD_PASSWORD` come prima.
 
 ---
 
@@ -112,7 +148,9 @@ Compare un'icona nella tray (clic destro per il menu):
 - **Invia appunti -> server** / **Ricevi ultimo <- server** (testo, immagini, file).
 - **Invia un file...** e **Apri cartella ricevuti** (i file ricevuti finiscono in `ricevuti`).
 - **Cronologia...**, **Scorciatoie da tastiera** (default `Ctrl+Alt+C` invia, `Ctrl+Alt+V` riceve).
-- **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token del server).
+- **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token, account del server).
+  Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
+  per usare uno spazio isolato.
 
 ### Avvio automatico
 `Win+R` -> `shell:startup` e metti lì un collegamento all'eseguibile.
@@ -137,6 +175,8 @@ l'intestazione `X-Auth-Token`.
 - **Ricevi testo** — GET a `http://SERVER_IP:5088/clipboard/text/raw`, poi *Copia negli appunti*.
 - **Invia foto/file** — POST a `http://SERVER_IP:5088/clipboard/image` (corpo: File).
 - **Ricevi immagine** — GET a `http://SERVER_IP:5088/clipboard/image/latest/raw`, poi *Salva nell'album*.
+
+> Usi un account? Aggiungi semplicemente `?user=NOME&password=PASS` alla fine di ogni URL.
 
 ---
 

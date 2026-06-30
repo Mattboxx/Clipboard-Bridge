@@ -203,6 +203,22 @@ Opening the page now shows a login form; after you enter the password once, that
 stays logged in for a long time (a persistent session cookie). This applies only to the
 external server's web page (the Windows "server mode" has no web page).
 
+### Multiple accounts
+Besides the shared space, you can create separate, **isolated** spaces (each with its own
+history) by listing `user:password` pairs in `CLIPBOARD_ACCOUNTS`:
+```bash
+CLIPBOARD_ACCOUNTS="alice:secret1,bob:secret2" python clipboard_bridge-Server.py
+```
+There is **no limit** on the number of accounts. For many users, put one `user:password`
+per line in a file and point `CLIPBOARD_ACCOUNTS_FILE` to it instead:
+```bash
+CLIPBOARD_ACCOUNTS_FILE=/data/accounts.txt python clipboard_bridge-Server.py
+```
+To use an account, add its credentials at the **end of the URL** —
+`...?user=alice&password=secret1` — in your iPhone Shortcuts, or fill the **Account** and
+**Account password** fields in the Windows client Settings. On the web page, log in with the
+account name (leave it empty for the shared space). The shared space is always available.
+
 > The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
 > use the server over the internet, put it behind a VPN or an HTTPS reverse proxy.
 
