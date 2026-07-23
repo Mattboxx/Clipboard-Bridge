@@ -125,3 +125,122 @@ Controlla che la porta `5088` sia libera e visita:
 http://IP-ZIMA:5088/health
 ```
 
+## Docker Compose, Docker Desktop e Dockge
+
+Questa procedura funziona su qualsiasi macchina con Docker Compose:
+
+```bash
+git clone https://github.com/mattbox03/Clipboard-Bridge-AppStore.git
+cd Clipboard-Bridge-AppStore
+docker compose up -d
+```
+
+Apri `http://IP-SERVER:5088`. I dati persistenti vengono salvati nella cartella
+`data` accanto a `compose.yaml`.
+
+Per configurare il server crea un file `.env` nella stessa cartella:
+
+```env
+APP_PORT=5088
+DATA_ROOT=./data
+MAX_HISTORY=200
+API_TOKEN=cambia-questo-token
+WEB_PASSWORD=cambia-questa-password
+ACCOUNTS=alice:pass1,bob:pass2
+```
+
+Applica le impostazioni:
+
+```bash
+docker compose up -d
+```
+
+In **Dockge**, crea un nuovo stack, incolla il contenuto di `compose.yaml`,
+inserisci le stesse variabili d’ambiente e distribuisci lo stack.
+
+Per aggiornare:
+
+```bash
+git pull
+docker compose pull
+docker compose up -d
+```
+
+## Portainer
+
+Usa questo App Template:
+
+```text
+https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json
+```
+
+1. Apri **Portainer**.
+2. Vai in **Settings** e cerca **App Templates**.
+3. Incolla l’indirizzo nel campo App Templates URL e salva.
+4. Apri **App Templates** dal menu principale.
+5. Cerca **Clipboard Bridge**.
+6. Seleziona l’ambiente Docker.
+7. Imposta porta pubblica e cartella dei dati persistenti.
+8. Inserisci facoltativamente token, password web e account aggiuntivi.
+9. Premi **Deploy the stack**.
+10. Apri `http://IP-SERVER:5088`.
+
+Se il template non appare subito, ricarica Portainer dopo aver salvato l’URL.
+Per aggiornare, apri lo stack, scarica l’immagine indicata dal template e
+ridistribuiscilo senza cancellare la cartella dati.
+
+## Umbrel
+
+Aggiungi come Community App Store:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore
+```
+
+1. Apri l’App Store di Umbrel.
+2. Apri **Community App Stores**.
+3. Aggiungi l’indirizzo della repository.
+4. Apri la sorgente **Clipboard Bridge App Store**.
+5. Seleziona **Clipboard Bridge** e installala.
+6. Apri l’applicazione dalla schermata principale.
+
+Umbrel genera una password dell’applicazione. L’adattatore la utilizza sia per
+la pagina web sia per l’API, quindi può essere inserita nel client Windows e nei
+Comandi Rapidi iPhone. I dati restano nella directory applicativa di Umbrel.
+
+## Runtipi
+
+Il catalogo mantiene alla radice la compatibilità con ZimaOS; su Runtipi
+Clipboard Bridge va quindi aggiunta con la funzione ufficiale
+**Add custom app**. I file Runtipi già pronti si trovano in:
+
+```text
+adapters/runtipi/apps/clipboard-bridge/
+```
+
+1. Apri **App Store** in Runtipi.
+2. Seleziona **Add custom app**.
+3. Usa `clipboard-bridge` come ID e `Clipboard Bridge` come nome.
+4. Inserisci l’immagine `ghcr.io/mattbox03/clipboard-bridge-server:1.0.0`.
+5. Imposta la porta del container su `5088` e rendila esponibile.
+6. Aggiungi un volume persistente dalla directory applicativa proposta da
+   Runtipi a `/data` nel container.
+7. Aggiungi `CLIPBOARD_PORT=5088` e `CLIPBOARD_DATA_DIR=/data`.
+8. Aggiungi facoltativamente `CLIPBOARD_TOKEN`, `CLIPBOARD_PASSWORD` e
+   `CLIPBOARD_ACCOUNTS`.
+9. Salva e installa l’app personalizzata.
+
+La configurazione completa di riferimento è in
+`adapters/runtipi/apps/clipboard-bridge/docker-compose.yml`. Per aggiornare,
+imposta il nuovo tag dell’immagine e ridistribuisci l’app senza eliminare i
+dati applicativi.
+
+## Riepilogo indirizzi
+
+| Piattaforma | Sorgente |
+|---|---|
+| ZimaOS | `https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip` |
+| Portainer | `https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json` |
+| Umbrel | `https://github.com/mattbox03/Clipboard-Bridge-AppStore` |
+| Runtipi | **Add custom app**, usando `adapters/runtipi/apps/clipboard-bridge/` |
+| Docker/Dockge | file `compose.yaml` della repository |

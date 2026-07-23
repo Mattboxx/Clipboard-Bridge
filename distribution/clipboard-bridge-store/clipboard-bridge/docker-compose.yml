@@ -1,0 +1,18 @@
+version: "3.7"
+services:
+  app_proxy:
+    environment:
+      APP_HOST: clipboard-bridge_server_1
+      APP_PORT: 5088
+      PROXY_AUTH_ADD: "false"
+  server:
+    image: ghcr.io/mattbox03/clipboard-bridge-server:1.0.0
+    restart: on-failure
+    environment:
+      CLIPBOARD_PORT: "5088"
+      CLIPBOARD_DATA_DIR: /data
+      CLIPBOARD_MAX_HISTORY: "200"
+      CLIPBOARD_TOKEN: $APP_PASSWORD
+      CLIPBOARD_PASSWORD: $APP_PASSWORD
+    volumes:
+      - ${APP_DATA_DIR}/data:/data

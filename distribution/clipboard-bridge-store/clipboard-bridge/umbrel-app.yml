@@ -1,0 +1,18 @@
+manifestVersion: 1
+id: clipboard-bridge
+category: utilities
+name: Clipboard Bridge
+version: "1.0.0"
+tagline: Share clipboard text and files across your devices
+description: >-
+  A private clipboard and file bridge with history, multiple accounts,
+  a Windows client and iPhone Shortcuts support.
+developer: mattbox03
+website: https://github.com/mattbox03/Clipboard-Bridge
+repo: https://github.com/mattbox03/Clipboard-Bridge
+support: https://github.com/mattbox03/Clipboard-Bridge/issues
+port: 5088
+defaultPassword: $APP_PASSWORD
+releaseNotes: Initial store release.
+submitter: mattbox03
+submission: https://github.com/mattbox03/Clipboard-Bridge-AppStore
