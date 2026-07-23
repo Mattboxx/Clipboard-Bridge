@@ -211,6 +211,21 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 
 ## 4. iPhone (Comandi rapidi)
 
+I Comandi rapidi già pronti sono inclusi nella
+[release Clipboard Bridge 2.0.0](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0),
+insieme all'installer per Windows:
+
+- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
+  invia gli appunti attuali dell'iPhone a Clipboard Bridge.
+- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)** -
+  riceve da Clipboard Bridge l'ultimo elemento salvato.
+
+Apri ogni file `.shortcut` sull'iPhone e sostituisci l'indirizzo server segnaposto con
+quello mostrato dall'app Windows o con l'indirizzo del server esterno. Se li hai
+attivati, inserisci anche token oppure credenziali dell'account.
+
+### Creazione manuale
+
 Crea dei comandi con l'azione **Ottieni contenuto dell'URL**. Se usi un token, aggiungi
 l'intestazione `X-Auth-Token`.
 - **Invio Generale** - POST to `http://SERVER_IP:5088/clipboard` (Request body : File, File -> Clipboard).

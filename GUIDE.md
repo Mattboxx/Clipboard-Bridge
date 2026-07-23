@@ -135,6 +135,18 @@ always send, or fetch, the **most recent** item. Both use the built-in **Get Con
 URL** action. If your server uses a token, add a **Header** `X-Auth-Token` = `YOUR_TOKEN`
 to each shortcut.
 
+### Download the ready-made Shortcuts
+
+The [Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
+contains the Windows installer and both prepared iPhone Shortcuts:
+
+- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)
+- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)
+
+Open the downloaded files on the iPhone, add them to the Shortcuts app and replace the
+placeholder address with the server address displayed by Clipboard Bridge. If applicable,
+also add the API token or append `?user=NAME&password=PASS` to the URL.
+
 ### 5.1 Send (clipboard → server)
 1. Open **Shortcuts**, tap **+** → **Add Action**.
 2. Add **Get Clipboard**.
