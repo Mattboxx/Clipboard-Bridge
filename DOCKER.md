@@ -24,15 +24,15 @@ Production and store installations should pin an exact `X.Y.Z` tag.
 
 ## One-click stores
 
-The separate
-[`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store)
-directory is published separately as
-[Clipboard-Bridge-AppStore](https://github.com/mattbox03/Clipboard-Bridge-AppStore).
-It contains ZimaOS, Portainer, Umbrel and Runtipi adapters plus generic Compose.
+The ready-to-use catalog is published in
+**[Clipboard-Bridge-AppStore](https://github.com/mattbox03/Clipboard-Bridge-AppStore)**.
+It provides detailed instructions and prepared files for ZimaOS, Portainer,
+Umbrel, Runtipi, Docker Compose, Docker Desktop and Dockge.
 
-Create that GitHub repository, copy the directory contents to its root, and push
-them to the `main` branch. The exact store URLs and platform-specific steps are
-listed in its README.
+- [English catalog guide](https://github.com/mattbox03/Clipboard-Bridge-AppStore#readme)
+- [Italian catalog guide](https://github.com/mattbox03/Clipboard-Bridge-AppStore/blob/main/README.it.md)
+- [Portainer template](https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json)
+- [Permanent ZimaOS source](https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip)
 
 ## First publication
 
@@ -41,8 +41,8 @@ listed in its README.
    `git push origin v1.0.0`.
 3. Wait for the **Build container image** workflow to publish the GHCR image.
 4. Make the GHCR package public in the package settings.
-5. Publish the contents of `distribution/clipboard-bridge-store` in the separate
-   `Clipboard-Bridge-AppStore` repository.
+5. Update the separate `Clipboard-Bridge-AppStore` repository when its manifests
+   or installation guides change.
 
 The ZimaOS source URL is permanent:
 
