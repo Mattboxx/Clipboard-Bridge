@@ -64,6 +64,26 @@ Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
 
 ## 1. Server
 
+### Installazione dagli App Store
+
+Il server viene distribuito anche tramite il catalogo separato
+**[Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)**.
+Nel relativo README trovi istruzioni dettagliate per installazione e aggiornamento su:
+
+- **ZimaOS** con installazione in un clic
+- **Portainer** tramite App Templates
+- **Umbrel** come Community App Store
+- **Runtipi** come app personalizzata
+- **Docker Compose**, Docker Desktop e Dockge
+
+Apri la **[guida italiana del catalogo](https://github.com/mattbox03/Clipboard-Bridge-AppStore/blob/main/README.it.md)**
+e segui la sezione dedicata alla tua piattaforma. La sorgente permanente per
+ZimaOS è:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+```
+
 ### Esecuzione diretta
 ```bash
 pip install -r requirements-server.txt
@@ -79,16 +99,8 @@ docker compose up -d --build
 La cronologia resta nella cartella `./data` e sopravvive ai riavvii. Funziona in
 qualsiasi ambiente Docker.
 
-Per immagini multi-architettura precompilate, installazione con un clic e supporto
-ZimaOS, Portainer, Umbrel o Runtipi, consulta
-[Installazione Docker e app store](DOCKER.md). I manifest degli store sono separati
-in [`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store).
-
-Sorgente permanente per ZimaOS:
-
-```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
-```
+Per i dettagli sui container, i backup e i tag delle immagini, consulta
+[Installazione Docker e app store](DOCKER.md).
 
 ### Opzioni (variabili d'ambiente)
 
