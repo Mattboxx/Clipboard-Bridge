@@ -1,0 +1,28 @@
+import json
+from pathlib import Path
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+REQUIRED = [
+    "compose.yaml",
+    "Apps/clipboard-bridge/docker-compose.yml",
+    "portainer/templates.json",
+    "adapters/umbrel/umbrel-app-store.yml",
+    "adapters/umbrel/clipboard-bridge/umbrel-app.yml",
+    "adapters/runtipi/apps/clipboard-bridge/config.json",
+    "store-config.json",
+]
+
+for relative in REQUIRED:
+    if not (ROOT / relative).is_file():
+        raise SystemExit(f"Missing required file: {relative}")
+for path in ROOT.rglob("*.json"):
+    json.loads(path.read_text(encoding="utf-8"))
+for pattern in ("*.yml", "*.yaml"):
+    for path in ROOT.rglob(pattern):
+        yaml.safe_load(path.read_text(encoding="utf-8"))
+for path in ROOT.rglob("docker-compose.yml"):
+    if "ghcr.io/mattbox03/clipboard-bridge-server:1.0.0" not in path.read_text(encoding="utf-8"):
+        raise SystemExit(f"Unexpected image in {path.relative_to(ROOT)}")
+print("Catalog files are valid.")
+

@@ -1,0 +1,27 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "Clipboard Bridge",
+      "name": "clipboard-bridge",
+      "description": "Share clipboard text and files between Windows, iPhone and a private server.",
+      "logo": "https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/clipboard-bridge/icon.svg",
+      "categories": ["Utilities"],
+      "platform": "linux",
+      "repository": {
+        "url": "https://github.com/mattbox03/Clipboard-Bridge-AppStore",
+        "stackfile": "compose.yaml"
+      },
+      "env": [
+        {"name": "APP_PORT", "label": "Public port", "default": "5088"},
+        {"name": "DATA_ROOT", "label": "Persistent data directory", "default": "./data"},
+        {"name": "MAX_HISTORY", "label": "History entries", "default": "200"},
+        {"name": "API_TOKEN", "label": "API token", "default": ""},
+        {"name": "WEB_PASSWORD", "label": "Web password", "default": ""},
+        {"name": "ACCOUNTS", "label": "Extra accounts (user:password,user2:password2)", "default": ""}
+      ]
+    }
+  ]
+}
+

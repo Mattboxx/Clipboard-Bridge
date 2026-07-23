@@ -6,7 +6,7 @@
 ![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/network-local%20only-2ea44f)
 ![license](https://img.shields.io/badge/license-MIT-555)
-                                                                    
+
 
 Share your clipboard — text, images and **files of any type** — between **Windows and
 iPhone** over your local network, using the iOS Shortcuts app. No cloud, no account.
@@ -76,6 +76,11 @@ docker compose up -d --build
 ```
 The history is stored in the `./data` folder and survives restarts. Works in any Docker
 environment.
+
+For prebuilt multi-architecture images, one-click stores and installation through
+ZimaOS/CasaOS, Portainer, Umbrel or Runtipi, see
+[Docker and app-store installation](DOCKER.md). Store manifests are kept separately
+in [`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store).
 
 ### Options (environment variables)
 

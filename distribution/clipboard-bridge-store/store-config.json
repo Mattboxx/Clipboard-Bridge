@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "store_id": "clipboard-bridge-appstore",
+  "name": "Clipboard Bridge App Store",
+  "description": "Install Clipboard Bridge on self-hosted Docker platforms.",
+  "maintainer": "mattbox03",
+  "url": "https://github.com/mattbox03/Clipboard-Bridge-AppStore"
+}
