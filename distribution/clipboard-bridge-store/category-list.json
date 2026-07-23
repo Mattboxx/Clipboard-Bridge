@@ -1,3 +1,7 @@
 [
-  {"id": "Utilities", "name": "Utilities", "description": "Useful self-hosted tools"}
+  {
+    "name": "Utilities",
+    "font": "apps",
+    "description": "Useful self-hosted tools"
+  }
 ]
