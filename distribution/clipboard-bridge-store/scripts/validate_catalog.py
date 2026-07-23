@@ -42,6 +42,7 @@ metadata = app.get("x-casaos", {})
 if metadata.get("id") != "io.github.mattbox03.clipboard-bridge":
     raise SystemExit("ZimaOS app is missing its stable x-casaos.id")
 for field in ("title", "tagline", "description"):
-    if "en_US" not in metadata.get(field, {}):
-        raise SystemExit(f"ZimaOS app {field} is missing en_US")
+    languages = metadata.get(field, {})
+    if "en_us" not in languages or "en_US" not in languages:
+        raise SystemExit(f"ZimaOS app {field} needs en_us and en_US fallbacks")
 print("Catalog files are valid.")
