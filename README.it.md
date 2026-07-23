@@ -80,9 +80,15 @@ La cronologia resta nella cartella `./data` e sopravvive ai riavvii. Funziona in
 qualsiasi ambiente Docker.
 
 Per immagini multi-architettura precompilate, installazione con un clic e supporto
-ZimaOS/CasaOS, Portainer, Umbrel o Runtipi, consulta
+ZimaOS, Portainer, Umbrel o Runtipi, consulta
 [Installazione Docker e app store](DOCKER.md). I manifest degli store sono separati
 in [`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store).
+
+Sorgente permanente per ZimaOS:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+```
 
 ### Opzioni (variabili d'ambiente)
 

@@ -26,8 +26,9 @@ Production and store installations should pin an exact `X.Y.Z` tag.
 
 The separate
 [`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store)
-directory is ready to publish as `Clipboard-Bridge-AppStore`. It contains
-ZimaOS/CasaOS, Portainer, Umbrel and Runtipi adapters plus generic Compose.
+directory is published separately as
+[Clipboard-Bridge-AppStore](https://github.com/mattbox03/Clipboard-Bridge-AppStore).
+It contains ZimaOS, Portainer, Umbrel and Runtipi adapters plus generic Compose.
 
 Create that GitHub repository, copy the directory contents to its root, and push
 them to the `main` branch. The exact store URLs and platform-specific steps are
@@ -43,8 +44,28 @@ listed in its README.
 5. Publish the contents of `distribution/clipboard-bridge-store` in the separate
    `Clipboard-Bridge-AppStore` repository.
 
-The store manifests point to `1.0.0`, so the store should be published only after
-that image exists.
+The ZimaOS source URL is permanent:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+```
+
+Do not put a release tag in the source URL. New catalog releases are published
+to `main`, while the image tag inside the manifest remains pinned until that
+application release has been tested.
+
+## ZimaOS installation
+
+1. Open the ZimaOS App Store.
+2. Open custom source management.
+3. Add the permanent `main.zip` URL above.
+4. Restart ZimaOS if it does not refresh the source immediately.
+5. Search for **Clipboard Bridge** under **Utilities**.
+6. Install it and open `http://ZIMA-IP:5088`.
+
+The ZimaOS data directory is
+`/DATA/AppData/clipboard-bridge/data`. The complete end-user procedure is in the
+[catalog README](distribution/clipboard-bridge-store/README.md).
 
 ## Update and backup
 
