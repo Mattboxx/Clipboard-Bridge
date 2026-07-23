@@ -1,71 +1,149 @@
 # Clipboard Bridge App Store
 
-One-click installation manifests for **Clipboard Bridge**. Application code and
-container images are maintained in
-[Clipboard-Bridge](https://github.com/mattbox03/Clipboard-Bridge).
+**English** | [Italiano](README.it.md)
 
-Image: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.0`  
-Architectures: `linux/amd64`, `linux/arm64`
+This repository contains the one-click installation catalog for
+[Clipboard Bridge](https://github.com/mattbox03/Clipboard-Bridge).
 
-## Generic Docker, Docker Desktop and Dockge
+## ZimaOS: add the store
 
-```bash
-git clone https://github.com/mattbox03/Clipboard-Bridge-AppStore.git
-cd Clipboard-Bridge-AppStore
-docker compose up -d
+Use this permanent URL:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
-Open `http://SERVER-IP:5088`. Configure environment values before deployment.
+The URL has no release number. It always downloads the current `main` branch,
+so it remains the same when the catalog is updated.
 
-## ZimaOS
+### Step by step
 
-Add this custom app-store archive:
+1. Open the **App Store** in ZimaOS.
+2. Open the source or custom store management screen.
+3. Choose **Add source**.
+4. Paste the complete `main.zip` URL shown above.
+5. Confirm and wait for the import to finish.
+6. Restart ZimaOS if the new source does not refresh immediately.
+7. Open the App Store again.
+8. Search for **Clipboard Bridge** or open the **Utilities** category.
+9. Select the application and press **Install**.
+10. When installation finishes, open `http://ZIMA-IP:5088`.
 
-`https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip`
+Replace `ZIMA-IP` with the local IP address of your ZimaOS machine, for example:
 
-The persistent data directory is managed under `/DATA/AppData`.
+```text
+http://192.168.1.50:5088
+```
 
-## Portainer
+Do not add the normal GitHub repository page as a source. It is HTML, not a ZIP:
 
-Set this URL under **App Templates**:
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore
+```
 
-`https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json`
+## First configuration
 
-## Umbrel
+The default installation works without credentials on the local network. For a
+safer installation, edit the application environment variables in ZimaOS:
 
-Add this Community App Store:
+| Variable | Purpose | Example |
+|---|---|---|
+| `CLIPBOARD_PASSWORD` | Password for the web interface | `change-this-password` |
+| `CLIPBOARD_TOKEN` | Token used by Windows and iPhone API requests | `change-this-token` |
+| `CLIPBOARD_ACCOUNTS` | Extra isolated users | `alice:pass1,bob:pass2` |
+| `CLIPBOARD_MAX_HISTORY` | Maximum stored items | `200` |
 
-`https://github.com/mattbox03/Clipboard-Bridge-AppStore`
+The shared clipboard always remains available. Extra accounts have separate
+history and files. There is no fixed account limit; for many accounts use the
+accounts-file method documented in the main project.
 
-Umbrel's generated app password is used for both web and API access.
+## Windows and iPhone
 
-## Runtipi
+Download or build the Windows client from the
+[main project](https://github.com/mattbox03/Clipboard-Bridge). In client mode,
+set:
 
-Use this repository as a custom store:
+- server address: the ZimaOS local IP;
+- port: `5088`;
+- token: the value of `CLIPBOARD_TOKEN`;
+- account and password: leave empty for the shared clipboard, or enter an extra
+  account configured in `CLIPBOARD_ACCOUNTS`.
 
-`https://github.com/mattbox03/Clipboard-Bridge-AppStore`
+For iPhone Shortcuts, the two universal endpoints are:
+
+```text
+POST http://ZIMA-IP:5088/clipboard
+GET  http://ZIMA-IP:5088/clipboard/latest/raw
+```
+
+For an isolated account, append its credentials:
+
+```text
+?user=alice&password=pass1
+```
+
+Complete example:
+
+```text
+http://192.168.1.50:5088/clipboard/latest/raw?user=alice&password=pass1
+```
 
 ## Update
 
-```bash
-docker compose pull
-docker compose up -d
+The store URL never changes. After this repository is updated:
+
+1. refresh the custom source in ZimaOS;
+2. if no refresh button is available, remove and re-add the same `main.zip` URL;
+3. restart ZimaOS if the cached catalog is still shown;
+4. install the update offered for Clipboard Bridge.
+
+Application images are intentionally pinned to a release in the manifest. This
+prevents an untested image from replacing a working installation.
+
+## Data and backup
+
+Persistent data is stored in:
+
+```text
+/DATA/AppData/clipboard-bridge/data
 ```
 
-Store adapters pin exact release tags. Update the manifest only after publishing
-the corresponding container version.
+It contains history, uploaded files, account directories and the session key.
+Back up the complete directory. To restore it, stop Clipboard Bridge, restore
+the directory and start the application again.
 
-## Backup
+Never delete the application data or Docker volumes unless you intentionally
+want to erase the history and uploaded files.
 
-Stop the container and back up the entire persistent `data` directory. It
-contains history, uploaded files, account data and the session key. Restore it
-to the same path before restarting.
+## Troubleshooting
 
-Never use `docker compose down --volumes` unless you intend to delete all data.
+### The source is accepted but no app appears
 
-## Security
+1. Confirm that the URL ends with `/archive/refs/heads/main.zip`.
+2. Remove older versioned Clipboard Bridge sources.
+3. Add the permanent URL again.
+4. Restart ZimaOS.
+5. Search the complete store for `Clipboard Bridge`.
 
-Set `CLIPBOARD_PASSWORD` for the browser and `CLIPBOARD_TOKEN` for API clients.
-Extra accounts use `CLIPBOARD_ACCOUNTS=user1:pass1,user2:pass2`. Do not expose
-the service directly to the public Internet; use a trusted LAN, VPN or protected
-reverse proxy.
+### `zip: not a valid zip file`
+
+The normal repository URL was used. Use the `main.zip` URL from the top of this
+README.
+
+### The application installs but does not open
+
+Check that port `5088` is free and that the container is running. Then open:
+
+```text
+http://ZIMA-IP:5088/health
+```
+
+A working server returns a JSON status response.
+
+## Other platforms
+
+- Generic Docker, Docker Desktop and Dockge: use `compose.yaml`.
+- Portainer template:
+  `https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json`
+- Umbrel and Runtipi adapters are available under `adapters/`.
+

@@ -78,9 +78,15 @@ The history is stored in the `./data` folder and survives restarts. Works in any
 environment.
 
 For prebuilt multi-architecture images, one-click stores and installation through
-ZimaOS/CasaOS, Portainer, Umbrel or Runtipi, see
+ZimaOS, Portainer, Umbrel or Runtipi, see
 [Docker and app-store installation](DOCKER.md). Store manifests are kept separately
 in [`distribution/clipboard-bridge-store`](distribution/clipboard-bridge-store).
+
+Permanent ZimaOS source:
+
+```text
+https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+```
 
 ### Options (environment variables)
 
