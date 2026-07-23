@@ -126,10 +126,10 @@ Right-click the tray icon → **Mode**:
 To start the client automatically with Windows, press `Win+R`, type `shell:startup`, and
 put a shortcut to the executable in that folder.
 
-> **Auto-sync and administrator privileges:** the portable executable does not normally
-> require administrator access. Auto-sync may not detect clipboard changes made by
-> applications that are themselves running as administrator. If this happens, right-click
-> Clipboard Bridge and select **Run as administrator**.
+> **Auto-sync and administrator privileges:** this applies to both the installer and
+> portable versions. Auto-sync may not detect clipboard changes made by applications that
+> are themselves running as administrator. If this happens, right-click Clipboard Bridge
+> and select **Run as administrator**.
 
 ---
 

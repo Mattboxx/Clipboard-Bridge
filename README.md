@@ -9,10 +9,10 @@
 **Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
 [Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
-> **Auto-sync:** the portable app normally works without administrator privileges.
-> However, Windows may prevent it from detecting clipboard changes made by applications
-> running as administrator. In that case, right-click the portable executable and choose
-> **Run as administrator**.
+> **Auto-sync on Windows:** this warning applies to both the installer and portable
+> versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by
+> applications running as administrator. If auto-sync does not work, right-click Clipboard
+> Bridge and choose **Run as administrator**.
 
 ![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
 ![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)

@@ -9,10 +9,10 @@
 **Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
 [Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
-> **Sincronizzazione automatica:** normalmente la versione portable funziona senza
-> privilegi amministratore. Windows può però impedirle di rilevare le modifiche agli
-> appunti effettuate da programmi avviati come amministratore. In quel caso fai clic
-> destro sull'eseguibile portable e scegli **Esegui come amministratore**.
+> **Sincronizzazione automatica su Windows:** questa avvertenza vale sia per la versione
+> installer sia per la portable. Windows può impedire a Clipboard Bridge di rilevare le
+> modifiche agli appunti effettuate da programmi avviati come amministratore. Se l'auto-sync
+> non funziona, fai clic destro su Clipboard Bridge e scegli **Esegui come amministratore**.
 
 ![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
 ![modes](https://img.shields.io/badge/modalit%C3%A0-Server%20%C2%B7%20Client-6f42c1)
