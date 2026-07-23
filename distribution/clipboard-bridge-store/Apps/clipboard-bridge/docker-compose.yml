@@ -1,0 +1,58 @@
+name: clipboard-bridge
+services:
+  clipboard-bridge:
+    image: ghcr.io/mattbox03/clipboard-bridge-server:1.0.0
+    container_name: clipboard-bridge
+    restart: unless-stopped
+    ports:
+      - "${WEBUI_PORT:-5088}:5088"
+    environment:
+      CLIPBOARD_PORT: "5088"
+      CLIPBOARD_DATA_DIR: /data
+      CLIPBOARD_MAX_HISTORY: "${CLIPBOARD_MAX_HISTORY:-200}"
+      CLIPBOARD_TOKEN: "${CLIPBOARD_TOKEN:-}"
+      CLIPBOARD_PASSWORD: "${CLIPBOARD_PASSWORD:-}"
+      CLIPBOARD_ACCOUNTS: "${CLIPBOARD_ACCOUNTS:-}"
+    volumes:
+      - /DATA/AppData/clipboard-bridge/data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    x-casaos:
+      ports:
+        - container: "5088"
+          description:
+            en_us: Web interface and API
+            it_it: Interfaccia web e API
+      volumes:
+        - container: /data
+          description:
+            en_us: Clipboard history and uploaded files
+            it_it: Cronologia clipboard e file caricati
+x-casaos:
+  architectures: [amd64, arm64]
+  main: clipboard-bridge
+  store_app_id: clipboard-bridge
+  category: Utilities
+  author: mattbox03
+  developer: mattbox03
+  icon: https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/clipboard-bridge/icon.svg
+  project_url: https://github.com/mattbox03/Clipboard-Bridge
+  port_map: "${WEBUI_PORT:-5088}"
+  scheme: http
+  index: /
+  title:
+    en_us: Clipboard Bridge
+    it_it: Clipboard Bridge
+  tagline:
+    en_us: Share text and files between Windows, iPhone and your server.
+    it_it: Condividi testo e file tra Windows, iPhone e il tuo server.
+  description:
+    en_us: A private clipboard and file bridge with history, multiple accounts and iPhone Shortcuts support.
+    it_it: Un ponte privato per clipboard e file con cronologia, account multipli e supporto Comandi Rapidi iPhone.
+  tips:
+    before_install:
+      en_us: Set a web password and API token if the service is reachable by untrusted devices.
+      it_it: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.

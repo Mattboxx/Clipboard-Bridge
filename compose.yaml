@@ -8,8 +8,6 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_PORT:-5088}:5088"
-    volumes:
-      - "${DATA_ROOT:-./data}:/data"
     environment:
       CLIPBOARD_PORT: "5088"
       CLIPBOARD_DATA_DIR: /data
@@ -18,6 +16,8 @@ services:
       CLIPBOARD_PASSWORD: "${WEB_PASSWORD:-}"
       CLIPBOARD_ACCOUNTS: "${ACCOUNTS:-}"
       CLIPBOARD_ACCOUNTS_FILE: "${ACCOUNTS_FILE:-}"
+    volumes:
+      - "${DATA_ROOT:-./data}:/data"
     networks:
       - clipboard-bridge
     healthcheck:

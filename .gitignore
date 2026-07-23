@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.spec
+.venv/
+venv/
+env/
+
+# Build del client (l'eseguibile va distribuito come Release, non nel repo)
+build/
+dist/
+Output/
+
+# Dati generati a runtime
+config.json
+clipboard_data/
+data/
+local_history/
+ricevuti/
+error.log
+
+# File di account del server (credenziali, non committarlo)
+accounts.txt
+accounts*.txt
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Strumenti / sessioni
+.claude/
+.vscode/
+.idea/
