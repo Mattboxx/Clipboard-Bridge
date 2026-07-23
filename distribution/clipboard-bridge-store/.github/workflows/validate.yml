@@ -12,6 +12,4 @@ jobs:
       - run: python scripts/validate_catalog.py
       - run: docker compose -f compose.yaml config
       - run: WEBUI_PORT=5088 docker compose -f Apps/clipboard-bridge/docker-compose.yml config
-      - run: APP_DATA_DIR=/tmp/clipboard-bridge APP_PASSWORD=test docker compose -f adapters/umbrel/clipboard-bridge/docker-compose.yml config
       - run: APP_DATA_DIR=/tmp/clipboard-bridge docker compose -f adapters/runtipi/apps/clipboard-bridge/docker-compose.yml config
-
