@@ -34,4 +34,14 @@ store = json.loads((ROOT / "store-config.json").read_text(encoding="utf-8"))
 for field in ("name", "description"):
     if "en_US" not in store.get(field, {}):
         raise SystemExit(f"store-config.json {field} is missing en_US")
+
+app = yaml.safe_load(
+    (ROOT / "Apps/clipboard-bridge/docker-compose.yml").read_text(encoding="utf-8")
+)
+metadata = app.get("x-casaos", {})
+if metadata.get("id") != "io.github.mattbox03.clipboard-bridge":
+    raise SystemExit("ZimaOS app is missing its stable x-casaos.id")
+for field in ("title", "tagline", "description"):
+    if "en_US" not in metadata.get(field, {}):
+        raise SystemExit(f"ZimaOS app {field} is missing en_US")
 print("Catalog files are valid.")
