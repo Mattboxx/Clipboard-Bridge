@@ -5,6 +5,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
     "compose.yaml",
+    "config.json",
     "Apps/clipboard-bridge/docker-compose.yml",
     "portainer/templates.json",
     "adapters/umbrel/umbrel-app-store.yml",
@@ -24,5 +25,13 @@ for pattern in ("*.yml", "*.yaml"):
 for path in ROOT.rglob("docker-compose.yml"):
     if "ghcr.io/mattbox03/clipboard-bridge-server:1.0.0" not in path.read_text(encoding="utf-8"):
         raise SystemExit(f"Unexpected image in {path.relative_to(ROOT)}")
-print("Catalog files are valid.")
 
+versions = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+if versions.get("clipboard-bridge") != "1.0.0":
+    raise SystemExit("config.json does not expose clipboard-bridge version 1.0.0")
+
+store = json.loads((ROOT / "store-config.json").read_text(encoding="utf-8"))
+for field in ("name", "description"):
+    if "en_US" not in store.get(field, {}):
+        raise SystemExit(f"store-config.json {field} is missing en_US")
+print("Catalog files are valid.")
