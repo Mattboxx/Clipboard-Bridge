@@ -209,6 +209,21 @@ paste text, upload and download files, and read the Shortcuts instructions. With
 
 ## 4. iPhone (Shortcuts)
 
+Ready-made Shortcuts are included in the
+[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0),
+together with the Windows installer:
+
+- **[Download Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
+  sends the current iPhone clipboard to Clipboard Bridge.
+- **[Download Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)** -
+  receives the latest item from Clipboard Bridge.
+
+Open each `.shortcut` file on the iPhone and replace the placeholder server address with
+the address shown by the Windows app or your external server. Also add your token or
+account credentials when enabled.
+
+### Create them manually
+
 Create shortcuts using the **Get Contents of URL** action. If you use a token, add the
 `X-Auth-Token` header.
 
