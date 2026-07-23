@@ -1,5 +1,8 @@
-name: Validate catalog
-on: [push, pull_request]
+name: Validate Docker App Catalog
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -11,5 +14,28 @@ jobs:
       - run: pip install PyYAML
       - run: python scripts/validate_catalog.py
       - run: docker compose -f compose.yaml config
-      - run: WEBUI_PORT=5088 docker compose -f Apps/clipboard-bridge/docker-compose.yml config
+      - run: docker compose -f Apps/ClipboardBridge/docker-compose.yml config
       - run: APP_DATA_DIR=/tmp/clipboard-bridge docker compose -f adapters/runtipi/apps/clipboard-bridge/docker-compose.yml config
+      - name: Validate ZimaOS metadata contract
+        run: |
+          docker compose -f Apps/ClipboardBridge/docker-compose.yml config --format json > /tmp/clipboard-bridge-compose.json
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          compose = json.loads(Path("/tmp/clipboard-bridge-compose.json").read_text())
+          metadata = compose.get("x-casaos", {})
+          assert re.fullmatch(r"[a-z0-9_-]+", compose.get("name", ""))
+          assert metadata.get("id") == "io.github.mattbox03.clipboard-bridge"
+          assert metadata.get("main") in compose.get("services", {})
+          assert metadata.get("store_app_id") == compose["name"]
+          assert metadata.get("port_map") == "5088"
+          assert metadata.get("title", {}).get("en_US")
+          for filename in ("featured-apps.json", "recommend-list.json"):
+              entries = json.loads(Path(filename).read_text())
+              assert all(item.get("appid") == compose["name"] for item in entries)
+          print("ZimaOS metadata: OK")
+          PY
+      - name: Verify public multi-architecture image
+        run: docker manifest inspect ghcr.io/mattbox03/clipboard-bridge-server:1.0.0 >/dev/null
