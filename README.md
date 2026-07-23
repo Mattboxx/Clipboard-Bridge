@@ -1,4 +1,4 @@
-# Clipboard Bridge                    <img width="38" height="38" alt="icon-3" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
+# Clipboard Bridge - Windows and iPhone Clipboard Sync <img width="38" height="38" alt="Clipboard Bridge application icon" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
 
 **English** · [Italiano](README.it.md)
 
@@ -28,6 +28,12 @@ Switch anytime from the tray icon (**right-click → Mode**):
 
 > 📖 **New here?** Follow the step-by-step [Setup & Usage Guide](GUIDE.md).
 
+**Clipboard Bridge is an open-source, self-hosted clipboard synchronization and file
+transfer tool for Windows and iPhone.** It can run entirely on a Windows PC or connect
+multiple devices to a private Flask and Docker server. It transfers the latest clipboard
+item over the local network without relying on iCloud, Microsoft Cloud Clipboard or an
+external cloud service.
+
 ## Features
 - Exchange **text, images and files** of any type.
 - **History** on the server and on the client.
@@ -43,6 +49,18 @@ Switch anytime from the tray icon (**right-click → Mode**):
 <img width="296" height="216" alt="features" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" />
 
 <img width="264" height="356" alt="settings" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" />
+
+## Common use cases
+
+- **Sync the clipboard between Windows and iPhone** using two iOS Shortcuts.
+- **Send photos and files from an iPhone to a Windows PC** over Wi-Fi.
+- **Copy text from Windows and paste it on iOS**, or receive iPhone clipboard content
+  on Windows.
+- Run a **self-hosted clipboard server** on a NAS, Raspberry Pi, home server or Docker
+  host.
+- Use **Windows as the clipboard server** when no NAS or separate server is available.
+- Share one server between multiple people through **isolated clipboard accounts**.
+- Keep clipboard and file transfers inside a **private local network**.
 
 ## Repository layout
 
@@ -227,6 +245,40 @@ build_client.bat
 ```
 Uses PyInstaller to produce `dist\Clipboard Bridge.exe`. To change the icon, replace
 `icon.ico` with your own and run the script again.
+
+## Frequently asked questions
+
+### Can I share the clipboard between Windows and iPhone without iCloud?
+
+Yes. Clipboard Bridge sends text, photos and files through your local network. The
+iPhone uses the Shortcuts app and Windows uses the tray client.
+
+### Does it require a separate server?
+
+No. In **Server mode**, the Windows application accepts connections directly from the
+iPhone. In **Client mode**, it connects to an always-on Clipboard Bridge server running
+on Docker, a NAS, Raspberry Pi or another computer.
+
+### Can it transfer photos and arbitrary files?
+
+Yes. The unified endpoints and iPhone Shortcuts handle text, images and files according
+to the latest item saved on the server.
+
+### Is Clipboard Bridge a cloud clipboard service?
+
+No. It is self-hosted and designed primarily for local networks. Remote access should
+be protected with HTTPS through a VPN or reverse proxy.
+
+### Which self-hosting platforms are supported?
+
+The server supports Docker Compose and includes installation instructions for ZimaOS,
+Portainer, Umbrel, Runtipi, Docker Desktop and Dockge in the
+[Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore).
+
+### Does it support multiple users?
+
+Yes. The shared clipboard remains available, while an arbitrary practical number of
+password-protected accounts can have separate histories and files.
 
 ## License
 
