@@ -55,45 +55,68 @@
   }
   </script>
   <style>
-    :root{color-scheme:light;--ink:#17212b;--muted:#52606d;--line:#d8dee6;--blue:#1769e0;--green:#16805b;--surface:#f5f7fa;--white:#fff}
+    :root{color-scheme:light;--ink:#15212b;--muted:#566572;--line:#dce4e8;--blue:#1668dc;--blue-dark:#0d4fae;--green:#13805d;--coral:#e26d4f;--surface:#f4f7f8;--soft-blue:#edf5ff;--white:#fff;--shadow:0 18px 48px rgba(21,33,43,.12)}
     *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
     body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--white);line-height:1.6}
-    a{color:var(--blue)}
-    nav{height:64px;display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1120px;margin:auto;padding:0 24px}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:750;color:var(--ink);text-decoration:none}
-    .brand img{width:30px;height:30px}
-    .nav-links{display:flex;gap:18px;align-items:center}
-    .nav-links a{font-size:14px;font-weight:650;text-decoration:none;color:var(--ink)}
-    .hero{min-height:560px;display:flex;align-items:center;position:relative;background:#1e2c3d url("modes.png") center/cover no-repeat;color:#fff}
-    .hero:before{content:"";position:absolute;inset:0;background:rgba(15,25,38,.78)}
-    .hero-inner{position:relative;width:min(1120px,100%);margin:auto;padding:68px 24px 82px}
-    .eyebrow{font-size:14px;font-weight:750;text-transform:uppercase;color:#9ec5ff}
-    h1{max-width:820px;font-size:clamp(38px,6vw,68px);line-height:1.05;margin:14px 0 20px;letter-spacing:0}
-    .lead{max-width:720px;font-size:20px;color:#e6edf5}
+    a{color:var(--blue);text-underline-offset:3px}
+    nav{position:sticky;top:0;z-index:10;height:68px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 max(24px,calc((100% - 1120px)/2));background:rgba(255,255,255,.96);border-bottom:1px solid rgba(220,228,232,.9)}
+    .brand{display:flex;align-items:center;gap:11px;font-weight:800;color:var(--ink);text-decoration:none}
+    .brand img{width:34px;height:34px}
+    .nav-links{display:flex;gap:22px;align-items:center}
+    .nav-links a{font-size:14px;font-weight:700;text-decoration:none;color:#34434f}
+    .nav-links a:last-child{padding:8px 13px;border:1px solid var(--line);border-radius:6px}
+    .nav-links a:hover{color:var(--blue)}
+    .hero{min-height:620px;display:flex;align-items:center;position:relative;isolation:isolate;background:#172c3c url("modes.png") center/cover no-repeat;color:#fff;overflow:hidden}
+    .hero:before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,rgba(10,27,42,.96) 0%,rgba(10,27,42,.88) 48%,rgba(10,27,42,.48) 100%)}
+    .hero-inner{width:min(1120px,100%);margin:auto;padding:76px 24px 58px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;color:#b8d6ff}
+    .eyebrow:before{content:"";width:28px;height:3px;background:#53d3a6}
+    h1{max-width:780px;font-size:clamp(42px,6vw,70px);line-height:1.03;margin:18px 0 22px;letter-spacing:0}
+    .lead{max-width:700px;font-size:20px;color:#e6eef5;margin:0}
     .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
-    .button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border:1px solid #fff;border-radius:6px;color:#fff;text-decoration:none;font-weight:700}
-    .button.primary{background:#fff;color:#17212b}
-    main section{padding:72px 24px}
+    .button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 19px;border:1px solid currentColor;border-radius:6px;color:#fff;text-decoration:none;font-weight:750;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+    .button:hover{transform:translateY(-2px)}
+    .button.primary{background:#fff;color:var(--ink);border-color:#fff;box-shadow:0 10px 28px rgba(0,0,0,.18)}
+    .hero-facts{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:46px;padding-top:24px;border-top:1px solid rgba(255,255,255,.22);max-width:760px}
+    .hero-facts span{font-size:14px;font-weight:700;color:#e6eef5}
+    .hero-facts strong{color:#66dfb4}
+    main section{padding:84px 24px}
     .inner{max-width:1120px;margin:auto}
-    h2{font-size:32px;line-height:1.2;margin:0 0 16px;letter-spacing:0}
-    .section-copy{max-width:760px;color:var(--muted);margin-bottom:34px}
+    .section-kicker{display:block;margin-bottom:9px;color:var(--green);font-size:13px;font-weight:800;text-transform:uppercase}
+    h2{font-size:clamp(30px,4vw,42px);line-height:1.15;margin:0 0 16px;letter-spacing:0}
+    .section-copy{max-width:760px;color:var(--muted);margin:0 0 36px;font-size:17px}
     .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-    .item{border:1px solid var(--line);border-radius:8px;padding:24px;background:#fff}
-    .item h3{margin:0 0 8px;font-size:19px;letter-spacing:0}
+    .item{position:relative;border:1px solid var(--line);border-radius:8px;padding:26px;background:#fff;box-shadow:0 8px 24px rgba(21,33,43,.05);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+    .item:hover{transform:translateY(-3px);border-color:#b8c8d2;box-shadow:0 14px 34px rgba(21,33,43,.09)}
+    .item h3{margin:0 0 9px;font-size:19px;letter-spacing:0}
     .item p{margin:0;color:var(--muted)}
+    #download{background:linear-gradient(180deg,#f7fafb 0%,#fff 100%)}
+    #download .grid{grid-template-columns:repeat(4,1fr)}
+    #download .item:first-child,#download .item:nth-child(2){border-top:4px solid var(--blue)}
+    #download .item:nth-child(3),#download .item:nth-child(4){border-top:4px solid var(--green)}
+    #download .item .button{width:100%;min-height:44px;margin-top:6px}
     .band{background:var(--surface)}
-    .modes{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-    .mode{border-left:4px solid var(--blue);padding:8px 0 8px 22px}
-    .mode.server{border-color:var(--green)}
-    .mode h3{font-size:23px;margin:0 0 8px}
-    .mode p{color:var(--muted)}
-    details{border-top:1px solid var(--line);padding:18px 0}
-    details:last-child{border-bottom:1px solid var(--line)}
-    summary{font-weight:700;cursor:pointer}
-    details p{color:var(--muted);max-width:820px}
-    footer{padding:36px 24px;border-top:1px solid var(--line);color:var(--muted)}
+    .modes{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .mode{border:1px solid var(--line);border-top:5px solid var(--blue);border-radius:8px;padding:28px;background:#fff;box-shadow:0 8px 24px rgba(21,33,43,.05)}
+    .mode.server{border-top-color:var(--green)}
+    .mode h3{font-size:23px;margin:0 0 9px}
+    .mode p{color:var(--muted);margin:0 0 12px}
+    .showcase{display:grid;grid-template-columns:1.4fr .8fr;gap:24px;align-items:center}
+    .showcase-copy{max-width:430px}
+    .screens{display:grid;grid-template-columns:1fr .72fr;gap:16px;align-items:center}
+    .screen{display:block;width:100%;height:auto;max-height:430px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;box-shadow:var(--shadow)}
+    #shortcuts{background:var(--soft-blue)}
+    #shortcuts .section-copy:last-child{padding:18px 20px;background:#fff;border-left:4px solid var(--coral);border-radius:4px}
+    details{border-top:1px solid var(--line);padding:19px 0}
+    details:last-of-type{border-bottom:1px solid var(--line)}
+    summary{font-weight:750;cursor:pointer;list-style-position:outside}
+    details p{color:var(--muted);max-width:820px;margin-bottom:4px}
+    footer{padding:38px 24px;border-top:1px solid var(--line);color:var(--muted);background:#f8fafb}
     footer .inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
-    @media(max-width:760px){.nav-links a:not(:last-child){display:none}.hero{min-height:520px}.grid{grid-template-columns:1fr}.modes{grid-template-columns:1fr}h1{font-size:42px}.lead{font-size:18px}}
+    @media(max-width:960px){#download .grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:65% center}.grid{grid-template-columns:1fr 1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}}
+    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:590px}.hero:before{background:rgba(10,27,42,.87)}.hero-inner{padding:60px 20px 42px}h1{font-size:42px}.lead{font-size:18px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid,.modes,#download .grid{grid-template-columns:1fr}.screens{grid-template-columns:1fr 1fr;gap:10px}main section{padding:64px 20px}.item,.mode{padding:22px}.button{width:100%}}
   </style>
 </head>
 <body>
@@ -117,20 +140,34 @@
         <a class="button primary" href="#download">Choose your download</a>
         <a class="button" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Setup guide</a>
       </div>
+      <div class="hero-facts">
+        <span><strong>2 modes</strong> with or without a separate server</span>
+        <span><strong>Any item</strong> text, photos and files</span>
+        <span><strong>Private</strong> local and self-hosted</span>
+      </div>
     </div>
   </header>
 
   <main>
     <section id="download">
       <div class="inner">
+        <span class="section-kicker">Get started</span>
         <h2>Download Clipboard Bridge 2.0.0</h2>
         <p class="section-copy">Install the Windows application first, then download the two ready-made iPhone Shortcuts. These buttons download the files directly, without opening the GitHub release page.</p>
         <div class="grid">
           <article class="item">
             <h3>Windows installer</h3>
-            <p>Installs the Clipboard Bridge tray application with both Client mode and Windows Server mode.</p>
+            <p>Installs Clipboard Bridge for all users. Administrator privileges are required.</p>
             <div class="actions">
               <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe">Download installer for Windows x64</a>
+            </div>
+          </article>
+          <article class="item">
+            <h3>Windows portable</h3>
+            <p>Run the complete Client and Server modes directly, without installation or administrator privileges.</p>
+            <p style="margin-top:10px"><strong>Auto-sync note:</strong> synchronization may not detect clipboard changes made by elevated applications unless Clipboard Bridge is also started as administrator.</p>
+            <div class="actions">
+              <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe">Download portable for Windows x64</a>
             </div>
           </article>
           <article class="item">
@@ -154,6 +191,7 @@
 
     <section id="features">
       <div class="inner">
+        <span class="section-kicker">One simple workflow</span>
         <h2>Windows and iPhone clipboard sync without the cloud</h2>
         <p class="section-copy">Clipboard Bridge detects whether the latest item is text, an image or a file. The Windows tray client and iPhone Shortcuts use the same send and receive workflow for every supported content type.</p>
         <div class="grid">
@@ -169,6 +207,7 @@
 
     <section class="band" id="modes">
       <div class="inner">
+        <span class="section-kicker">Choose your setup</span>
         <h2>One application, two distinct modes</h2>
         <p class="section-copy">Choose the simplest setup for your network. Both modes work with the same Windows actions and iPhone Shortcuts.</p>
         <div class="modes">
@@ -178,8 +217,24 @@
       </div>
     </section>
 
+    <section id="app-preview">
+      <div class="inner showcase">
+        <div class="showcase-copy">
+          <span class="section-kicker">Built for the Windows tray</span>
+          <h2>Useful controls, without a heavy desktop window</h2>
+          <p class="section-copy">Switch between Client and Server mode, configure the connection and keep the common send, receive and history actions close at hand.</p>
+          <a class="button" style="color:#1668dc;border-color:#1668dc" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Explore the setup guide</a>
+        </div>
+        <div class="screens">
+          <img class="screen" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" alt="Clipboard Bridge Windows tray menu">
+          <img class="screen" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" alt="Clipboard Bridge Windows settings">
+        </div>
+      </div>
+    </section>
+
     <section id="shortcuts">
       <div class="inner">
+        <span class="section-kicker">Two actions for every content type</span>
         <h2>Ready-made iPhone Shortcuts</h2>
         <p class="section-copy">Version 2.0.0 includes the Windows installer and two prepared iOS Shortcuts. Install them on the iPhone, then replace the placeholder with the local address shown by Clipboard Bridge.</p>
         <div class="modes">
@@ -194,16 +249,19 @@
             <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut">Download receive Shortcut</a>
           </article>
         </div>
+        <p class="section-copy" style="margin-top:24px">For faster access, add both Shortcuts to the iPhone <strong>Control Center</strong>: open Control Center, tap <strong>Add (+)</strong>, choose <strong>Add a Control &gt; Shortcut</strong>, then select Load Clipboard or Download Clipboard. Add one control for each action. See the <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">official Apple guide</a>.</p>
       </div>
     </section>
 
     <section id="faq">
       <div class="inner">
+        <span class="section-kicker">Quick answers</span>
         <h2>Frequently asked questions</h2>
         <details><summary>How do I share a clipboard between Windows and iPhone?</summary><p>Start Clipboard Bridge in Windows Server mode or deploy the private server, then configure the two included iOS Shortcuts with the displayed local address.</p></details>
         <details><summary>Can I send photos and files from iPhone to Windows?</summary><p>Yes. Use the Share Sheet with the send Shortcut. Clipboard Bridge stores the latest item and the Windows client receives it in the appropriate format.</p></details>
         <details><summary>Does it require iCloud or Microsoft Cloud Clipboard?</summary><p>No. Clipboard Bridge is open source and transfers content through your own network.</p></details>
         <details><summary>Can Windows work as the server?</summary><p>Yes. Select Server mode from the tray menu. The app displays the local IP address and port to use in your iPhone Shortcuts.</p></details>
+        <details><summary>Can I run the Shortcuts from iPhone Control Center?</summary><p>Yes. Add a Shortcut control for Load Clipboard and another for Download Clipboard, so both actions are available directly from the pull-down Control Center.</p></details>
         <details><summary>Where can I install the Docker server?</summary><p>Use Docker Compose or the prepared App Store instructions for ZimaOS, Portainer, Umbrel, Runtipi and Dockge.</p></details>
         <div class="actions">
           <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge">View source and documentation</a>

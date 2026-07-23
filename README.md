@@ -6,6 +6,14 @@
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
+**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
+[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
+
+> **Auto-sync:** the portable app normally works without administrator privileges.
+> However, Windows may prevent it from detecting clipboard changes made by applications
+> running as administrator. In that case, right-click the portable executable and choose
+> **Run as administrator**.
+
 ![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
 ![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/network-local%20only-2ea44f)
@@ -134,7 +142,12 @@ For container details, backups and image tags, see
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | data folder |
 
 > For use outside the local network, set a token and use a VPN or a reverse proxy with
-> HTTPS. On the local network, allow port 5088 through the firewall.
+> HTTPS. [Tailscale](https://tailscale.com/) is one simple VPN option: install it on the
+> iPhone and on the PC/server, then use the server's Tailscale IP in the Shortcuts
+> (`http://100.x.y.z:5088`). You do not need to expose port 5088 on the router. On the
+> local network, allow port 5088 through the host firewall. This also works when the
+> Windows app runs in **Server mode**: use that Windows PC's Tailscale IP and the port
+> configured in the app.
 
 ### Multiple accounts (optional)
 
@@ -221,6 +234,18 @@ together with the Windows installer:
 Open each `.shortcut` file on the iPhone and replace the placeholder server address with
 the address shown by the Windows app or your external server. Also add your token or
 account credentials when enabled.
+
+### Add the Shortcuts to Control Center
+
+For one-swipe access without opening the Shortcuts app:
+
+1. Open **Control Center** on the iPhone and tap the **Add (+)** button.
+2. Tap **Add a Control**, select **Shortcut**, then tap **Choose**.
+3. Select **Load Clipboard**. Repeat the steps and select **Download Clipboard** for a
+   second control.
+
+The two controls can now send or receive the latest clipboard item directly from Control
+Center. See [Apple's Control Center guide](https://support.apple.com/guide/shortcuts/apd06a9201d4/ios).
 
 ### Create them manually
 

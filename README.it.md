@@ -6,6 +6,14 @@
 [Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
+**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
+[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
+
+> **Sincronizzazione automatica:** normalmente la versione portable funziona senza
+> privilegi amministratore. Windows può però impedirle di rilevare le modifiche agli
+> appunti effettuate da programmi avviati come amministratore. In quel caso fai clic
+> destro sull'eseguibile portable e scegli **Esegui come amministratore**.
+
 ![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
 ![modes](https://img.shields.io/badge/modalit%C3%A0-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/rete-solo%20locale-2ea44f)
@@ -136,7 +144,11 @@ Per i dettagli sui container, i backup e i tag delle immagini, consulta
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | cartella dei dati |
 
 > Per l'uso fuori dalla rete locale imposta un token e usa una VPN o un reverse proxy con
-> HTTPS. Sulla rete locale, consenti la porta 5088 nel firewall.
+> HTTPS. [Tailscale](https://tailscale.com/) è un possibile esempio di VPN: installalo
+> sull'iPhone e sul PC/server, poi usa negli Shortcuts l'IP Tailscale del server
+> (`http://100.x.y.z:5088`). Non serve esporre la porta 5088 sul router. Sulla rete locale,
+> consenti la porta 5088 nel firewall del computer. Funziona anche quando l'app Windows è
+> in **modalità Server**: usa l'IP Tailscale di quel PC e la porta configurata nell'app.
 
 ### Account multipli (opzionale)
 
@@ -223,6 +235,18 @@ insieme all'installer per Windows:
 Apri ogni file `.shortcut` sull'iPhone e sostituisci l'indirizzo server segnaposto con
 quello mostrato dall'app Windows o con l'indirizzo del server esterno. Se li hai
 attivati, inserisci anche token oppure credenziali dell'account.
+
+### Aggiungere i Comandi rapidi al Centro di Controllo
+
+Per averli nella tendina senza aprire l'app Comandi:
+
+1. Apri il **Centro di Controllo** dell'iPhone e tocca il pulsante **Aggiungi (+)**.
+2. Tocca **Aggiungi un controllo**, scegli **Comando rapido**, quindi tocca **Scegli**.
+3. Seleziona **Load Clipboard**. Ripeti i passaggi e seleziona **Download Clipboard** per
+   aggiungere il secondo controllo.
+
+I due pulsanti permettono così di inviare o ricevere l'ultimo elemento direttamente dal
+Centro di Controllo. Consulta anche la [guida Apple](https://support.apple.com/guide/shortcuts/apd06a9201d4/ios).
 
 ### Creazione manuale
 

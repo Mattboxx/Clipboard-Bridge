@@ -126,6 +126,11 @@ Right-click the tray icon → **Mode**:
 To start the client automatically with Windows, press `Win+R`, type `shell:startup`, and
 put a shortcut to the executable in that folder.
 
+> **Auto-sync and administrator privileges:** the portable executable does not normally
+> require administrator access. Auto-sync may not detect clipboard changes made by
+> applications that are themselves running as administrator. If this happens, right-click
+> Clipboard Bridge and select **Run as administrator**.
+
 ---
 
 ## 5. Set up iPhone Shortcuts
@@ -146,6 +151,19 @@ contains the Windows installer and both prepared iPhone Shortcuts:
 Open the downloaded files on the iPhone, add them to the Shortcuts app and replace the
 placeholder address with the server address displayed by Clipboard Bridge. If applicable,
 also add the API token or append `?user=NAME&password=PASS` to the URL.
+
+### Add both Shortcuts to Control Center
+
+To run them without opening the Shortcuts app:
+
+1. Open **Control Center** and tap the **Add (+)** button.
+2. Tap **Add a Control**, select **Shortcut**, and tap **Choose**.
+3. Choose **Load Clipboard**.
+4. Add another Shortcut control and choose **Download Clipboard**.
+
+You can now send or receive the latest item from the iPhone's pull-down Control Center.
+Apple documents the same procedure in its
+[Shortcuts User Guide](https://support.apple.com/guide/shortcuts/apd06a9201d4/ios).
 
 ### 5.1 Send (clipboard → server)
 1. Open **Shortcuts**, tap **+** → **Add Action**.
@@ -232,7 +250,12 @@ To use an account, add its credentials at the **end of the URL** —
 account name (leave it empty for the shared space). The shared space is always available.
 
 > The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
-> use the server over the internet, put it behind a VPN or an HTTPS reverse proxy.
+> use the server away from that LAN, put it behind a VPN or an HTTPS reverse proxy.
+> [Tailscale](https://tailscale.com/) is one possible VPN: install it on the iPhone and
+> server, then replace `SERVER_IP` in both Shortcuts with the server's Tailscale IP
+> (usually `100.x.y.z`). This includes the Windows app's **Server mode**: install Tailscale
+> on that PC and use its Tailscale IP plus the port configured in Clipboard Bridge. No
+> router port forwarding is required.
 
 ---
 
