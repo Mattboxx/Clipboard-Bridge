@@ -17,13 +17,13 @@ docker compose up -d
 
 Open `http://SERVER-IP:5088`. Configure environment values before deployment.
 
-## ZimaOS and CasaOS
+## ZimaOS
 
 Add this custom app-store archive:
 
 `https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip`
 
-The persistent data directory is `/DATA/AppData/clipboard-bridge/data`.
+The persistent data directory is managed under `/DATA/AppData`.
 
 ## Portainer
 
