@@ -1,4 +1,4 @@
-# Clipboard Bridge
+# Clipboard Bridge - Sincronizzazione appunti tra Windows e iPhone
 
 [English](README.md) · **Italiano**
 
@@ -27,6 +27,12 @@ Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
 
 > 📖 **Prima volta?** Segui la [guida passo-passo](GUIDE.md) (in inglese).
 
+**Clipboard Bridge è uno strumento open source e self-hosted per sincronizzare gli
+appunti e trasferire file tra Windows e iPhone.** Può funzionare direttamente sul PC
+Windows oppure collegare più dispositivi a un server privato Flask e Docker. Trasferisce
+l'ultimo elemento degli appunti in rete locale senza dipendere da iCloud, Appunti cloud
+di Microsoft o servizi cloud esterni.
+
 ## Funzionalità
 - Scambio di **testo, immagini e file** di qualsiasi tipo.
 - **Cronologia** sul server e sul client.
@@ -45,6 +51,17 @@ Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
 
 
 
+
+## Utilizzi principali
+
+- **Sincronizzare gli appunti tra Windows e iPhone** con due Comandi rapidi iOS.
+- **Inviare foto e file da iPhone a un PC Windows** tramite Wi-Fi.
+- **Copiare testo da Windows e incollarlo su iOS**, oppure ricevere su Windows gli
+  appunti copiati su iPhone.
+- Creare un **server clipboard self-hosted** su NAS, Raspberry Pi, home server o Docker.
+- Usare **Windows come server degli appunti** senza avere un NAS o un server separato.
+- Condividere un server tra più persone usando **account clipboard isolati**.
+- Tenere appunti e file all'interno di una **rete locale privata**.
 
 ## Struttura del repository
 
@@ -229,6 +246,40 @@ build_client.bat
 ```
 Usa PyInstaller per produrre `dist\Clipboard Bridge.exe`. Per cambiare icona, sostituisci
 `icon.ico` con la tua e rilancia lo script.
+
+## Domande frequenti
+
+### Posso condividere gli appunti tra Windows e iPhone senza iCloud?
+
+Sì. Clipboard Bridge invia testo, fotografie e file attraverso la rete locale. iPhone
+utilizza l'app Comandi rapidi, mentre Windows utilizza il client nella tray.
+
+### Serve obbligatoriamente un server separato?
+
+No. In **modalità Server** l'applicazione Windows riceve direttamente le connessioni
+dell'iPhone. In **modalità Client** si collega invece a un server Clipboard Bridge sempre
+acceso su Docker, NAS, Raspberry Pi o un altro computer.
+
+### Può trasferire fotografie e file di qualsiasi tipo?
+
+Sì. Gli endpoint unificati e i Comandi rapidi iPhone gestiscono testo, immagini e file
+in base all'ultimo elemento salvato sul server.
+
+### Clipboard Bridge è un servizio cloud?
+
+No. È self-hosted ed è progettato principalmente per la rete locale. Un eventuale
+accesso remoto deve essere protetto con HTTPS tramite VPN o reverse proxy.
+
+### Quali piattaforme self-hosted sono supportate?
+
+Il server supporta Docker Compose e include istruzioni per ZimaOS, Portainer, Umbrel,
+Runtipi, Docker Desktop e Dockge nel
+[Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore).
+
+### Sono supportati più utenti?
+
+Sì. Lo spazio condiviso resta disponibile e si può aggiungere un numero praticamente
+illimitato di account protetti da password, ognuno con cronologia e file separati.
 
 ## Licenza
 
