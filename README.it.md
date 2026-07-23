@@ -2,6 +2,10 @@
 
 [English](README.md) · **Italiano**
 
+[Sito web](https://mattbox03.github.io/Clipboard-Bridge/) ·
+[Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
+[App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
+
 ![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
 ![modes](https://img.shields.io/badge/modalit%C3%A0-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/rete-solo%20locale-2ea44f)

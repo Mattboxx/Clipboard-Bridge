@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mattbox03.github.io/Clipboard-Bridge/sitemap.xml
