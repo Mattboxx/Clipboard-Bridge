@@ -25,7 +25,7 @@ DisableProgramGroupPage=yes
 ; Richiede privilegi di amministratore coerenti con l'installazione globale
 PrivilegesRequired=admin
 OutputBaseFilename=mysetup
-SetupIconFile=C:\Users\mattb\Documents\Clipboard_bridge\icon.ico
+SetupIconFile=icon.ico
 SolidCompression=yes
 WizardStyle=modern dynamic
 
@@ -43,7 +43,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "windowsstartup"; Description: "{cm:StartupDescription}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Users\mattb\Documents\Clipboard_bridge\dist\Clipboard Bridge.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Clipboard Bridge.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
