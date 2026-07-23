@@ -14,7 +14,7 @@ services:
       CLIPBOARD_PASSWORD: "${CLIPBOARD_PASSWORD:-}"
       CLIPBOARD_ACCOUNTS: "${CLIPBOARD_ACCOUNTS:-}"
     volumes:
-      - /DATA/AppData/clipboard-bridge/data:/data
+      - /DATA/AppData/$AppID/data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3)"]
       interval: 30s
@@ -24,17 +24,17 @@ services:
       ports:
         - container: "5088"
           description:
-            en_us: Web interface and API
-            it_it: Interfaccia web e API
+            en_US: Web interface and API
+            it_IT: Interfaccia web e API
       volumes:
         - container: /data
           description:
-            en_us: Clipboard history and uploaded files
-            it_it: Cronologia clipboard e file caricati
+            en_US: Clipboard history and uploaded files
+            it_IT: Cronologia clipboard e file caricati
 x-casaos:
   architectures: [amd64, arm64]
+  id: io.github.mattbox03.clipboard-bridge
   main: clipboard-bridge
-  store_app_id: clipboard-bridge
   category: Utilities
   author: mattbox03
   developer: mattbox03
@@ -44,15 +44,16 @@ x-casaos:
   scheme: http
   index: /
   title:
-    en_us: Clipboard Bridge
-    it_it: Clipboard Bridge
+    en_US: Clipboard Bridge
+    it_IT: Clipboard Bridge
   tagline:
-    en_us: Share text and files between Windows, iPhone and your server.
-    it_it: Condividi testo e file tra Windows, iPhone e il tuo server.
+    en_US: Share text and files between Windows, iPhone and your server.
+    it_IT: Condividi testo e file tra Windows, iPhone e il tuo server.
   description:
-    en_us: A private clipboard and file bridge with history, multiple accounts and iPhone Shortcuts support.
-    it_it: Un ponte privato per clipboard e file con cronologia, account multipli e supporto Comandi Rapidi iPhone.
+    en_US: A private clipboard and file bridge with history, multiple accounts and iPhone Shortcuts support.
+    it_IT: Un ponte privato per clipboard e file con cronologia, account multipli e supporto Comandi Rapidi iPhone.
+  thumbnail: ""
   tips:
     before_install:
-      en_us: Set a web password and API token if the service is reachable by untrusted devices.
-      it_it: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
+      en_US: Set a web password and API token if the service is reachable by untrusted devices.
+      it_IT: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
