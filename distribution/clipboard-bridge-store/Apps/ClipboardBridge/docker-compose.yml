@@ -5,7 +5,9 @@ services:
     container_name: clipboard-bridge
     restart: unless-stopped
     ports:
-      - "${WEBUI_PORT:-5088}:5088"
+      - target: 5088
+        published: "5088"
+        protocol: tcp
     environment:
       CLIPBOARD_PORT: "5088"
       CLIPBOARD_DATA_DIR: /data
@@ -14,33 +16,24 @@ services:
       CLIPBOARD_PASSWORD: "${CLIPBOARD_PASSWORD:-}"
       CLIPBOARD_ACCOUNTS: "${CLIPBOARD_ACCOUNTS:-}"
     volumes:
-      - /DATA/AppData/$AppID/data:/data
+      - /DATA/AppData/clipboard-bridge/data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
-    x-casaos:
-      ports:
-        - container: "5088"
-          description:
-            en_US: Web interface and API
-            it_IT: Interfaccia web e API
-      volumes:
-        - container: /data
-          description:
-            en_US: Clipboard history and uploaded files
-            it_IT: Cronologia clipboard e file caricati
 x-casaos:
-  architectures: [amd64, arm64]
   id: io.github.mattbox03.clipboard-bridge
+  architectures:
+    - amd64
+    - arm64
   main: clipboard-bridge
+  store_app_id: clipboard-bridge
   category: Utilities
   author: mattbox03
   developer: mattbox03
-  icon: https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/clipboard-bridge/icon.svg
-  project_url: https://github.com/mattbox03/Clipboard-Bridge
-  port_map: "${WEBUI_PORT:-5088}"
+  icon: https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/ClipboardBridge/icon.svg
+  port_map: "5088"
   scheme: http
   index: /
   title:
@@ -57,3 +50,9 @@ x-casaos:
     before_install:
       en_US: Set a web password and API token if the service is reachable by untrusted devices.
       it_IT: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
+  version: "1.0.0"
+  update_at: "2026-07-23"
+  website: https://github.com/mattbox03/Clipboard-Bridge
+  repo: https://github.com/mattbox03/Clipboard-Bridge
+  support: https://github.com/mattbox03/Clipboard-Bridge/issues
+  docs: https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md

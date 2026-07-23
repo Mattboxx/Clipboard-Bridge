@@ -6,7 +6,7 @@
       "title": "Clipboard Bridge",
       "name": "clipboard-bridge",
       "description": "Share clipboard text and files between Windows, iPhone and a private server.",
-      "logo": "https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/clipboard-bridge/icon.svg",
+      "logo": "https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/Apps/ClipboardBridge/icon.svg",
       "categories": ["Utilities"],
       "platform": "linux",
       "repository": {
@@ -24,4 +24,3 @@
     }
   ]
 }
-
