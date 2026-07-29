@@ -4,13 +4,19 @@
 
 [Website](https://mattbox03.github.io/Clipboard-Bridge/) ·
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
-[Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
+[Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore) ·
+[Code signing policy](CODE_SIGNING.md)
 
 **Windows 2.0.2:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe) ·
 [Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe)
 
 The complete `2.0.2` release also contains both ready-made iPhone Shortcuts, the Python
 server, Docker/Compose files and the server requirements.
+
+> **Windows security:** release 2.0.2 is currently unsigned and can be blocked by
+> Windows 11 Smart App Control. The project is preparing trusted Authenticode signing;
+> see the [code signing policy](CODE_SIGNING.md). A self-signed certificate would not
+> make a public download trusted.
 
 > **Auto-sync on Windows:** this warning applies to both the installer and portable
 > versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by

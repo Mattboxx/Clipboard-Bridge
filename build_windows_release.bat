@@ -66,6 +66,7 @@ copy /Y ".env.example" "%RELEASE_DIR%\clipboard-bridge.env.example" >nul
 copy /Y "GUIDE.md" "%RELEASE_DIR%\Clipboard.Bridge.GUIDE.md" >nul
 copy /Y "README.md" "%RELEASE_DIR%\README.md" >nul
 copy /Y "README.it.md" "%RELEASE_DIR%\README.it.md" >nul
+copy /Y "CODE_SIGNING.md" "%RELEASE_DIR%\" >nul
 copy /Y "LICENSE" "%RELEASE_DIR%\" >nul
 if errorlevel 1 exit /b 1
 
