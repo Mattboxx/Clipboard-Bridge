@@ -89,6 +89,11 @@ PyInstaller and Inno Setup). No personal configuration is embedded in either pac
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
+> **Windows 11 security:** version 2.0.2 is currently unsigned, so Smart App Control can
+> block both the installer and portable executable. There is no per-app exception for
+> Smart App Control. Trusted Authenticode signing is being prepared; see the
+> [code signing policy](CODE_SIGNING.md).
+
 ### Option B — From source
 ```bash
 pip install -r requirements-client.txt
