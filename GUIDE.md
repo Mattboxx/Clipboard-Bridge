@@ -115,7 +115,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   saved to `Downloads\Clipboard Bridge` and copied as File Explorer files). Also bound to
   `Ctrl+Alt+V`.
 - **Send a file…**: pick any file(s) to upload.
-- **Auto-sync** (tray menu, off by default): when enabled, anything you copy — text,
+- **Auto-sync** (Settings → Automation, off by default): when enabled, anything you copy — text,
   images **and files** — is sent to the server automatically, without clicking.
 - **Automatically download new files** (Settings, on by default): while the client is
   running, new PDFs and other files arrive without pressing Receive. Click the Windows
@@ -127,7 +127,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   account.
 
 ### Modes: connect to a server, or BE the server
-Choose the mode from **Settings → General** or right-click the tray icon → **Mode**:
+Choose the mode from **Settings → General**:
 - **Client (use external server)** — the default; connects to a separate Clipboard Bridge
   server (set its address in Settings).
 - **Server (this PC)** — no external server needed: this PC becomes the server and the

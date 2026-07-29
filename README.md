@@ -37,7 +37,7 @@ Interface in **English (default)** and Italian.
 
 ![Server mode vs Client mode](docs/modes.png)
 
-Switch anytime from **Settings → General** or the tray icon (**right-click → Mode**):
+Switch anytime from **Settings → General**:
 
 | | 🖥️ Server mode | 🔌 Client mode |
 |---|---|---|
@@ -65,7 +65,7 @@ external cloud service.
   upload/download files.
 - Integration with **iPhone Shortcuts** via simple HTTP requests.
 - **No separate server needed (optional):** the Windows app can be the server itself
-  (tray → **Mode → Server**) — the iPhone connects straight to your PC.
+  (**Settings → General → Server**) — the iPhone connects straight to your PC.
 - Optional **token** for the API and an optional **password** for the web page.
 - Run the server directly or with **Docker**.
 
@@ -225,11 +225,11 @@ A tray icon appears (right-click for the menu):
   automatically to `%USERPROFILE%\Downloads\Clipboard Bridge`; clicking their notification
   opens File Explorer and selects the received file. Received files are also placed on the
   Windows clipboard, ready to paste into File Explorer or another compatible application.
-- **History...**, **Keyboard shortcuts** (default `Ctrl+Alt+C` sends, `Ctrl+Alt+V` receives).
+- **History...** and **Language** remain immediately available in the tray.
 - **Settings...** contains operating mode, interface language, local-history limit,
   server address, ports, token, account, automation and configurable hotkeys. Leave
   **Account** empty for the shared space, or enter an account name + password to use an
-  isolated space.
+  isolated space. Default hotkeys are `Ctrl+Alt+C` to send and `Ctrl+Alt+V` to receive.
 - The tray shows one compact green/red connection indicator. Settings provide the full
   status and **Check connection now** after changing the address or credentials.
 

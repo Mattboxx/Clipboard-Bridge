@@ -36,8 +36,7 @@ account. Interfaccia in **inglese (predefinita)** e in italiano.
 
 ![Modalità Server vs Modalità Client](docs/modes.png)
 
-Si cambia quando vuoi da **Impostazioni → Generale** oppure dalla tray
-(**clic destro → Modalità**):
+Si cambia quando vuoi da **Impostazioni → Generale**:
 
 | | 🖥️ Modalità Server | 🔌 Modalità Client |
 |---|---|---|
@@ -64,8 +63,8 @@ di Microsoft o servizi cloud esterni.
 - **Interfaccia web** del server (utilizzabile anche dal browser dell'iPhone) per
   incollare testo e caricare/scaricare file.
 - Integrazione con le **Shortcuts iPhone** tramite semplici richieste HTTP.
-- **Nessun server a parte (opzionale):** l'app Windows può fare da server (tray → **Modalità → Server**),
-  così l'iPhone si connette direttamente al tuo PC.
+- **Nessun server a parte (opzionale):** l'app Windows può fare da server
+  (**Impostazioni → Generale → Server**), così l'iPhone si connette direttamente al tuo PC.
 - **Token** opzionale per l'API e **password** opzionale per la pagina web.
 - Server eseguibile direttamente oppure in **Docker**.
 
@@ -228,11 +227,12 @@ Compare un'icona nella tray (clic destro per il menu):
   automaticamente in `%USERPROFILE%\Downloads\Clipboard Bridge`; cliccando la notifica si
   apre Esplora file con il documento ricevuto selezionato. I file ricevuti vengono anche
   inseriti negli appunti Windows, pronti da incollare in Esplora file o in un'app compatibile.
-- **Cronologia...**, **Scorciatoie da tastiera** (default `Ctrl+Alt+C` invia, `Ctrl+Alt+V` riceve).
+- **Cronologia...** e **Lingua** restano immediatamente disponibili nella tray.
 - **Impostazioni...** raccoglie modalità operativa, lingua, limite della cronologia locale,
   indirizzo e porte del server, token, account, automazione e scorciatoie configurabili.
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
-  per usare uno spazio isolato.
+  per usare uno spazio isolato. Le scorciatoie predefinite sono `Ctrl+Alt+C` per inviare e
+  `Ctrl+Alt+V` per ricevere.
 - La tray mostra un solo indicatore compatto verde/rosso. Le Impostazioni mostrano lo stato
   completo e permettono di usare **Verifica connessione ora** dopo aver cambiato indirizzo
   o credenziali.

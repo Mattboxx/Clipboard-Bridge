@@ -1875,51 +1875,11 @@ def register_hotkeys():
         notify(t("hotkey_err", e=e))
 
 
-# ---------------------------------------------------------------- menu toggles
-def toggle_auto_sync(icon, item):
-    config["auto_sync"] = not config.get("auto_sync", False)
-    save_config(config)
-    icon.update_menu()
-
-
-def toggle_monitor(icon, item):
-    config["monitor_clipboard"] = not config.get("monitor_clipboard", False)
-    save_config(config)
-    icon.update_menu()
-
-
-def toggle_hotkeys(icon, item):
-    if keyboard is None:
-        notify(t("no_keyboard"))
-        return
-    config["hotkeys_enabled"] = not config.get("hotkeys_enabled", True)
-    save_config(config)
-    register_hotkeys() if config["hotkeys_enabled"] else unregister_hotkeys()
-    icon.update_menu()
-
-
+# ---------------------------------------------------------------- menu actions
 def _set_lang(code):
     def handler(icon, item):
         config["lang"] = code
         save_config(config)
-        icon.update_menu()
-    return handler
-
-
-def _set_mode(new_mode):
-    def handler(icon, item):
-        if config.get("mode", "client") == new_mode:
-            return
-        config["mode"] = new_mode
-        save_config(config)
-        if new_mode == "server":
-            if start_host_server():
-                notify(t("server_on", addr=server_address()))
-        else:
-            stop_host_server()
-            notify(t("client_on"))
-        _set_connection_state("checking")
-        _run_bg(check_connection)
         icon.update_menu()
     return handler
 
@@ -1963,23 +1923,11 @@ def build_menu():
         MenuItem(lambda i: t("open_recv"), open_received_folder),
         Menu.SEPARATOR,
         MenuItem(lambda i: t("history"), lambda icon, item: _cmd_q.put(open_history_window)),
-        MenuItem(lambda i: t("autosync"), toggle_auto_sync,
-                 checked=lambda i: config.get("auto_sync", False)),
-        MenuItem(lambda i: t("monitor"), toggle_monitor,
-                 checked=lambda i: config.get("monitor_clipboard", False)),
-        MenuItem(lambda i: t("hotkeys"), toggle_hotkeys,
-                 checked=lambda i: config.get("hotkeys_enabled", True)),
         MenuItem(lambda i: t("language"), Menu(
             MenuItem("English", _set_lang("en"),
                      checked=lambda i: config.get("lang", "en") == "en", radio=True),
             MenuItem("Italiano", _set_lang("it"),
                      checked=lambda i: config.get("lang", "en") == "it", radio=True),
-        )),
-        MenuItem(lambda i: t("mode"), Menu(
-            MenuItem(lambda i: t("mode_client"), _set_mode("client"),
-                     checked=lambda i: config.get("mode", "client") == "client", radio=True),
-            MenuItem(lambda i: t("mode_server"), _set_mode("server"),
-                     checked=lambda i: config.get("mode", "client") == "server", radio=True),
         )),
         MenuItem(lambda i: t("server_addr", addr=server_address()), copy_server_addr,
                  visible=lambda i: config.get("mode", "client") == "server"),
