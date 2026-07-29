@@ -132,6 +132,8 @@ docker compose up -d --build
 La cronologia resta nella cartella `./data` e sopravvive ai riavvii. Funziona in
 qualsiasi ambiente Docker.
 
+Immagine server stabile: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.1`.
+
 Per i dettagli sui container, i backup e i tag delle immagini, consulta
 [Installazione Docker e app store](DOCKER.md).
 
@@ -145,6 +147,7 @@ Per i dettagli sui container, i backup e i tag delle immagini, consulta
 | `CLIPBOARD_ACCOUNTS` | *(vuoto)* | account isolati aggiuntivi, formato `user1:pass1,user2:pass2` (vedi sotto) |
 | `CLIPBOARD_ACCOUNTS_FILE` | *(vuoto)* | percorso di un file con un `user:password` per riga (per tanti account) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | numero di elementi tenuti nello storico |
+| `CLIPBOARD_MAX_UPLOAD_MB` | `64` | dimensione massima di una richiesta o di un file in MB |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | cartella dei dati |
 
 > Per l'uso fuori dalla rete locale imposta un token e usa una VPN o un reverse proxy con
@@ -183,6 +186,10 @@ Shortcut o nel client Windows:
 ```
 http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret1
 ```
+
+Le credenziali nell'URL restano supportate per i Comandi rapidi iPhone. Come alternativa
+facoltativa, altri client API possono usare gli header `X-Clipboard-User` e
+`X-Clipboard-Password`.
 
 Dal browser apri `http://SERVER_IP:5088/` ed **esegui il login** (nome utente = account,
 oppure lascialo vuoto per lo spazio condiviso). La sessione viene ricordata per dispositivo.

@@ -2,7 +2,7 @@ manifestVersion: 1
 id: clipboard-bridge
 category: utilities
 name: Clipboard Bridge
-version: "1.0.0"
+version: "1.0.1"
 tagline: Share clipboard text and files across your devices
 description: >-
   A private clipboard and file bridge with history, multiple accounts,
@@ -13,6 +13,6 @@ repo: https://github.com/mattbox03/Clipboard-Bridge
 support: https://github.com/mattbox03/Clipboard-Bridge/issues
 port: 5088
 defaultPassword: $APP_PASSWORD
-releaseNotes: Initial store release.
+releaseNotes: More reliable threaded server, safer local sessions and configurable upload size.
 submitter: mattbox03
 submission: https://github.com/mattbox03/Clipboard-Bridge-AppStore

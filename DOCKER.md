@@ -4,6 +4,12 @@ Clipboard Bridge is a single Flask service. It listens on port `5088`, stores
 all persistent state in `/data`, exposes `/health`, and requires no database or
 sidecar. The image supports `linux/amd64` and `linux/arm64`.
 
+Current stable server image:
+
+```text
+ghcr.io/mattbox03/clipboard-bridge-server:1.0.1
+```
+
 ## Docker Compose
 
 ```bash
@@ -37,8 +43,8 @@ Umbrel, Runtipi, Docker Compose, Docker Desktop and Dockge.
 ## First publication
 
 1. Push this application repository to GitHub.
-2. Create and push the release tag: `git tag v1.0.0` then
-   `git push origin v1.0.0`.
+2. Create and push the release tag: `git tag vX.Y.Z` then
+   `git push origin vX.Y.Z`.
 3. Wait for the **Build container image** workflow to publish the GHCR image.
 4. Make the GHCR package public in the package settings.
 5. Update the separate `Clipboard-Bridge-AppStore` repository when its manifests
@@ -83,4 +89,6 @@ Restore it to the same location before restarting. Do not run
 
 Set `WEB_PASSWORD` and `API_TOKEN` outside a trusted LAN. `ACCOUNTS` accepts an
 arbitrary practical number of comma-separated `user:password` pairs. Every
-account has isolated history and files.
+account has isolated history and files. URL credentials remain supported for
+iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
+`X-Clipboard-Password` headers.

@@ -15,7 +15,7 @@ dist/
 Output/
 
 # Dati generati a runtime
-config.json
+/config.json
 clipboard_data/
 data/
 local_history/

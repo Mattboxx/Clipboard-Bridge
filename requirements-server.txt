@@ -1,2 +1,3 @@
-# Dipendenze del server
-flask>=3.0
+# Server dependencies
+flask>=3.0,<4
+gunicorn>=23

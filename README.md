@@ -130,6 +130,8 @@ docker compose up -d --build
 The history is stored in the `./data` folder and survives restarts. Works in any Docker
 environment.
 
+Stable server image: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.1`.
+
 For container details, backups and image tags, see
 [Docker and app-store installation](DOCKER.md).
 
@@ -143,6 +145,7 @@ For container details, backups and image tags, see
 | `CLIPBOARD_ACCOUNTS` | *(empty)* | extra isolated accounts, format `user1:pass1,user2:pass2` (see below) |
 | `CLIPBOARD_ACCOUNTS_FILE` | *(empty)* | path to a file with one `user:password` per line (for many accounts) |
 | `CLIPBOARD_MAX_HISTORY` | `200` | number of items kept in the history |
+| `CLIPBOARD_MAX_UPLOAD_MB` | `64` | maximum size of one request or uploaded file in MB |
 | `CLIPBOARD_DATA_DIR` | `./clipboard_data` | data folder |
 
 > For use outside the local network, set a token and use a VPN or a reverse proxy with
@@ -182,6 +185,9 @@ in the Windows client:
 ```
 http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret1
 ```
+
+These URL credentials remain supported for iPhone Shortcuts. As an optional alternative,
+API clients may send `X-Clipboard-User` and `X-Clipboard-Password` headers instead.
 
 In a browser, open `http://SERVER_IP:5088/` and **log in** (username = account, or leave it
 empty for the shared space). The session is remembered per device. The shared space keeps

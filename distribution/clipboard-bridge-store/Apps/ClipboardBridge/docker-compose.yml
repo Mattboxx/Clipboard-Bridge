@@ -1,7 +1,7 @@
 name: clipboard-bridge
 services:
   clipboard-bridge:
-    image: ghcr.io/mattbox03/clipboard-bridge-server:1.0.0
+    image: ghcr.io/mattbox03/clipboard-bridge-server:1.0.1
     container_name: clipboard-bridge
     restart: unless-stopped
     ports:
@@ -12,6 +12,7 @@ services:
       CLIPBOARD_PORT: "5088"
       CLIPBOARD_DATA_DIR: /data
       CLIPBOARD_MAX_HISTORY: "${CLIPBOARD_MAX_HISTORY:-200}"
+      CLIPBOARD_MAX_UPLOAD_MB: "${CLIPBOARD_MAX_UPLOAD_MB:-64}"
       CLIPBOARD_TOKEN: "${CLIPBOARD_TOKEN:-}"
       CLIPBOARD_PASSWORD: "${CLIPBOARD_PASSWORD:-}"
       CLIPBOARD_ACCOUNTS: "${CLIPBOARD_ACCOUNTS:-}"
@@ -50,8 +51,8 @@ x-casaos:
     before_install:
       en_US: Set a web password and API token if the service is reachable by untrusted devices.
       it_IT: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
-  version: "1.0.0"
-  update_at: "2026-07-23"
+  version: "1.0.1"
+  update_at: "2026-07-29"
   website: https://github.com/mattbox03/Clipboard-Bridge
   repo: https://github.com/mattbox03/Clipboard-Bridge
   support: https://github.com/mattbox03/Clipboard-Bridge/issues

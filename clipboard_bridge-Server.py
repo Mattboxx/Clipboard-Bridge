@@ -19,7 +19,11 @@ Start:
 Configuration via environment variables (all optional):
     CLIPBOARD_PORT          listening port           (default 5088)
     CLIPBOARD_TOKEN         security token           (default: empty = no auth)
+    CLIPBOARD_PASSWORD      shared web password      (default: empty)
+    CLIPBOARD_ACCOUNTS      extra user:password pairs
+    CLIPBOARD_ACCOUNTS_FILE path to an accounts file
     CLIPBOARD_MAX_HISTORY   max history items        (default 200)
+    CLIPBOARD_MAX_UPLOAD_MB max request size in MB   (default 64)
     CLIPBOARD_DATA_DIR      data folder              (default ./clipboard_data)
 
 Example with a token (PowerShell):
@@ -28,10 +32,13 @@ Example with a token (PowerShell):
 
 from flask import Flask, request, jsonify, Response, send_file, redirect, session, g
 from markupsafe import escape
+from werkzeug.exceptions import RequestEntityTooLarge
 from urllib.parse import quote
 import base64
+import hmac
 import os
 import json
+import re
 import time
 import uuid
 import mimetypes
@@ -41,15 +48,28 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
+SERVER_VERSION = "1.0.1"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
 INDEX_FILE = os.path.join(DATA_DIR, "index.json")
 
-PORT = int(os.environ.get("CLIPBOARD_PORT", "5088"))
+
+def _env_int(name, default, minimum, maximum):
+    """Read a bounded integer without making the server fail on a bad setting."""
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+PORT = _env_int("CLIPBOARD_PORT", 5088, 1, 65535)
 AUTH_TOKEN = os.environ.get("CLIPBOARD_TOKEN", "").strip()      # API token for the GENERAL/shared space
 WEB_PASSWORD = os.environ.get("CLIPBOARD_PASSWORD", "").strip()  # web password for the GENERAL space
-MAX_HISTORY = int(os.environ.get("CLIPBOARD_MAX_HISTORY", "200"))
+MAX_HISTORY = _env_int("CLIPBOARD_MAX_HISTORY", 200, 1, 100000)
+MAX_UPLOAD_MB = _env_int("CLIPBOARD_MAX_UPLOAD_MB", 64, 1, 1024)
+_ACCOUNT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 
 def _parse_accounts(raw):
@@ -67,7 +87,7 @@ def _parse_accounts(raw):
         if ":" in part:
             name, pw = part.split(":", 1)
             name = name.strip()
-            if name:
+            if _ACCOUNT_NAME.fullmatch(name):
                 accounts[name] = pw
     return accounts
 
@@ -83,18 +103,29 @@ if _ACCOUNTS_FILE and os.path.isfile(_ACCOUNTS_FILE):
         ACCOUNTS.update(_parse_accounts(_f.read()))   # file entries extend / override
 
 os.makedirs(ITEMS_DIR, exist_ok=True)
-app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB per request
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
 # Persistent secret key so login sessions survive server restarts.
 _key_path = os.path.join(DATA_DIR, "secret.key")
 try:
     with open(_key_path, "rb") as _kf:
         app.secret_key = _kf.read()
+    if len(app.secret_key) < 32:
+        raise OSError("invalid secret key")
 except OSError:
     app.secret_key = os.urandom(32)
     try:
         with open(_key_path, "wb") as _kf:
             _kf.write(app.secret_key)
+    except OSError:
+        pass
+if os.name != "nt":
+    try:
+        os.chmod(_key_path, 0o600)
     except OSError:
         pass
 app.permanent_session_lifetime = timedelta(days=3650)  # keep the device logged in ~10 years
@@ -125,6 +156,11 @@ def _use_account(name):
     g.items_dir = os.path.join(base, "items")
     g.index_file = os.path.join(base, "index.json")
     os.makedirs(g.items_dir, exist_ok=True)
+
+
+def _same_secret(first, second):
+    """Compare user-provided secrets without early-exit timing differences."""
+    return hmac.compare_digest(str(first or ""), str(second or ""))
 
 
 # ---------- Index / history management ----------
@@ -283,7 +319,7 @@ def _extract_upload():
         if not b64:
             return None, None, None
         try:
-            raw = base64.b64decode(b64)
+            raw = base64.b64decode(b64, validate=True)
         except (ValueError, base64.binascii.Error):
             return None, None, None
         return raw, data.get("filename"), data.get("mime")
@@ -300,7 +336,8 @@ def _extract_upload():
 # ---------- Authentication & account selection ----------
 # General/shared space: optional CLIPBOARD_TOKEN (API) and CLIPBOARD_PASSWORD (web page).
 # Extra accounts (CLIPBOARD_ACCOUNTS): selected per request with ?user=NAME&password=PASS
-# (handy at the end of a Shortcut URL) or via the web login. Each account is isolated.
+# (handy at the end of a Shortcut URL), X-Clipboard-User / X-Clipboard-Password headers,
+# or the web login. Each account is isolated.
 @app.before_request
 def _check_auth():
     p = request.path
@@ -309,9 +346,12 @@ def _check_auth():
     web = (p == "/" or p.startswith("/ui/"))
 
     # 1) Explicit account in the URL: ?user=NAME&password=PASS  (Shortcuts / Windows client)
-    u = request.args.get("user")
+    u = request.headers.get("X-Clipboard-User") or request.args.get("user")
     if u:
-        if u in ACCOUNTS and ACCOUNTS[u] == request.args.get("password", ""):
+        supplied_password = request.headers.get("X-Clipboard-Password")
+        if supplied_password is None:
+            supplied_password = request.args.get("password", "")
+        if u in ACCOUNTS and _same_secret(ACCOUNTS[u], supplied_password):
             _use_account(u)
             if web:  # remember it so the browser stays on this account
                 session.permanent = True
@@ -331,15 +371,34 @@ def _check_auth():
     if web:
         if WEB_PASSWORD and not session.get("auth"):
             token = request.args.get("token", "")
-            if not (AUTH_TOKEN and token == AUTH_TOKEN):
+            if not (AUTH_TOKEN and _same_secret(AUTH_TOKEN, token)):
                 return redirect("/login")
         return
     if AUTH_TOKEN:
         token = request.headers.get("X-Auth-Token") or request.args.get("token", "")
-        if token == AUTH_TOKEN or session.get("auth"):
+        if _same_secret(AUTH_TOKEN, token) or session.get("auth"):
             return
         return jsonify({"error": "unauthorized"}), 401
     return  # general space open (no token configured)
+
+
+@app.after_request
+def _set_response_headers(response):
+    """Avoid caching clipboard data and add browser-safe defaults for local HTTP."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def _upload_too_large(_error):
+    return jsonify({
+        "error": "request too large",
+        "max_upload_mb": MAX_UPLOAD_MB,
+    }), 413
 
 
 LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -370,7 +429,7 @@ def login():
         u = request.form.get("username", "").strip()
         pw = request.form.get("password", "")
         if u:
-            if u in ACCOUNTS and ACCOUNTS[u] == pw:
+            if u in ACCOUNTS and _same_secret(ACCOUNTS[u], pw):
                 session.permanent = True
                 session["acct"] = u
                 session.pop("auth", None)
@@ -378,7 +437,7 @@ def login():
         elif not WEB_PASSWORD:               # shared space is open, no password
             session.clear()
             return redirect("/")
-        elif pw == WEB_PASSWORD:             # shared space password
+        elif _same_secret(WEB_PASSWORD, pw):  # shared space password
             session.permanent = True
             session["auth"] = True
             session.pop("acct", None)
@@ -458,7 +517,7 @@ def push_file():
     if not filename or not b64:
         return jsonify({"error": "filename or data missing"}), 400
     try:
-        raw = base64.b64decode(b64)
+        raw = base64.b64decode(b64, validate=True)
     except (ValueError, base64.binascii.Error):
         return jsonify({"error": "invalid base64"}), 400
     entry = _add_binary(raw, filename, mimetypes.guess_type(filename)[0])
@@ -589,7 +648,12 @@ def item_raw(item_id):
 # ---------- Diagnostics ----------
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "items": len(_load_index()), "auth": bool(AUTH_TOKEN)})
+    return jsonify({
+        "status": "ok",
+        "version": SERVER_VERSION,
+        "items": len(_load_index()),
+        "auth": bool(AUTH_TOKEN or WEB_PASSWORD or ACCOUNTS),
+    })
 
 
 # Inline logo and icons (SVG): no external images, works offline.
@@ -690,9 +754,11 @@ def _human(n):
 
 
 def _urlrow(method, url, copy_label):
+    js_url = escape(json.dumps(url))
     return (f'<div class="url"><span class="method">{method}</span>'
             f'<code>{escape(url)}</code>'
-            f"<button class=\"btn small ghost\" type=\"button\" onclick=\"copyText('{url}')\">{copy_label}</button></div>")
+            f'<button class="btn small ghost" type="button" '
+            f'onclick="copyText({js_url})">{copy_label}</button></div>')
 
 
 def _ui_token():
@@ -706,7 +772,7 @@ def _ui_lang():
 
 def _home_url():
     tok = _ui_token()
-    return "/?lang=" + _ui_lang() + (("&token=" + tok) if tok else "")
+    return "/?lang=" + _ui_lang() + (("&token=" + quote(tok, safe="")) if tok else "")
 
 
 WEB_STRINGS = {
@@ -761,12 +827,14 @@ def render_home():
     tok = _ui_token()
     lang = _ui_lang()
     S = WEB_STRINGS[lang]
-    tq = ("?token=" + tok) if tok else ""                       # token only (raw / API / img)
-    fq = "?lang=" + lang + (("&token=" + tok) if tok else "")   # forms / redirect (lang + token)
+    encoded_token = quote(tok, safe="")
+    tq = ("?token=" + encoded_token) if tok else ""             # token only (raw / API / img)
+    fq = "?lang=" + lang + (("&token=" + encoded_token) if tok else "")  # forms / redirect
     base = request.host_url.rstrip("/")
     acct = getattr(g, "account", None)                          # current account (or None = shared)
     # Suffix for the iPhone URLs: account credentials, or the general token.
-    suffix = ("?user=" + quote(acct) + "&password=" + quote(ACCOUNTS.get(acct, ""))) if acct else tq
+    suffix = ("?user=" + quote(acct, safe="") + "&password="
+              + quote(ACCOUNTS.get(acct, ""), safe="")) if acct else tq
 
     e = _latest_of(("text",))
     latest_text = _read_text(e) if e else ""
@@ -797,8 +865,8 @@ def render_home():
     if acct:
         nota += f'<div class="nota">{S["acct_note"].format(name=escape(acct))}</div>'
 
-    en_href = "/?lang=en" + (("&token=" + tok) if tok else "")
-    it_href = "/?lang=it" + (("&token=" + tok) if tok else "")
+    en_href = "/?lang=en" + (("&token=" + encoded_token) if tok else "")
+    it_href = "/?lang=it" + (("&token=" + encoded_token) if tok else "")
     en_on = "on" if lang == "en" else ""
     it_on = "on" if lang == "it" else ""
     lang_toggle = (f'<div class="lang"><a href="{en_href}" class="{en_on}">EN</a>'
@@ -816,8 +884,10 @@ def render_home():
     else:
         account_bar = ""
 
-    js_consts = (f'const TOKENQS="{tq}";const T_COPIED="{S["js_copied"]}";'
-                 f'const T_DEL="{S["js_del"]}";const T_CLEAR="{S["js_clear"]}";')
+    js_consts = (f"const TOKENQS={json.dumps(tq)};"
+                 f"const T_COPIED={json.dumps(S['js_copied'])};"
+                 f"const T_DEL={json.dumps(S['js_del'])};"
+                 f"const T_CLEAR={json.dumps(S['js_clear'])};")
 
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -895,6 +965,7 @@ if __name__ == "__main__":
     print(f"   Listening on:   http://0.0.0.0:{PORT}")
     print(f"   Data folder:    {DATA_DIR}")
     print(f"   Max history:    {MAX_HISTORY} items")
+    print(f"   Max upload:     {MAX_UPLOAD_MB} MB")
     print(f"   API token:      {'ON' if AUTH_TOKEN else 'disabled'}")
     print(f"   Web password:   {'ON' if WEB_PASSWORD else 'disabled'}")
     if ACCOUNTS:

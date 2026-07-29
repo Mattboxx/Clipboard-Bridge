@@ -260,6 +260,9 @@ To use an account, add its credentials at the **end of the URL** —
 `...?user=alice&password=secret1` — in your iPhone Shortcuts, or fill the **Account** and
 **Account password** fields in the Windows client Settings. On the web page, log in with the
 account name (leave it empty for the shared space). The shared space is always available.
+The URL format remains the recommended option for the two simple iPhone Shortcuts.
+Other API clients can optionally use `X-Clipboard-User` and `X-Clipboard-Password`
+headers instead.
 
 > The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
 > use the server away from that LAN, put it behind a VPN or an HTTPS reverse proxy.
