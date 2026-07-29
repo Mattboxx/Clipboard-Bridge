@@ -83,8 +83,11 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 ## 4. Set up the Windows client
 
 ### Option A — Executable
-Build it once with `build_client.bat` (requires Python), then run
-`dist\Clipboard Bridge.exe`. No installation needed.
+Download the installer or portable EXE from the GitHub Release. To rebuild both universal
+Windows packages locally, run `build_windows_release.bat 2.0.0` (requires Python,
+PyInstaller and Inno Setup). No personal configuration is embedded in either package.
+The installer uses the current user's LocalAppData folder and does not require
+administrator privileges.
 
 ### Option B — From source
 ```bash

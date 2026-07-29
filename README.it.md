@@ -6,7 +6,7 @@
 [Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
+**Windows 2.0.0:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
 [Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
 > **Sincronizzazione automatica su Windows:** questa avvertenza vale sia per la versione
@@ -86,10 +86,12 @@ di Microsoft o servizi cloud esterni.
 | `Dockerfile`, `docker-compose.yml` | esecuzione del server in container |
 | `requirements-server.txt`, `requirements-client.txt` | dipendenze |
 | `build_client.bat` | compila il client in un singolo `.exe` |
+| `build_windows_release.bat` | crea EXE portable e installer Windows |
+| `Clipboard_Bridge_setup.iss` | definizione universale dell'installer Inno Setup |
 | `icon.ico` | icona dell'applicazione |
 
-> L'eseguibile del client non è incluso nel repository: compilalo con `build_client.bat`
-> (vedi sotto) oppure scaricalo dalle Release, se disponibili.
+> Scarica l'installer o il portable già verificati dalle Release. Il file tracciato
+> `dist\Clipboard Bridge.exe` può anche essere ricompilato con gli script descritti sotto.
 
 ---
 
@@ -193,8 +195,9 @@ Lo spazio condiviso continua a usare `CLIPBOARD_TOKEN` / `CLIPBOARD_PASSWORD` co
 Sostituisci `SERVER_IP` con l'indirizzo del computer su cui gira il server.
 
 ### Eseguibile
-Compila il client con `build_client.bat` (richiede Python). Otterrai
-`dist\Clipboard Bridge.exe`, che puoi avviare senza installare nulla.
+Scarica l'installer/portable già pronto dalle Release oppure compila il solo client portable
+con `build_client.bat` (richiede Python). Otterrai `dist\Clipboard Bridge.exe`, avviabile
+senza installazione.
 
 ### Da sorgente
 ```bash
@@ -291,13 +294,38 @@ l'intestazione `X-Auth-Token`.
 
 ---
 
-## Compilare l'eseguibile del client
+## Compilare i pacchetti Windows
 
-```bash
+Per creare soltanto l'eseguibile portable:
+
+```bat
 build_client.bat
 ```
-Usa PyInstaller per produrre `dist\Clipboard Bridge.exe`. Per cambiare icona, sostituisci
-`icon.ico` con la tua e rilancia lo script.
+
+Per creare entrambi i file universali da caricare nella Release GitHub:
+
+```bat
+build_windows_release.bat 2.0.0
+```
+
+Lo script usa PyInstaller e Inno Setup senza includere percorsi o configurazioni personali.
+Produce:
+
+```text
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe
+```
+
+L'installer è per singolo utente: installa il programma in
+`%LOCALAPPDATA%\Programs\Clipboard Bridge` e non richiede privilegi di amministratore.
+Impostazioni e file ricevuti restano nel profilo dell'utente corrente.
+
+Se mancano gli strumenti di compilazione:
+
+```powershell
+winget install --id Python.Python.3.12 --exact
+winget install --id JRSoftware.InnoSetup --exact
+```
 
 ## Domande frequenti
 

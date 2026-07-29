@@ -6,7 +6,7 @@
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
+**Windows 2.0.0:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
 [Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
 > **Auto-sync on Windows:** this warning applies to both the installer and portable
@@ -85,10 +85,12 @@ external cloud service.
 | `Dockerfile`, `docker-compose.yml` | run the server in a container |
 | `requirements-server.txt`, `requirements-client.txt` | dependencies |
 | `build_client.bat` | build the client into a single `.exe` |
+| `build_windows_release.bat` | build both the portable EXE and Windows installer |
+| `Clipboard_Bridge_setup.iss` | universal Inno Setup installer definition |
 | `icon.ico` | application icon |
 
-> The client executable is not committed: build it with `build_client.bat` (see below) or
-> download it from the Releases page, if available.
+> Download the tested installer or portable executable from Releases. The tracked
+> `dist\Clipboard Bridge.exe` can also be rebuilt locally with the scripts below.
 
 ---
 
@@ -192,8 +194,9 @@ using `CLIPBOARD_TOKEN` / `CLIPBOARD_PASSWORD` as before.
 Replace `SERVER_IP` with the address of the machine running the server.
 
 ### Executable
-Build the client with `build_client.bat` (requires Python). You get
-`dist\Clipboard Bridge.exe`, which runs without installing anything.
+Download the ready-made installer/portable build from Releases, or build only the portable
+client with `build_client.bat` (requires Python). You get `dist\Clipboard Bridge.exe`,
+which runs without installing anything.
 
 ### From source
 ```bash
@@ -291,13 +294,38 @@ Create shortcuts using the **Get Contents of URL** action. If you use a token, a
 
 ---
 
-## Building the client executable
+## Building the Windows packages
 
-```bash
+To build only the portable executable:
+
+```bat
 build_client.bat
 ```
-Uses PyInstaller to produce `dist\Clipboard Bridge.exe`. To change the icon, replace
-`icon.ico` with your own and run the script again.
+
+To create both universal GitHub release assets:
+
+```bat
+build_windows_release.bat 2.0.0
+```
+
+The script uses PyInstaller and Inno Setup, without personal paths or configuration files.
+It produces:
+
+```text
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe
+```
+
+The installer is per-user: it installs under `%LOCALAPPDATA%\Programs\Clipboard Bridge`
+and does not require administrator privileges. Application settings and received files
+remain in the current user's profile.
+
+Install missing build tools with:
+
+```powershell
+winget install --id Python.Python.3.12 --exact
+winget install --id JRSoftware.InnoSetup --exact
+```
 
 ## Frequently asked questions
 

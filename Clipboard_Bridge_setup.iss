@@ -2,30 +2,29 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only
 
+#ifndef MyAppVersion
+  #define MyAppVersion "2.0.0"
+#endif
+
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{FF43BA53-C19E-4278-AD71-60162436216E}
 AppName=Clipboard Bridge
-AppVersion=2.0.0
-AppVerName=Clipboard Bridge 2.0.0
-DefaultDirName={autopf}\Clipboard Bridge
+AppVersion={#MyAppVersion}
+AppVerName=Clipboard Bridge {#MyAppVersion}
+AppPublisher=Clipboard Bridge
+AppPublisherURL=https://github.com/mattbox03/Clipboard-Bridge
+AppSupportURL=https://github.com/mattbox03/Clipboard-Bridge/issues
+AppUpdatesURL=https://github.com/mattbox03/Clipboard-Bridge/releases/latest
+DefaultDirName={localappdata}\Programs\Clipboard Bridge
 UninstallDisplayIcon={app}\Clipboard Bridge.exe
-; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
-; on anything but x64 and Windows 11 on Arm.
+; The bundled executable is built for x64 Windows and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
-; "ArchitecturesInstallIn64BitMode=x64compatible" requests that the
-; install be done in "64-bit mode" on x64 or Windows 11 on Arm,
-; meaning it should use the native 64-bit Program Files directory and
-; the 64-bit view of the registry.
-ArchitecturesInstallIn64BitMode=x64compatible
-; Uncomment the following line to use a 64-bit installer.
-;SetupArchitecture=x64
 DisableProgramGroupPage=yes
-; Administrator access is used only to install the executable in Program Files.
-; Runtime data is stored in the current user's LocalAppData and Downloads folders.
-PrivilegesRequired=admin
-OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0
+; Per-user installation avoids UAC and never writes application data in Program Files.
+PrivilegesRequired=lowest
+OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_x64_V{#MyAppVersion}
 SetupIconFile=icon.ico
 SolidCompression=yes
 WizardStyle=modern dynamic
@@ -35,9 +34,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 
 [CustomMessages]
-; Stringhe personalizzate per supportare il multilingua nell'opzione di avvio
-english.StartupDescription=Launch Clipboard Bridge on Windows startup (As Admin)
-italian.StartupDescription=Avvia Clipboard Bridge all'avvio di Windows (Come Amministratore)
+english.StartupDescription=Launch Clipboard Bridge when you sign in to Windows
+italian.StartupDescription=Avvia Clipboard Bridge all'accesso a Windows
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -50,14 +48,8 @@ Source: "dist\Clipboard Bridge.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{autoprograms}\Clipboard Bridge"; Filename: "{app}\Clipboard Bridge.exe"
 Name: "{autodesktop}\Clipboard Bridge"; Filename: "{app}\Clipboard Bridge.exe"; Tasks: desktopicon
+Name: "{userstartup}\Clipboard Bridge"; Filename: "{app}\Clipboard Bridge.exe"; Tasks: windowsstartup
 
 [Run]
-; Crea l'attività pianificata per l'avvio come Admin (eseguita solo se la Task 'windowsstartup' è selezionata)
-Filename: "schtasks"; Parameters: "/Create /TN ""ClipboardBridgeStartup"" /TR ""'{app}\Clipboard Bridge.exe'"" /SC ONLOGON /RL HIGHEST /F"; Flags: runhidden; Tasks: windowsstartup
-
-; Avvia il programma al termine dell'installazione
+; Launch the application when an interactive installation finishes.
 Filename: "{app}\Clipboard Bridge.exe"; Description: "{cm:LaunchProgram,Clipboard Bridge}"; Flags: nowait postinstall skipifsilent
-
-[UninstallRun]
-; Eliminazione sicura dell'attività pianificata con RunOnceId per rimuovere il Warning
-Filename: "schtasks"; Parameters: "/Delete /TN ""ClipboardBridgeStartup"" /F"; Flags: runhidden; RunOnceId: "DeleteClipboardBridgeStartupTask"
