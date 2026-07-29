@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.2"
+  #define MyAppVersion "2.0.3"
 #endif
 
 [Setup]
@@ -27,6 +27,8 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_x64_V{#MyAppVersion}
 SetupIconFile=icon.ico
+CloseApplications=yes
+RestartApplications=no
 SolidCompression=yes
 WizardStyle=modern dynamic
 

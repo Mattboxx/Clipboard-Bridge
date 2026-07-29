@@ -328,16 +328,20 @@ build_client.bat
 Per creare entrambi i file universali da caricare nella Release GitHub:
 
 ```bat
-build_windows_release.bat 2.0.2
+build_windows_release.bat 2.0.3
 ```
+
+Per usare invece l'interfaccia di Inno Setup: esegui `build_client.bat`, apri
+`Clipboard_Bridge_setup.iss` in Inno Setup e scegli **Build → Compile**. Il codice completo
+dell'installer è già contenuto in quel file `.iss`.
 
 Lo script usa PyInstaller e Inno Setup senza includere percorsi o configurazioni personali.
 Produce:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe
-Output\Clipboard.Bridge.Release.V2.0.2\
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.3.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.3.exe
+Output\Clipboard.Bridge.Release.V2.0.3\
 ```
 
 L'installer è per singolo utente: installa il programma in
