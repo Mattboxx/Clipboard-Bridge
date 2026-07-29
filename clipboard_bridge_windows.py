@@ -156,6 +156,7 @@ _sync_state_lock = threading.Lock()
 _connection_lock = threading.Lock()
 _connection_state = "checking"
 _connection_checked_server = None
+_instance_mutex = None
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -1944,6 +1945,40 @@ def _set_app_id():
         pass
 
 
+def _acquire_single_instance(name="Local\\ClipboardBridge.Client.SingleInstance"):
+    """Return False when another Clipboard Bridge process is already running."""
+    global _instance_mutex
+    if os.name != "nt":
+        return True
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_mutex = kernel32.CreateMutexW
+    create_mutex.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+    create_mutex.restype = wintypes.HANDLE
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+
+    mutex = create_mutex(None, False, name)
+    if not mutex:
+        return True
+    if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+        close_handle(mutex)
+        return False
+    _instance_mutex = mutex
+    return True
+
+
+def _release_single_instance():
+    global _instance_mutex
+    if os.name == "nt" and _instance_mutex:
+        try:
+            ctypes.windll.kernel32.CloseHandle(_instance_mutex)
+        except Exception:
+            pass
+    _instance_mutex = None
+
+
 def _log_crash(exc):
     try:
         import traceback
@@ -1972,20 +2007,25 @@ def _tk_poll():
 
 def main():
     global _icon, _root
-    _set_app_id()
-    # Tkinter owns the main thread (windows behave like normal Windows windows).
-    _root = tk.Tk()
-    _root.withdraw()
-    if config.get("mode") == "server":
-        start_host_server()
-    threading.Thread(target=sync_loop, daemon=True).start()
-    register_hotkeys()
-    _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
-    _install_notification_click_handler(_icon)
-    # pystray runs on its own thread; it asks the Tk thread to open windows via _cmd_q.
-    threading.Thread(target=_icon.run, daemon=True).start()
-    _root.after(120, _tk_poll)
-    _root.mainloop()
+    if not _acquire_single_instance():
+        return
+    try:
+        _set_app_id()
+        # Tkinter owns the main thread (windows behave like normal Windows windows).
+        _root = tk.Tk()
+        _root.withdraw()
+        if config.get("mode") == "server":
+            start_host_server()
+        threading.Thread(target=sync_loop, daemon=True).start()
+        register_hotkeys()
+        _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
+        _install_notification_click_handler(_icon)
+        # pystray runs on its own thread; it asks the Tk thread to open windows via _cmd_q.
+        threading.Thread(target=_icon.run, daemon=True).start()
+        _root.after(120, _tk_poll)
+        _root.mainloop()
+    finally:
+        _release_single_instance()
 
 
 if __name__ == "__main__":

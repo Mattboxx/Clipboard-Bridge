@@ -11,7 +11,7 @@ import requests
 def load_client(tmp_path, monkeypatch):
     local_app_data = tmp_path / "LocalAppData"
     user_profile = tmp_path / "User"
-    (user_profile / "Downloads").mkdir(parents=True)
+    (user_profile / "Downloads").mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
     monkeypatch.setenv("USERPROFILE", str(user_profile))
     monkeypatch.setenv("ProgramFiles", str(tmp_path / "Program Files"))
@@ -318,3 +318,22 @@ def test_connection_check_uses_pending_settings(tmp_path, monkeypatch):
         "password": "secret",
     }
     assert request_data["headers"] == {"X-Auth-Token": "api-token"}
+
+
+def test_windows_single_instance_mutex_blocks_duplicate(tmp_path, monkeypatch):
+    if os.name != "nt":
+        return
+
+    first = load_client(tmp_path, monkeypatch)
+    second = load_client(tmp_path, monkeypatch)
+    mutex_name = f"Local\\ClipboardBridge.Test.{os.getpid()}.{id(first)}"
+
+    assert first._acquire_single_instance(mutex_name) is True
+    try:
+        assert second._acquire_single_instance(mutex_name) is False
+    finally:
+        first._release_single_instance()
+        second._release_single_instance()
+
+    assert second._acquire_single_instance(mutex_name) is True
+    second._release_single_instance()

@@ -236,6 +236,8 @@ Compare un'icona nella tray (clic destro per il menu):
 - La tray mostra un solo indicatore compatto verde/rosso. Le Impostazioni mostrano lo stato
   completo e permettono di usare **Verifica connessione ora** dopo aver cambiato indirizzo
   o credenziali.
+- Windows mantiene una sola istanza di Clipboard Bridge, evitando processi duplicati e
+  cloni dell'icona nella tray.
 
 L'app installata non scrive mai i dati di utilizzo dentro `Program Files`. Configurazione,
 cronologia locale, dati della modalità Server ed error log vengono salvati in

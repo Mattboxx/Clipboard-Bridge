@@ -125,6 +125,8 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **Connection status**: the tray contains one compact green/red indicator. Settings show
   the detailed result and **Check connection now** after editing the address, token or
   account.
+- **Single instance**: starting Clipboard Bridge again while it is already running exits
+  immediately, so duplicate processes and tray icons are not created.
 
 ### Modes: connect to a server, or BE the server
 Choose the mode from **Settings → General**:

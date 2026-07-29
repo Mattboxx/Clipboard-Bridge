@@ -232,6 +232,8 @@ A tray icon appears (right-click for the menu):
   isolated space. Default hotkeys are `Ctrl+Alt+C` to send and `Ctrl+Alt+V` to receive.
 - The tray shows one compact green/red connection indicator. Settings provide the full
   status and **Check connection now** after changing the address or credentials.
+- Windows allows only one Clipboard Bridge instance at a time, preventing duplicate
+  processes and cloned tray icons.
 
 The installed application never writes runtime data inside `Program Files`. Configuration,
 local history, embedded Server-mode data and crash logs are stored in
