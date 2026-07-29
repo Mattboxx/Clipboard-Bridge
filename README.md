@@ -229,9 +229,8 @@ A tray icon appears (right-click for the menu):
 - **Language** (English / Italiano) and **Settings...** (server IP, port, token, account).
   Leave **Account** empty for the shared space, or enter an account name + password to use
   an isolated space.
-- The tray menu and Settings show **CONNECTED**, **NOT CONNECTED**, or
-  **SERVER FOUND, LOGIN REJECTED**. Use **Check connection now** after changing the address
-  or credentials.
+- The tray shows one compact green/red connection indicator. Settings provide the full
+  status and **Check connection now** after changing the address or credentials.
 
 The installed application never writes runtime data inside `Program Files`. Configuration,
 local history, embedded Server-mode data and crash logs are stored in

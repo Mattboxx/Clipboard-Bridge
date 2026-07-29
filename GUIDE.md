@@ -121,9 +121,9 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   notification to open File Explorer with the received file selected. The downloaded
   file is also placed on the Windows clipboard, ready to paste.
 - **History…**: browse the server and local history; re-use or delete items.
-- **Connection status**: the tray menu and Settings explicitly show whether the client is
-  connected, offline, or reaching the server with rejected credentials. Use **Check
-  connection now** after editing the address, token or account.
+- **Connection status**: the tray contains one compact green/red indicator. Settings show
+  the detailed result and **Check connection now** after editing the address, token or
+  account.
 
 ### Modes: connect to a server, or BE the server
 Right-click the tray icon → **Mode**:

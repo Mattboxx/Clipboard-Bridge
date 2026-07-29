@@ -29,7 +29,7 @@ from ctypes import wintypes
 
 import requests
 import pyperclip
-from PIL import Image, ImageGrab, ImageDraw
+from PIL import Image, ImageGrab, ImageDraw, ImageTk
 from pystray import Icon, MenuItem, Menu
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -155,6 +155,7 @@ _notification_lock = threading.Lock()
 _sync_state_lock = threading.Lock()
 _connection_lock = threading.Lock()
 _connection_state = "checking"
+_connection_checked_server = None
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -174,11 +175,20 @@ STRINGS = {
         "server_on": "Server mode ON — connect to {addr}",
         "client_on": "Client mode ON",
         "status_connected": "Connection: CONNECTED ({server})",
+        "status_connected_short": "Connection: CONNECTED",
         "status_offline": "Connection: NOT CONNECTED",
         "status_auth": "Connection: SERVER FOUND, LOGIN REJECTED",
         "status_checking": "Connection: checking...",
+        "tray_connected": "🟢 Connected",
+        "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
         "connected_notice": "Connected to {server}",
+        "tab_connection": "Connection",
+        "tab_automation": "Automation",
+        "tab_shortcuts": "Shortcuts",
+        "section_server": "Server address",
+        "section_account": "Authentication",
+        "section_status": "Connection status",
         "server_addr": "Server: {addr}  (click to copy)",
         "addr_copied": "Address copied: {addr}",
         "server_err": "Cannot start server: {e}",
@@ -248,11 +258,20 @@ STRINGS = {
         "server_on": "Modalità server attiva — connettiti a {addr}",
         "client_on": "Modalità client attiva",
         "status_connected": "Connessione: COLLEGATO ({server})",
+        "status_connected_short": "Connessione: COLLEGATO",
         "status_offline": "Connessione: NON COLLEGATO",
         "status_auth": "Connessione: SERVER TROVATO, ACCESSO RIFIUTATO",
         "status_checking": "Connessione: verifica in corso...",
+        "tray_connected": "🟢 Connesso",
+        "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
         "connected_notice": "Collegato a {server}",
+        "tab_connection": "Connessione",
+        "tab_automation": "Automazione",
+        "tab_shortcuts": "Scorciatoie",
+        "section_server": "Indirizzo server",
+        "section_account": "Autenticazione",
+        "section_status": "Stato connessione",
         "server_addr": "Server: {addr}  (clic per copiare)",
         "addr_copied": "Indirizzo copiato: {addr}",
         "server_err": "Impossibile avviare il server: {e}",
@@ -398,11 +417,13 @@ def auth_params(extra=None):
     return p
 
 
-def _set_connection_state(state):
-    global _connection_state
+def _set_connection_state(state, checked_server=None):
+    global _connection_state, _connection_checked_server
     with _connection_lock:
         changed = _connection_state != state
         _connection_state = state
+        if checked_server:
+            _connection_checked_server = checked_server
     if changed and _icon is not None:
         try:
             _icon.title = "Clipboard Bridge - " + (
@@ -416,8 +437,9 @@ def _set_connection_state(state):
 def connection_status_text():
     with _connection_lock:
         state = _connection_state
+        checked_server = _connection_checked_server
     if state == "connected":
-        return t("status_connected", server=server_url())
+        return t("status_connected", server=checked_server or server_url())
     if state == "auth":
         return t("status_auth")
     if state == "offline":
@@ -425,27 +447,53 @@ def connection_status_text():
     return t("status_checking")
 
 
-def check_connection():
+def tray_connection_text():
+    with _connection_lock:
+        connected = _connection_state == "connected"
+    return t("tray_connected" if connected else "tray_disconnected")
+
+
+def settings_connection_status_text():
+    with _connection_lock:
+        connected = _connection_state == "connected"
+    return t("status_connected_short") if connected else connection_status_text()
+
+
+def check_connection(settings=None):
     """Verify both server reachability and credentials for the selected space."""
-    _set_connection_state("checking")
+    values = settings or config
+    if values.get("mode") == "server":
+        target = f"http://127.0.0.1:{values.get('host_port', 5088)}"
+    else:
+        target = f"http://{values.get('server_ip', '127.0.0.1')}:{values.get('server_port', 5088)}"
+
+    params = {"limit": 1}
+    user = str(values.get("username", "")).strip()
+    if user:
+        params["user"] = user
+        params["password"] = values.get("password", "")
+    token = str(values.get("token", "")).strip()
+    headers = {"X-Auth-Token": token} if token else {}
+
+    _set_connection_state("checking", target)
     try:
         response = requests.get(
-            f"{server_url()}/clipboard/history",
-            params=auth_params({"limit": 1}),
-            headers=auth_headers(),
+            f"{target}/clipboard/history",
+            params=params,
+            headers=headers,
             timeout=4,
         )
         if response.status_code in (401, 403):
-            _set_connection_state("auth")
+            _set_connection_state("auth", target)
             return False
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, dict) or "items" not in payload:
             raise ValueError("unexpected server response")
-        _set_connection_state("connected")
+        _set_connection_state("connected", target)
         return True
     except Exception:
-        _set_connection_state("offline")
+        _set_connection_state("offline", target)
         return False
 
 
@@ -1389,58 +1437,213 @@ def open_history_window(icon=None, item=None):
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("440x690")
+    root.geometry("560x650")
+    root.minsize(520, 610)
+    root.configure(background="#f5f7fb")
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
-    frm = ttk.Frame(root, padding=16)
-    frm.pack(fill="both", expand=True)
+    def release_topmost():
+        try:
+            root.attributes("-topmost", False)
+        except tk.TclError:
+            pass
 
-    fields = [
-        (t("lbl_ip"), "server_ip"),
-        (t("lbl_port"), "server_port"),
-        (t("lbl_host_port"), "host_port"),
-        (t("lbl_token"), "token"),
-        (t("lbl_user"), "username"),
-        (t("lbl_pass"), "password"),
-        (t("lbl_interval"), "poll_interval"),
-        (t("lbl_hk_send"), "hotkey_send"),
-        (t("lbl_hk_recv"), "hotkey_receive"),
-    ]
+    root.after(300, release_topmost)
+
+    style = ttk.Style(root)
+    style.configure("Settings.TNotebook", background="#f5f7fb", borderwidth=0)
+    style.configure(
+        "Settings.TNotebook.Tab",
+        font=("Segoe UI", 9, "bold"),
+        padding=(16, 9),
+    )
+    style.configure(
+        "Settings.Section.TLabelframe",
+        padding=12,
+    )
+    style.configure(
+        "Settings.Section.TLabelframe.Label",
+        font=("Segoe UI", 9, "bold"),
+    )
+    style.configure("Settings.Primary.TButton", font=("Segoe UI", 9, "bold"), padding=(16, 8))
+    style.configure("Settings.TCheckbutton", padding=(0, 5))
+
+    header = tk.Frame(root, background="#ffffff", padx=20, pady=14)
+    header.pack(fill="x")
+    try:
+        logo_image = Image.open(ICON_PATH).resize((38, 38), Image.Resampling.LANCZOS)
+        root._settings_logo = ImageTk.PhotoImage(logo_image)
+        tk.Label(header, image=root._settings_logo, background="#ffffff").pack(side="left")
+    except Exception:
+        pass
+    title_box = tk.Frame(header, background="#ffffff")
+    title_box.pack(side="left", padx=(12, 0))
+    tk.Label(
+        title_box,
+        text="Clipboard Bridge",
+        background="#ffffff",
+        foreground="#17212b",
+        font=("Segoe UI", 13, "bold"),
+    ).pack(anchor="w")
+    tk.Label(
+        title_box,
+        text=t("settings").rstrip("…"),
+        background="#ffffff",
+        foreground="#64748b",
+        font=("Segoe UI", 9),
+    ).pack(anchor="w")
+
+    body = ttk.Frame(root, padding=(18, 14, 18, 0))
+    body.pack(fill="both", expand=True)
+    notebook = ttk.Notebook(body, style="Settings.TNotebook")
+    notebook.pack(fill="both", expand=True)
+
+    connection_tab = ttk.Frame(notebook, padding=14)
+    automation_tab = ttk.Frame(notebook, padding=14)
+    shortcuts_tab = ttk.Frame(notebook, padding=14)
+    notebook.add(connection_tab, text=t("tab_connection"))
+    notebook.add(automation_tab, text=t("tab_automation"))
+    notebook.add(shortcuts_tab, text=t("tab_shortcuts"))
+
     entries = {}
-    for i, (label, key) in enumerate(fields):
-        ttk.Label(frm, text=label).grid(row=i, column=0, sticky="w", pady=5)
-        var = tk.StringVar(value=str(config.get(key, "")))
-        ttk.Entry(frm, textvariable=var, width=20,
-                  show="*" if key == "password" else "").grid(row=i, column=1, pady=5, sticky="e")
-        entries[key] = var
 
-    ttk.Label(frm, text=t("hint_hk"), foreground="#6b7280").grid(
-        row=len(fields), column=0, columnspan=2, sticky="w")
+    def add_field(parent, row, label, key, secret=False):
+        parent.grid_columnconfigure(1, weight=1)
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 14), pady=6)
+        variable = tk.StringVar(value=str(config.get(key, "")))
+        entry = ttk.Entry(parent, textvariable=variable, show="*" if secret else "")
+        entry.grid(row=row, column=1, sticky="ew", pady=6)
+        entries[key] = variable
+
+    status_box = ttk.LabelFrame(
+        connection_tab,
+        text=t("section_status"),
+        style="Settings.Section.TLabelframe",
+    )
+    status_box.pack(fill="x", pady=(0, 12))
+    status_panel = tk.Frame(status_box, background="#eff6ff", padx=12, pady=10)
+    status_panel.pack(fill="x")
+    status_dot = tk.Label(
+        status_panel,
+        text="●",
+        background="#eff6ff",
+        foreground="#2563eb",
+        font=("Segoe UI", 11),
+    )
+    status_dot.grid(row=0, column=0, sticky="w", padx=(0, 8))
+    status_label = tk.Label(
+        status_panel,
+        text=settings_connection_status_text(),
+        background="#eff6ff",
+        foreground="#1d4ed8",
+        font=("Segoe UI", 9, "bold"),
+        anchor="w",
+        justify="left",
+        wraplength=300,
+    )
+    status_label.grid(row=0, column=1, sticky="ew")
+    status_panel.grid_columnconfigure(1, weight=1)
+
+    server_box = ttk.LabelFrame(
+        connection_tab,
+        text=t("section_server"),
+        style="Settings.Section.TLabelframe",
+    )
+    server_box.pack(fill="x", pady=(0, 12))
+    add_field(server_box, 0, t("lbl_ip"), "server_ip")
+    add_field(server_box, 1, t("lbl_port"), "server_port")
+    add_field(server_box, 2, t("lbl_host_port"), "host_port")
+
+    account_box = ttk.LabelFrame(
+        connection_tab,
+        text=t("section_account"),
+        style="Settings.Section.TLabelframe",
+    )
+    account_box.pack(fill="x")
+    add_field(account_box, 0, t("lbl_token"), "token", secret=True)
+    add_field(account_box, 1, t("lbl_user"), "username")
+    add_field(account_box, 2, t("lbl_pass"), "password", secret=True)
 
     auto = tk.BooleanVar(value=config.get("auto_sync", False))
     auto_files = tk.BooleanVar(value=config.get("auto_receive_files", True))
     mon = tk.BooleanVar(value=config.get("monitor_clipboard", True))
-    hk = tk.BooleanVar(value=config.get("hotkeys_enabled", True))
-    base = len(fields) + 1
-    ttk.Checkbutton(frm, text=t("chk_autosync"),
-                    variable=auto).grid(row=base, column=0, columnspan=2, sticky="w", pady=3)
-    ttk.Checkbutton(frm, text=t("chk_auto_files"),
-                    variable=auto_files).grid(row=base + 1, column=0, columnspan=2, sticky="w", pady=3)
-    ttk.Checkbutton(frm, text=t("chk_monitor"),
-                    variable=mon).grid(row=base + 2, column=0, columnspan=2, sticky="w", pady=3)
-    ttk.Checkbutton(frm, text=t("chk_hotkeys"),
-                    variable=hk).grid(row=base + 3, column=0, columnspan=2, sticky="w", pady=3)
-
-    status_frame = ttk.Frame(frm)
-    status_frame.grid(row=base + 4, column=0, columnspan=2, sticky="ew", pady=(10, 2))
-    status_label = ttk.Label(
-        status_frame,
-        text=connection_status_text(),
-        font=("Segoe UI", 9, "bold"),
-        wraplength=230,
+    automation_box = ttk.LabelFrame(
+        automation_tab,
+        text=t("tab_automation"),
+        style="Settings.Section.TLabelframe",
     )
-    status_label.pack(side="left", fill="x", expand=True)
+    automation_box.pack(fill="x")
+    ttk.Checkbutton(
+        automation_box,
+        text=t("chk_autosync"),
+        variable=auto,
+        style="Settings.TCheckbutton",
+    ).pack(anchor="w")
+    ttk.Checkbutton(
+        automation_box,
+        text=t("chk_auto_files"),
+        variable=auto_files,
+        style="Settings.TCheckbutton",
+    ).pack(anchor="w")
+    ttk.Checkbutton(
+        automation_box,
+        text=t("chk_monitor"),
+        variable=mon,
+        style="Settings.TCheckbutton",
+    ).pack(anchor="w")
+    interval_box = ttk.Frame(automation_box)
+    interval_box.pack(fill="x", pady=(10, 0))
+    add_field(interval_box, 0, t("lbl_interval"), "poll_interval")
+
+    hk = tk.BooleanVar(value=config.get("hotkeys_enabled", True))
+    shortcuts_box = ttk.LabelFrame(
+        shortcuts_tab,
+        text=t("tab_shortcuts"),
+        style="Settings.Section.TLabelframe",
+    )
+    shortcuts_box.pack(fill="x")
+    ttk.Checkbutton(
+        shortcuts_box,
+        text=t("chk_hotkeys"),
+        variable=hk,
+        style="Settings.TCheckbutton",
+    ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+    add_field(shortcuts_box, 1, t("lbl_hk_send"), "hotkey_send")
+    add_field(shortcuts_box, 2, t("lbl_hk_recv"), "hotkey_receive")
+    ttk.Label(shortcuts_box, text=t("hint_hk"), foreground="#64748b").grid(
+        row=3, column=0, columnspan=2, sticky="w", pady=(4, 0)
+    )
+
+    footer = ttk.Frame(root, padding=(18, 12, 18, 16))
+    footer.pack(fill="x")
+    msg = ttk.Label(footer, text="", foreground="#b91c1c", wraplength=290)
+    msg.pack(side="left", fill="x", expand=True)
+
+    def pending_connection_values(validate_interval=True):
+        try:
+            port = int(entries["server_port"].get())
+            host_port = int(entries["host_port"].get())
+            interval = (
+                int(entries["poll_interval"].get())
+                if validate_interval
+                else config.get("poll_interval", 3)
+            )
+        except ValueError:
+            msg.config(text=t("err_numbers"))
+            notebook.select(connection_tab)
+            return None
+        values = dict(config)
+        values.update({
+            "server_ip": entries["server_ip"].get().strip(),
+            "server_port": port,
+            "host_port": host_port,
+            "token": entries["token"].get().strip(),
+            "username": entries["username"].get().strip(),
+            "password": entries["password"].get(),
+            "poll_interval": interval if interval > 0 else 3,
+        })
+        return values
 
     def show_connection_status():
         try:
@@ -1449,50 +1652,51 @@ def open_settings(icon=None, item=None):
             return
         if not exists:
             return
+        colors = {
+            "connected": ("#ecfdf3", "#15803d"),
+            "checking": ("#eff6ff", "#2563eb"),
+            "auth": ("#fff7ed", "#c2410c"),
+            "offline": ("#fef2f2", "#b91c1c"),
+        }
+        background, foreground = colors.get(_connection_state, colors["checking"])
+        status_panel.config(background=background)
+        status_dot.config(background=background, foreground=foreground)
         status_label.config(
-            text=connection_status_text(),
-            foreground="#15803d" if _connection_state == "connected"
-            else "#b45309" if _connection_state == "checking"
-            else "#b91c1c",
+            text=settings_connection_status_text(),
+            background=background,
+            foreground=foreground,
         )
         connection_button.config(state="normal")
 
     def test_connection():
+        values = pending_connection_values(validate_interval=False)
+        if values is None:
+            connection_button.config(state="normal")
+            return
+        msg.config(text="")
         connection_button.config(state="disabled")
         _set_connection_state("checking")
         show_connection_status()
 
         def work():
-            check_connection()
+            check_connection(values)
             _cmd_q.put(show_connection_status)
         threading.Thread(target=work, daemon=True).start()
 
     connection_button = ttk.Button(
-        status_frame,
+        status_panel,
         text=t("check_connection"),
         command=test_connection,
     )
-    connection_button.pack(side="right", padx=(8, 0))
-
-    msg = ttk.Label(frm, text="", foreground="#b91c1c", wraplength=360)
-    msg.grid(row=base + 5, column=0, columnspan=2, sticky="w", pady=(6, 0))
+    connection_button.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
     def save():
-        try:
-            port = int(entries["server_port"].get())
-            host_port = int(entries["host_port"].get())
-            interval = int(entries["poll_interval"].get())
-        except ValueError:
-            msg.config(text=t("err_numbers"))
+        values = pending_connection_values()
+        if values is None:
             return
+        host_port = values["host_port"]
         old_host_port = config.get("host_port", 5088)
-        config["server_ip"] = entries["server_ip"].get().strip()
-        config["server_port"] = port
-        config["host_port"] = host_port
-        config["token"] = entries["token"].get().strip()
-        config["username"] = entries["username"].get().strip()
-        config["password"] = entries["password"].get()
-        config["poll_interval"] = interval if interval > 0 else 3
+        config.update(values)
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
         config["hotkey_receive"] = entries["hotkey_receive"].get().strip().lower() or "ctrl+alt+v"
         config["auto_sync"] = auto.get()
@@ -1517,11 +1721,16 @@ def open_settings(icon=None, item=None):
         notify(t("settings_saved"))
         _run_bg(check_connection)
 
-    bar = ttk.Frame(frm)
-    bar.grid(row=base + 6, column=0, columnspan=2, pady=16)
-    ttk.Button(bar, text=t("save"), command=save).pack(side="left", padx=6)
-    ttk.Button(bar, text=t("cancel"), command=root.destroy).pack(side="left")
-    root.after(80, test_connection)
+    actions = ttk.Frame(footer)
+    actions.pack(side="right")
+    ttk.Button(actions, text=t("cancel"), command=root.destroy).pack(side="left", padx=(0, 8))
+    ttk.Button(
+        actions,
+        text=t("save"),
+        command=save,
+        style="Settings.Primary.TButton",
+    ).pack(side="left")
+    root.after(120, test_connection)
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
@@ -1660,8 +1869,7 @@ def create_tray_icon():
 
 def build_menu():
     return Menu(
-        MenuItem(lambda i: connection_status_text(), lambda icon, item: None, enabled=False),
-        MenuItem(lambda i: t("check_connection"), action_check_connection),
+        MenuItem(lambda i: tray_connection_text(), lambda icon, item: None, enabled=False),
         Menu.SEPARATOR,
         MenuItem(lambda i: t("send"), lambda icon, item: _run_bg(action_send_clipboard), default=True),
         MenuItem(lambda i: t("recv"), lambda icon, item: _run_bg(action_get_latest)),

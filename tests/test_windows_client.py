@@ -267,3 +267,54 @@ def test_connection_check_distinguishes_connected_and_rejected(tmp_path, monkeyp
     assert client.check_connection() is False
     assert client._connection_state == "auth"
     assert "LOGIN REJECTED" in client.connection_status_text()
+
+
+def test_tray_connection_text_is_compact_and_colored(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+
+    client._set_connection_state("connected")
+    assert client.tray_connection_text() == "\U0001f7e2 Connected"
+
+    client._set_connection_state("offline")
+    assert client.tray_connection_text() == "\U0001f534 Disconnected"
+
+
+def test_connection_check_uses_pending_settings(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    request_data = {}
+
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"items": [], "count": 0}
+
+    def fake_get(url, **kwargs):
+        request_data["url"] = url
+        request_data.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(client.requests, "get", fake_get)
+    settings = dict(client.config)
+    settings.update({
+        "mode": "client",
+        "server_ip": "10.0.0.25",
+        "server_port": 5099,
+        "username": "alice",
+        "password": "secret",
+        "token": "api-token",
+    })
+
+    assert client.check_connection(settings) is True
+    assert request_data["url"] == "http://10.0.0.25:5099/clipboard/history"
+    assert request_data["params"] == {
+        "limit": 1,
+        "user": "alice",
+        "password": "secret",
+    }
+    assert request_data["headers"] == {"X-Auth-Token": "api-token"}

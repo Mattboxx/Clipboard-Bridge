@@ -231,9 +231,9 @@ Compare un'icona nella tray (clic destro per il menu):
 - **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token, account del server).
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
   per usare uno spazio isolato.
-- Il menu della tray e le Impostazioni mostrano chiaramente **COLLEGATO**,
-  **NON COLLEGATO** oppure **SERVER TROVATO, ACCESSO RIFIUTATO**. Usa
-  **Verifica connessione ora** dopo aver cambiato indirizzo o credenziali.
+- La tray mostra un solo indicatore compatto verde/rosso. Le Impostazioni mostrano lo stato
+  completo e permettono di usare **Verifica connessione ora** dopo aver cambiato indirizzo
+  o credenziali.
 
 L'app installata non scrive mai i dati di utilizzo dentro `Program Files`. Configurazione,
 cronologia locale, dati della modalità Server ed error log vengono salvati in
