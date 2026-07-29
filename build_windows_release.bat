@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 set "VERSION=%~1"
-if "%VERSION%"=="" set "VERSION=2.0.0"
+if "%VERSION%"=="" set "VERSION=2.0.1"
 
 set "PYTHON_EXE=python"
 if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (

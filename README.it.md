@@ -6,8 +6,8 @@
 [Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
-[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
+**Windows 2.0.1:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe) ·
+[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe)
 
 > **Sincronizzazione automatica su Windows:** questa avvertenza vale sia per la versione
 > installer sia per la portable. Windows può impedire a Clipboard Bridge di rilevare le
@@ -235,9 +235,9 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 
 ## 4. iPhone (Comandi rapidi)
 
-I Comandi rapidi già pronti sono inclusi nella
-[release Clipboard Bridge 2.0.0](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0),
-insieme all'installer per Windows:
+I Comandi rapidi già pronti sono stati pubblicati come asset nella
+[release Clipboard Bridge 2.0.0](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
+e restano compatibili con la versione Windows 2.0.1:
 
 - **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
   invia gli appunti attuali dell'iPhone a Clipboard Bridge.
@@ -305,15 +305,15 @@ build_client.bat
 Per creare entrambi i file universali da caricare nella Release GitHub:
 
 ```bat
-build_windows_release.bat 2.0.0
+build_windows_release.bat 2.0.1
 ```
 
 Lo script usa PyInstaller e Inno Setup senza includere percorsi o configurazioni personali.
 Produce:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe
 ```
 
 L'installer è per singolo utente: installa il programma in

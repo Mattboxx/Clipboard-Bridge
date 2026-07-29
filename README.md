@@ -6,8 +6,8 @@
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
-[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
+**Windows 2.0.1:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe) ·
+[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe)
 
 > **Auto-sync on Windows:** this warning applies to both the installer and portable
 > versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by
@@ -234,9 +234,9 @@ paste text, upload and download files, and read the Shortcuts instructions. With
 
 ## 4. iPhone (Shortcuts)
 
-Ready-made Shortcuts are included in the
-[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0),
-together with the Windows installer:
+The ready-made Shortcuts were published as assets in the
+[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
+and remain compatible with Windows version 2.0.1:
 
 - **[Download Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
   sends the current iPhone clipboard to Clipboard Bridge.
@@ -305,15 +305,15 @@ build_client.bat
 To create both universal GitHub release assets:
 
 ```bat
-build_windows_release.bat 2.0.0
+build_windows_release.bat 2.0.1
 ```
 
 The script uses PyInstaller and Inno Setup, without personal paths or configuration files.
 It produces:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe
 ```
 
 The installer is per-user: it installs under `%LOCALAPPDATA%\Programs\Clipboard Bridge`

@@ -84,7 +84,7 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.0` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.1` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
@@ -153,8 +153,9 @@ to each shortcut.
 
 ### Download the ready-made Shortcuts
 
-The [Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
-contains the Windows installer and both prepared iPhone Shortcuts:
+Both prepared iPhone Shortcuts were published in the
+[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
+and remain compatible with Windows version 2.0.1:
 
 - [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)
 - [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)
