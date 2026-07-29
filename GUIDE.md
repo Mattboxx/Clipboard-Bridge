@@ -103,10 +103,13 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **Send clipboard → server**: uploads whatever you copied (text, an image, or files
   selected in File Explorer). Also bound to `Ctrl+Alt+C` by default.
 - **Receive latest ← server**: puts the latest item back on your clipboard (files are
-  saved to the `ricevuti` folder). Also bound to `Ctrl+Alt+V`.
+  saved to `Downloads\Clipboard Bridge`). Also bound to `Ctrl+Alt+V`.
 - **Send a file…**: pick any file(s) to upload.
 - **Auto-sync** (tray menu, off by default): when enabled, anything you copy — text,
   images **and files** — is sent to the server automatically, without clicking.
+- **Automatically download new files** (Settings, on by default): while the client is
+  running, new PDFs and other files arrive without pressing Receive. Click the Windows
+  notification to open File Explorer with the received file selected.
 - **History…**: browse the server and local history; re-use or delete items.
 
 ### Modes: connect to a server, or BE the server
@@ -125,6 +128,11 @@ Right-click the tray icon → **Mode**:
 
 To start the client automatically with Windows, press `Win+R`, type `shell:startup`, and
 put a shortcut to the executable in that folder.
+
+The executable can safely remain in `Program Files`: Clipboard Bridge stores configuration,
+history, Server-mode data and logs in `%LOCALAPPDATA%\Clipboard Bridge`. Received files are
+stored in `%USERPROFILE%\Downloads\Clipboard Bridge`. Data from older versions found beside
+the executable is copied automatically on first run.
 
 > **Auto-sync and administrator privileges:** this applies to both the installer and
 > portable versions. Auto-sync may not detect clipboard changes made by applications that

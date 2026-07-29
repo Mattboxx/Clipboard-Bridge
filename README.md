@@ -6,7 +6,7 @@
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
+**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
 [Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
 > **Auto-sync on Windows:** this warning applies to both the installer and portable
@@ -50,6 +50,8 @@ external cloud service.
 - Exchange **text, images and files** of any type.
 - **History** on the server and on the client.
 - **Windows client** in the tray: send/receive and global keyboard shortcuts.
+- **Automatic incoming files:** new PDFs and other files are downloaded while the client
+  is running; click the Windows notification to reveal the file.
 - **Web interface** on the server (usable from the iPhone browser too) to paste text and
   upload/download files.
 - Integration with **iPhone Shortcuts** via simple HTTP requests.
@@ -201,11 +203,18 @@ python clipboard_bridge_windows.py
 
 A tray icon appears (right-click for the menu):
 - **Send clipboard -> server** / **Receive latest <- server** (text, images, files).
-- **Send a file...** and **Open received folder** (received files go into `ricevuti`).
+- **Send a file...** and **Open received folder**. New remote files are downloaded
+  automatically to `%USERPROFILE%\Downloads\Clipboard Bridge`; clicking their notification
+  opens File Explorer and selects the received file.
 - **History...**, **Keyboard shortcuts** (default `Ctrl+Alt+C` sends, `Ctrl+Alt+V` receives).
 - **Language** (English / Italiano) and **Settings...** (server IP, port, token, account).
   Leave **Account** empty for the shared space, or enter an account name + password to use
   an isolated space.
+
+The installed application never writes runtime data inside `Program Files`. Configuration,
+local history, embedded Server-mode data and crash logs are stored in
+`%LOCALAPPDATA%\Clipboard Bridge`. Existing data found beside an older executable is copied
+automatically on first run.
 
 ### Start with Windows
 `Win+R` -> `shell:startup`, then put a shortcut to the executable there.

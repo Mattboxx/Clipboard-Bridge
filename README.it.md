@@ -6,7 +6,7 @@
 [Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe.exe) ·
+**Windows 2.0.0:** [Installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0.exe) ·
 [Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Clipboard.Bridge.Portable.Windows.x64.V2.0.0.exe)
 
 > **Sincronizzazione automatica su Windows:** questa avvertenza vale sia per la versione
@@ -49,6 +49,8 @@ di Microsoft o servizi cloud esterni.
 - Scambio di **testo, immagini e file** di qualsiasi tipo.
 - **Cronologia** sul server e sul client.
 - **Client Windows** nella tray: invio/ricezione e scorciatoie da tastiera globali.
+- **Ricezione automatica dei file:** PDF e altri file nuovi vengono scaricati mentre il
+  client è attivo; cliccando la notifica di Windows viene mostrato il file.
 - **Interfaccia web** del server (utilizzabile anche dal browser dell'iPhone) per
   incollare testo e caricare/scaricare file.
 - Integrazione con le **Shortcuts iPhone** tramite semplici richieste HTTP.
@@ -202,11 +204,18 @@ python clipboard_bridge_windows.py
 
 Compare un'icona nella tray (clic destro per il menu):
 - **Invia appunti -> server** / **Ricevi ultimo <- server** (testo, immagini, file).
-- **Invia un file...** e **Apri cartella ricevuti** (i file ricevuti finiscono in `ricevuti`).
+- **Invia un file...** e **Apri cartella ricevuti**. I nuovi file remoti vengono scaricati
+  automaticamente in `%USERPROFILE%\Downloads\Clipboard Bridge`; cliccando la notifica si
+  apre Esplora file con il documento ricevuto selezionato.
 - **Cronologia...**, **Scorciatoie da tastiera** (default `Ctrl+Alt+C` invia, `Ctrl+Alt+V` riceve).
 - **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token, account del server).
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
   per usare uno spazio isolato.
+
+L'app installata non scrive mai i dati di utilizzo dentro `Program Files`. Configurazione,
+cronologia locale, dati della modalità Server ed error log vengono salvati in
+`%LOCALAPPDATA%\Clipboard Bridge`. Al primo avvio vengono copiati automaticamente gli
+eventuali dati trovati accanto a un vecchio eseguibile.
 
 ### Avvio automatico
 `Win+R` -> `shell:startup` e metti lì un collegamento all'eseguibile.

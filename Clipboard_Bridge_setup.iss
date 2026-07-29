@@ -7,8 +7,8 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{FF43BA53-C19E-4278-AD71-60162436216E}
 AppName=Clipboard Bridge
-AppVersion=1.0.0
-;AppVerName=Clipboard Bridge 1.0.0
+AppVersion=2.0.0
+AppVerName=Clipboard Bridge 2.0.0
 DefaultDirName={autopf}\Clipboard Bridge
 UninstallDisplayIcon={app}\Clipboard Bridge.exe
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
@@ -22,9 +22,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ; Uncomment the following line to use a 64-bit installer.
 ;SetupArchitecture=x64
 DisableProgramGroupPage=yes
-; Richiede privilegi di amministratore coerenti con l'installazione globale
+; Administrator access is used only to install the executable in Program Files.
+; Runtime data is stored in the current user's LocalAppData and Downloads folders.
 PrivilegesRequired=admin
-OutputBaseFilename=mysetup
+OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.0
 SetupIconFile=icon.ico
 SolidCompression=yes
 WizardStyle=modern dynamic

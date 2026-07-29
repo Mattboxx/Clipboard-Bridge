@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.spec
 .venv/
@@ -8,6 +9,8 @@ env/
 
 # Build del client (l'eseguibile va distribuito come Release, non nel repo)
 build/
+build_output/
+build_temp/
 dist/
 Output/
 

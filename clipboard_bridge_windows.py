@@ -2,8 +2,8 @@
 Clipboard Bridge - Windows client.
 
 A small tray application that exchanges clipboard content with the server:
-text, images and files of any type. Received files are saved in the
-"ricevuti" folder. The interface is available in English (default) and Italian.
+text, images and files of any type. Received files are saved in the user's
+Downloads folder. The interface is available in English (default) and Italian.
 
 Dependencies: requests, pyperclip, pystray, pillow, keyboard.
 Writing images to the clipboard uses ctypes (no pywin32 required).
@@ -22,6 +22,8 @@ import mimetypes
 import threading
 import http.server
 import ctypes
+import shutil
+import subprocess
 from ctypes import wintypes
 
 import requests
@@ -36,7 +38,9 @@ try:
 except Exception:
     keyboard = None
 
-# Paths: handle both running from source and the PyInstaller executable.
+# The executable may be installed under Program Files, which is read-only for
+# normal users. Keep resources beside the executable and runtime data in
+# user-writable folders.
 if getattr(sys, "frozen", False):
     APP_DIR = os.path.dirname(sys.executable)
     RES_DIR = getattr(sys, "_MEIPASS", APP_DIR)
@@ -44,15 +48,53 @@ else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
     RES_DIR = APP_DIR
 
-CONFIG_FILE = os.path.join(APP_DIR, "config.json")
-LOCAL_DIR = os.path.join(APP_DIR, "local_history")
+DATA_DIR = os.path.join(
+    os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
+    "Clipboard Bridge",
+)
+DOWNLOADS_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+LOCAL_DIR = os.path.join(DATA_DIR, "local_history")
 LOCAL_INDEX = os.path.join(LOCAL_DIR, "local_history.json")
-RECEIVED_DIR = os.path.join(APP_DIR, "ricevuti")
-HOST_DIR = os.path.join(APP_DIR, "server_data")          # store used when this PC IS the server
+RECEIVED_DIR = os.path.join(DOWNLOADS_DIR, "Clipboard Bridge")
+HOST_DIR = os.path.join(DATA_DIR, "server_data")          # store used when this PC IS the server
 HOST_ITEMS = os.path.join(HOST_DIR, "items")
 HOST_INDEX = os.path.join(HOST_DIR, "index.json")
+SYNC_STATE_FILE = os.path.join(DATA_DIR, "sync_state.json")
+ERROR_LOG = os.path.join(DATA_DIR, "error.log")
 ICON_PATH = os.path.join(RES_DIR, "icon.ico")
-os.makedirs(LOCAL_DIR, exist_ok=True)
+
+
+def _copy_legacy_dir(source, destination):
+    if not os.path.isdir(source):
+        return
+    try:
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+    except OSError:
+        pass
+
+
+def _prepare_data_dirs():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+
+    # Versions up to 2.0.0 stored data next to the executable. Import it once
+    # when the new destination is empty, leaving the original files untouched.
+    old_config = os.path.join(APP_DIR, "config.json")
+    if not os.path.exists(CONFIG_FILE) and os.path.isfile(old_config):
+        try:
+            shutil.copy2(old_config, CONFIG_FILE)
+        except OSError:
+            pass
+    if not os.path.exists(LOCAL_INDEX):
+        _copy_legacy_dir(os.path.join(APP_DIR, "local_history"), LOCAL_DIR)
+    if not os.path.exists(HOST_INDEX):
+        _copy_legacy_dir(os.path.join(APP_DIR, "server_data"), HOST_DIR)
+    if not os.path.exists(RECEIVED_DIR):
+        _copy_legacy_dir(os.path.join(APP_DIR, "ricevuti"), RECEIVED_DIR)
+
+
+_prepare_data_dirs()
 
 DEFAULT_CONFIG = {
     "lang": "en",
@@ -64,6 +106,7 @@ DEFAULT_CONFIG = {
     "username": "",            # server account name (empty = shared space)
     "password": "",            # server account password
     "auto_sync": False,
+    "auto_receive_files": True,
     "monitor_clipboard": True,
     "poll_interval": 3,
     "max_local_history": 100,
@@ -76,6 +119,9 @@ stop_event = threading.Event()
 _icon = None   # tray icon (pystray runs on its own thread)
 _root = None   # the single hidden Tk root that owns the GUI event loop (main thread)
 _cmd_q = queue.Queue()  # GUI commands from the tray thread, run on the Tk thread
+_notification_action = None
+_notification_lock = threading.Lock()
+_sync_state_lock = threading.Lock()
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -109,6 +155,7 @@ STRINGS = {
         "text_recv": "Text copied to the clipboard",
         "image_recv": "Image copied to the clipboard",
         "file_saved": "File saved: {name}",
+        "file_arrived": "New file received: {name}\nClick to show it in the folder.",
         "no_items": "Nothing on the server",
         "recv_err": "Receive error: {e}",
         "copied": "Copied to the clipboard",
@@ -139,6 +186,7 @@ STRINGS = {
         "lbl_hk_recv": "Receive hotkey",
         "hint_hk": "(e.g. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Automatic synchronization",
+        "chk_auto_files": "Automatically download new files",
         "chk_monitor": "Record local history",
         "chk_hotkeys": "Keyboard shortcuts enabled",
         "err_numbers": "Port and interval must be whole numbers.",
@@ -175,6 +223,7 @@ STRINGS = {
         "text_recv": "Testo ricevuto negli appunti",
         "image_recv": "Immagine ricevuta negli appunti",
         "file_saved": "File salvato: {name}",
+        "file_arrived": "Nuovo file ricevuto: {name}\nClicca per mostrarlo nella cartella.",
         "no_items": "Nessun elemento sul server",
         "recv_err": "Errore ricezione: {e}",
         "copied": "Copiato negli appunti",
@@ -205,6 +254,7 @@ STRINGS = {
         "lbl_hk_recv": "Hotkey ricezione",
         "hint_hk": "(es. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Sincronizzazione automatica",
+        "chk_auto_files": "Scarica automaticamente i nuovi file",
         "chk_monitor": "Registra la cronologia locale",
         "chk_hotkeys": "Scorciatoie da tastiera attive",
         "err_numbers": "Porta e intervallo devono essere numeri interi.",
@@ -236,8 +286,11 @@ def load_config():
 
 
 def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    temp = CONFIG_FILE + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
+    os.replace(temp, CONFIG_FILE)
 
 
 config = load_config()
@@ -266,7 +319,10 @@ def auth_params(extra=None):
     return p
 
 
-def notify(message):
+def notify(message, action=None):
+    global _notification_action
+    with _notification_lock:
+        _notification_action = action
     if _icon is not None:
         try:
             _icon.notify(message, "Clipboard Bridge")
@@ -363,15 +419,39 @@ def _img_hash(img):
 
 def save_received(filename, raw):
     os.makedirs(RECEIVED_DIR, exist_ok=True)
-    base, ext = os.path.splitext(filename or "file.bin")
-    dest = os.path.join(RECEIVED_DIR, filename or "file.bin")
+    name = os.path.basename(str(filename or "file.bin").replace("\\", "/"))
+    name = "".join("_" if c in '<>:"/\\|?*' or ord(c) < 32 else c for c in name)
+    name = name.strip(" .") or "file.bin"
+    stem, ext = os.path.splitext(name)
+    if stem.upper() in {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    }:
+        name = "_" + name
+        stem, ext = os.path.splitext(name)
+    dest = os.path.join(RECEIVED_DIR, name)
     i = 1
     while os.path.exists(dest):
-        dest = os.path.join(RECEIVED_DIR, f"{base} ({i}){ext}")
+        dest = os.path.join(RECEIVED_DIR, f"{stem} ({i}){ext}")
         i += 1
     with open(dest, "wb") as f:
         f.write(raw)
     return dest
+
+
+def reveal_received_file(path):
+    os.makedirs(RECEIVED_DIR, exist_ok=True)
+    try:
+        if os.path.isfile(path):
+            subprocess.Popen(["explorer.exe", "/select,", os.path.normpath(path)])
+        else:
+            os.startfile(RECEIVED_DIR)
+    except Exception:
+        try:
+            os.startfile(RECEIVED_DIR)
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------- network
@@ -388,15 +468,19 @@ def push_bytes(filename, raw):
                       json=payload, headers=auth_headers(),
                       params=auth_params(), timeout=30)
     r.raise_for_status()
+    try:
+        return r.json().get("id")
+    except (ValueError, AttributeError):
+        return None
 
 
 def push_file(path):
     with open(path, "rb") as f:
-        push_bytes(os.path.basename(path), f.read())
+        return push_bytes(os.path.basename(path), f.read())
 
 
 def push_image(img):
-    push_bytes("clipboard.png", image_to_png(img))
+    return push_bytes("clipboard.png", image_to_png(img))
 
 
 def pull_latest():
@@ -418,6 +502,83 @@ def fetch_item(item_id):
                      headers=auth_headers(), params=auth_params(), timeout=30)
     r.raise_for_status()
     return r.json()
+
+
+def _sync_source_key():
+    source = {
+        "url": server_url(),
+        "account": config.get("username", "").strip(),
+    }
+    return hashlib.sha256(
+        json.dumps(source, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+
+def _load_sync_state():
+    if os.path.exists(SYNC_STATE_FILE):
+        try:
+            with open(SYNC_STATE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {"sources": {}}
+
+
+def _save_sync_state(state):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    temp = SYNC_STATE_FILE + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+    os.replace(temp, SYNC_STATE_FILE)
+
+
+def _mark_remote_file_seen(item_id):
+    if not item_id:
+        return
+    with _sync_state_lock:
+        state = _load_sync_state()
+        sources = state.setdefault("sources", {})
+        key = _sync_source_key()
+        seen = sources.setdefault(key, [])
+        if item_id not in seen:
+            seen.insert(0, item_id)
+        sources[key] = seen[:500]
+        _save_sync_state(state)
+
+
+def _auto_receive_remote_files():
+    items = fetch_history(200)
+    remote_files = [item for item in items if item.get("type") == "file" and item.get("id")]
+    current_ids = [item["id"] for item in remote_files]
+    key = _sync_source_key()
+
+    with _sync_state_lock:
+        state = _load_sync_state()
+        sources = state.setdefault("sources", {})
+        if key not in sources:
+            # Establish a baseline on first use instead of downloading the
+            # complete pre-existing server history.
+            sources[key] = current_ids[:500]
+            _save_sync_state(state)
+            return
+        seen = set(sources.get(key, []))
+
+    new_items = [item for item in reversed(remote_files) if item["id"] not in seen]
+    for item in new_items:
+        full = fetch_item(item["id"])
+        if full.get("type") != "file" or not full.get("data"):
+            _mark_remote_file_seen(item["id"])
+            continue
+        raw = base64.b64decode(full["data"])
+        dest = save_received(full.get("filename", "file.bin"), raw)
+        record_local_file(dest)
+        _mark_remote_file_seen(item["id"])
+        notify(
+            t("file_arrived", name=os.path.basename(dest)),
+            action=lambda path=dest: reveal_received_file(path),
+        )
 
 
 # ---------------------------------------------------------------- embedded server (server mode)
@@ -716,7 +877,7 @@ def action_send_clipboard(icon=None, item=None):
         files = get_clipboard_files()
         if files:
             for p in files:
-                push_file(p)
+                _mark_remote_file_seen(push_file(p))
                 record_local_file(p)
             notify(t("files_sent", n=len(files)) if len(files) > 1 else t("file_sent"))
             return
@@ -751,7 +912,12 @@ def action_get_latest(icon=None, item=None):
         elif kind == "file":
             raw = base64.b64decode(data["data"])
             dest = save_received(data.get("filename", "file.bin"), raw)
-            notify(t("file_saved", name=os.path.basename(dest)))
+            record_local_file(dest)
+            _mark_remote_file_seen(data.get("id"))
+            notify(
+                t("file_arrived", name=os.path.basename(dest)),
+                action=lambda path=dest: reveal_received_file(path),
+            )
         else:
             notify(t("no_items"))
     except Exception as e:
@@ -766,7 +932,7 @@ def action_send_file(icon=None, item=None):
     def work():
         try:
             for p in paths:
-                push_file(p)
+                _mark_remote_file_seen(push_file(p))
                 record_local_file(p)
             notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
         except Exception as e:
@@ -787,6 +953,12 @@ def sync_loop():
     last_text = last_img = last_files = last_server = None
     while not stop_event.is_set():
         try:
+            if config.get("auto_receive_files", True):
+                try:
+                    _auto_receive_remote_files()
+                except Exception:
+                    pass
+
             if config.get("monitor_clipboard") or config.get("auto_sync"):
                 files = get_clipboard_files()
                 if files:
@@ -797,7 +969,7 @@ def sync_loop():
                             record_local_file(p)
                             if config.get("auto_sync"):
                                 try:
-                                    push_file(p)
+                                    _mark_remote_file_seen(push_file(p))
                                 except Exception:
                                     pass
                 else:
@@ -915,7 +1087,12 @@ def open_history_window(icon=None, item=None):
                     set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"])))); notify(t("copied"))
                 else:
                     dest = save_received(full.get("filename", "file.bin"), base64.b64decode(full["data"]))
-                    notify(t("file_saved", name=os.path.basename(dest)))
+                    record_local_file(dest)
+                    _mark_remote_file_seen(full.get("id"))
+                    notify(
+                        t("file_arrived", name=os.path.basename(dest)),
+                        action=lambda path=dest: reveal_received_file(path),
+                    )
             except Exception as e:
                 notify(t("recv_err", e=e))
         threading.Thread(target=work, daemon=True).start()
@@ -968,7 +1145,7 @@ def open_history_window(icon=None, item=None):
                 elif it["type"] == "image" and it.get("file"):
                     push_image(Image.open(os.path.join(LOCAL_DIR, it["file"])))
                 elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
-                    push_file(it["path"])
+                    _mark_remote_file_seen(push_file(it["path"]))
                 else:
                     notify(t("unavailable")); return
                 notify(t("sent_server"))
@@ -990,7 +1167,7 @@ def open_history_window(icon=None, item=None):
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("400x580")
+    root.geometry("420x620")
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
@@ -1020,18 +1197,21 @@ def open_settings(icon=None, item=None):
         row=len(fields), column=0, columnspan=2, sticky="w")
 
     auto = tk.BooleanVar(value=config.get("auto_sync", False))
+    auto_files = tk.BooleanVar(value=config.get("auto_receive_files", True))
     mon = tk.BooleanVar(value=config.get("monitor_clipboard", True))
     hk = tk.BooleanVar(value=config.get("hotkeys_enabled", True))
     base = len(fields) + 1
     ttk.Checkbutton(frm, text=t("chk_autosync"),
                     variable=auto).grid(row=base, column=0, columnspan=2, sticky="w", pady=3)
+    ttk.Checkbutton(frm, text=t("chk_auto_files"),
+                    variable=auto_files).grid(row=base + 1, column=0, columnspan=2, sticky="w", pady=3)
     ttk.Checkbutton(frm, text=t("chk_monitor"),
-                    variable=mon).grid(row=base + 1, column=0, columnspan=2, sticky="w", pady=3)
+                    variable=mon).grid(row=base + 2, column=0, columnspan=2, sticky="w", pady=3)
     ttk.Checkbutton(frm, text=t("chk_hotkeys"),
-                    variable=hk).grid(row=base + 2, column=0, columnspan=2, sticky="w", pady=3)
+                    variable=hk).grid(row=base + 3, column=0, columnspan=2, sticky="w", pady=3)
 
     msg = ttk.Label(frm, text="", foreground="#b91c1c", wraplength=360)
-    msg.grid(row=base + 3, column=0, columnspan=2, sticky="w", pady=(6, 0))
+    msg.grid(row=base + 4, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
     def save():
         try:
@@ -1052,6 +1232,7 @@ def open_settings(icon=None, item=None):
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
         config["hotkey_receive"] = entries["hotkey_receive"].get().strip().lower() or "ctrl+alt+v"
         config["auto_sync"] = auto.get()
+        config["auto_receive_files"] = auto_files.get()
         config["monitor_clipboard"] = mon.get()
         config["hotkeys_enabled"] = hk.get()
         save_config(config)
@@ -1072,7 +1253,7 @@ def open_settings(icon=None, item=None):
         notify(t("settings_saved"))
 
     bar = ttk.Frame(frm)
-    bar.grid(row=base + 4, column=0, columnspan=2, pady=16)
+    bar.grid(row=base + 5, column=0, columnspan=2, pady=16)
     ttk.Button(bar, text=t("save"), command=save).pack(side="left", padx=6)
     ttk.Button(bar, text=t("cancel"), command=root.destroy).pack(side="left")
 
@@ -1083,6 +1264,31 @@ _hotkeys = []
 
 def _run_bg(fn):
     threading.Thread(target=fn, daemon=True).start()
+
+
+def _install_notification_click_handler(icon):
+    """Open the received file location when a Windows tray notification is clicked."""
+    try:
+        for message_code, handler in list(icon._message_handlers.items()):
+            if getattr(handler, "__name__", "") != "_on_notify":
+                continue
+
+            def on_notify(wparam, lparam, original=handler):
+                # NIN_BALLOONUSERCLICK is WM_USER + 5 (0x405).
+                if int(lparam) & 0xFFFF == 0x405:
+                    global _notification_action
+                    with _notification_lock:
+                        action = _notification_action
+                        _notification_action = None
+                    if action is not None:
+                        _run_bg(action)
+                        return 0
+                return original(wparam, lparam)
+
+            icon._message_handlers[message_code] = on_notify
+            break
+    except Exception:
+        pass
 
 
 def unregister_hotkeys():
@@ -1229,7 +1435,8 @@ def _set_app_id():
 def _log_crash(exc):
     try:
         import traceback
-        with open(os.path.join(APP_DIR, "error.log"), "a", encoding="utf-8") as f:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(ERROR_LOG, "a", encoding="utf-8") as f:
             f.write(f"\n--- {_now()} ---\n")
             f.write("".join(traceback.format_exception(exc)))
     except Exception:
@@ -1262,6 +1469,7 @@ def main():
     threading.Thread(target=sync_loop, daemon=True).start()
     register_hotkeys()
     _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
+    _install_notification_click_handler(_icon)
     # pystray runs on its own thread; it asks the Tk thread to open windows via _cmd_q.
     threading.Thread(target=_icon.run, daemon=True).start()
     _root.after(120, _tk_poll)
