@@ -24,6 +24,7 @@ import http.server
 import ctypes
 import shutil
 import subprocess
+import time
 from ctypes import wintypes
 
 import requests
@@ -74,24 +75,54 @@ def _copy_legacy_dir(source, destination):
         pass
 
 
+def _legacy_roots():
+    """Return old installation folders that may still contain user data."""
+    candidates = [APP_DIR]
+    for variable in ("ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"):
+        base = os.environ.get(variable)
+        if base:
+            candidates.append(os.path.join(base, "Clipboard Bridge"))
+
+    roots = []
+    seen = set()
+    for candidate in candidates:
+        normalized = os.path.normcase(os.path.abspath(candidate))
+        if normalized not in seen and normalized != os.path.normcase(os.path.abspath(DATA_DIR)):
+            seen.add(normalized)
+            roots.append(candidate)
+    return roots
+
+
+def _newest_existing(paths):
+    existing = [path for path in paths if os.path.isfile(path)]
+    if not existing:
+        return None
+    return max(existing, key=lambda path: os.path.getmtime(path))
+
+
 def _prepare_data_dirs():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(LOCAL_DIR, exist_ok=True)
 
-    # Versions up to 2.0.0 stored data next to the executable. Import it once
-    # when the new destination is empty, leaving the original files untouched.
-    old_config = os.path.join(APP_DIR, "config.json")
-    if not os.path.exists(CONFIG_FILE) and os.path.isfile(old_config):
+    # Versions up to 2.0.0 stored data beside the executable, usually under
+    # Program Files. The 2.0.1 installer moved the executable to LocalAppData,
+    # so all known legacy locations must be checked.
+    roots = _legacy_roots()
+    old_config = _newest_existing(
+        [os.path.join(root, "config.json") for root in roots]
+        + [os.path.join(DATA_DIR, "config.legacy.json")]
+    )
+    if not os.path.exists(CONFIG_FILE) and old_config:
         try:
             shutil.copy2(old_config, CONFIG_FILE)
         except OSError:
             pass
-    if not os.path.exists(LOCAL_INDEX):
-        _copy_legacy_dir(os.path.join(APP_DIR, "local_history"), LOCAL_DIR)
-    if not os.path.exists(HOST_INDEX):
-        _copy_legacy_dir(os.path.join(APP_DIR, "server_data"), HOST_DIR)
-    if not os.path.exists(RECEIVED_DIR):
-        _copy_legacy_dir(os.path.join(APP_DIR, "ricevuti"), RECEIVED_DIR)
+    for root in roots:
+        if not os.path.exists(LOCAL_INDEX):
+            _copy_legacy_dir(os.path.join(root, "local_history"), LOCAL_DIR)
+        if not os.path.exists(HOST_INDEX):
+            _copy_legacy_dir(os.path.join(root, "server_data"), HOST_DIR)
+        _copy_legacy_dir(os.path.join(root, "ricevuti"), RECEIVED_DIR)
 
 
 _prepare_data_dirs()
@@ -122,6 +153,8 @@ _cmd_q = queue.Queue()  # GUI commands from the tray thread, run on the Tk threa
 _notification_action = None
 _notification_lock = threading.Lock()
 _sync_state_lock = threading.Lock()
+_connection_lock = threading.Lock()
+_connection_state = "checking"
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -140,6 +173,12 @@ STRINGS = {
         "mode_server": "Server (this PC)",
         "server_on": "Server mode ON — connect to {addr}",
         "client_on": "Client mode ON",
+        "status_connected": "Connection: CONNECTED ({server})",
+        "status_offline": "Connection: NOT CONNECTED",
+        "status_auth": "Connection: SERVER FOUND, LOGIN REJECTED",
+        "status_checking": "Connection: checking...",
+        "check_connection": "Check connection now",
+        "connected_notice": "Connected to {server}",
         "server_addr": "Server: {addr}  (click to copy)",
         "addr_copied": "Address copied: {addr}",
         "server_err": "Cannot start server: {e}",
@@ -208,6 +247,12 @@ STRINGS = {
         "mode_server": "Server (questo PC)",
         "server_on": "Modalità server attiva — connettiti a {addr}",
         "client_on": "Modalità client attiva",
+        "status_connected": "Connessione: COLLEGATO ({server})",
+        "status_offline": "Connessione: NON COLLEGATO",
+        "status_auth": "Connessione: SERVER TROVATO, ACCESSO RIFIUTATO",
+        "status_checking": "Connessione: verifica in corso...",
+        "check_connection": "Verifica connessione ora",
+        "connected_notice": "Collegato a {server}",
         "server_addr": "Server: {addr}  (clic per copiare)",
         "addr_copied": "Indirizzo copiato: {addr}",
         "server_err": "Impossibile avviare il server: {e}",
@@ -282,6 +327,40 @@ def load_config():
             pass
     else:
         save_config(cfg)
+
+    # Recover a legacy configuration even when 2.0.1 has already created an
+    # empty default config in LocalAppData. Explicit settings made after that
+    # installation always take precedence over the recovered values.
+    if cfg.get("_legacy_migration_version", 0) < 2:
+        legacy_path = _newest_existing(
+            [os.path.join(DATA_DIR, "config.legacy.json")]
+            + [os.path.join(root, "config.json") for root in _legacy_roots()]
+        )
+        if legacy_path and os.path.normcase(os.path.abspath(legacy_path)) != os.path.normcase(
+                os.path.abspath(CONFIG_FILE)):
+            try:
+                with open(legacy_path, "r", encoding="utf-8") as f:
+                    legacy = json.load(f)
+                if isinstance(legacy, dict):
+                    connection_keys = (
+                        "mode", "server_ip", "server_port", "host_port",
+                        "token", "username", "password",
+                    )
+                    connection_is_default = all(
+                        cfg.get(key, DEFAULT_CONFIG[key]) == DEFAULT_CONFIG[key]
+                        for key in connection_keys
+                    )
+                    if connection_is_default:
+                        merged = dict(DEFAULT_CONFIG)
+                        merged.update(legacy)
+                        for key, value in cfg.items():
+                            if key not in DEFAULT_CONFIG or value != DEFAULT_CONFIG[key]:
+                                merged[key] = value
+                        cfg = merged
+                cfg["_legacy_migration_version"] = 2
+                save_config(cfg)
+            except (json.JSONDecodeError, OSError):
+                pass
     return cfg
 
 
@@ -317,6 +396,66 @@ def auth_params(extra=None):
         p["user"] = user
         p["password"] = config.get("password", "")
     return p
+
+
+def _set_connection_state(state):
+    global _connection_state
+    with _connection_lock:
+        changed = _connection_state != state
+        _connection_state = state
+    if changed and _icon is not None:
+        try:
+            _icon.title = "Clipboard Bridge - " + (
+                "CONNECTED" if state == "connected" else "NOT CONNECTED"
+            )
+            _icon.update_menu()
+        except Exception:
+            pass
+
+
+def connection_status_text():
+    with _connection_lock:
+        state = _connection_state
+    if state == "connected":
+        return t("status_connected", server=server_url())
+    if state == "auth":
+        return t("status_auth")
+    if state == "offline":
+        return t("status_offline")
+    return t("status_checking")
+
+
+def check_connection():
+    """Verify both server reachability and credentials for the selected space."""
+    _set_connection_state("checking")
+    try:
+        response = requests.get(
+            f"{server_url()}/clipboard/history",
+            params=auth_params({"limit": 1}),
+            headers=auth_headers(),
+            timeout=4,
+        )
+        if response.status_code in (401, 403):
+            _set_connection_state("auth")
+            return False
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict) or "items" not in payload:
+            raise ValueError("unexpected server response")
+        _set_connection_state("connected")
+        return True
+    except Exception:
+        _set_connection_state("offline")
+        return False
+
+
+def action_check_connection(icon=None, item=None):
+    def work():
+        if check_connection():
+            notify(t("connected_notice", server=server_url()))
+        else:
+            notify(connection_status_text())
+    _run_bg(work)
 
 
 def notify(message, action=None):
@@ -363,6 +502,72 @@ def get_clipboard_files():
         paths = [p for p in data if isinstance(p, str) and os.path.isfile(p)]
         return paths or None
     return None
+
+
+class _DROPFILES(ctypes.Structure):
+    _fields_ = [
+        ("pFiles", wintypes.DWORD),
+        ("pt", wintypes.POINT),
+        ("fNC", wintypes.BOOL),
+        ("fWide", wintypes.BOOL),
+    ]
+
+
+def _build_hdrop(paths):
+    """Build the CF_HDROP payload used by File Explorer for copied files."""
+    normalized = [os.path.abspath(path) for path in paths]
+    names = ("\0".join(normalized) + "\0\0").encode("utf-16-le")
+    header = _DROPFILES()
+    header.pFiles = ctypes.sizeof(_DROPFILES)
+    header.fWide = True
+    return ctypes.string_at(ctypes.byref(header), ctypes.sizeof(header)) + names
+
+
+def set_clipboard_files(paths):
+    """Put existing files on the Windows clipboard as a File Explorer copy."""
+    files = [os.path.abspath(path) for path in paths if os.path.isfile(path)]
+    if not files:
+        raise ValueError("no existing files to copy")
+    data = _build_hdrop(files)
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    user32.SetClipboardData.argtypes = [wintypes.UINT, ctypes.c_void_p]
+    user32.SetClipboardData.restype = ctypes.c_void_p
+
+    for _ in range(10):
+        if user32.OpenClipboard(0):
+            break
+        time.sleep(0.05)
+    else:
+        raise OSError("cannot open the clipboard")
+
+    handle = kernel32.GlobalAlloc(0x0002, len(data))
+    if not handle:
+        user32.CloseClipboard()
+        raise MemoryError("cannot allocate clipboard memory")
+    transferred = False
+    try:
+        pointer = kernel32.GlobalLock(handle)
+        if not pointer:
+            raise OSError("cannot lock clipboard memory")
+        ctypes.memmove(pointer, data, len(data))
+        kernel32.GlobalUnlock(handle)
+        if not user32.EmptyClipboard():
+            raise OSError("cannot clear the clipboard")
+        if not user32.SetClipboardData(15, handle):  # 15 = CF_HDROP
+            raise OSError("cannot set file clipboard data")
+        transferred = True
+    finally:
+        user32.CloseClipboard()
+        if not transferred:
+            kernel32.GlobalFree(handle)
 
 
 def get_clipboard_image():
@@ -562,10 +767,11 @@ def _auto_receive_remote_files():
             # complete pre-existing server history.
             sources[key] = current_ids[:500]
             _save_sync_state(state)
-            return
+            return []
         seen = set(sources.get(key, []))
 
     new_items = [item for item in reversed(remote_files) if item["id"] not in seen]
+    received_paths = []
     for item in new_items:
         full = fetch_item(item["id"])
         if full.get("type") != "file" or not full.get("data"):
@@ -575,10 +781,14 @@ def _auto_receive_remote_files():
         dest = save_received(full.get("filename", "file.bin"), raw)
         record_local_file(dest)
         _mark_remote_file_seen(item["id"])
+        received_paths.append(dest)
         notify(
             t("file_arrived", name=os.path.basename(dest)),
             action=lambda path=dest: reveal_received_file(path),
         )
+    if received_paths:
+        set_clipboard_files(received_paths)
+    return received_paths
 
 
 # ---------------------------------------------------------------- embedded server (server mode)
@@ -912,6 +1122,7 @@ def action_get_latest(icon=None, item=None):
         elif kind == "file":
             raw = base64.b64decode(data["data"])
             dest = save_received(data.get("filename", "file.bin"), raw)
+            set_clipboard_files([dest])
             record_local_file(dest)
             _mark_remote_file_seen(data.get("id"))
             notify(
@@ -951,11 +1162,21 @@ def open_received_folder(icon=None, item=None):
 # ---------------------------------------------------------------- monitor / sync
 def sync_loop():
     last_text = last_img = last_files = last_server = None
+    next_connection_check = 0
     while not stop_event.is_set():
         try:
+            if time.monotonic() >= next_connection_check:
+                check_connection()
+                next_connection_check = time.monotonic() + 15
+
             if config.get("auto_receive_files", True):
                 try:
-                    _auto_receive_remote_files()
+                    received = _auto_receive_remote_files()
+                    if received:
+                        # The clipboard change came from the server. Treat it as
+                        # already seen so auto-sync does not upload it again.
+                        last_files = tuple(received)
+                        last_text = last_img = None
                 except Exception:
                     pass
 
@@ -1087,6 +1308,7 @@ def open_history_window(icon=None, item=None):
                     set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"])))); notify(t("copied"))
                 else:
                     dest = save_received(full.get("filename", "file.bin"), base64.b64decode(full["data"]))
+                    set_clipboard_files([dest])
                     record_local_file(dest)
                     _mark_remote_file_seen(full.get("id"))
                     notify(
@@ -1167,7 +1389,7 @@ def open_history_window(icon=None, item=None):
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("420x620")
+    root.geometry("440x690")
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
@@ -1210,8 +1432,50 @@ def open_settings(icon=None, item=None):
     ttk.Checkbutton(frm, text=t("chk_hotkeys"),
                     variable=hk).grid(row=base + 3, column=0, columnspan=2, sticky="w", pady=3)
 
+    status_frame = ttk.Frame(frm)
+    status_frame.grid(row=base + 4, column=0, columnspan=2, sticky="ew", pady=(10, 2))
+    status_label = ttk.Label(
+        status_frame,
+        text=connection_status_text(),
+        font=("Segoe UI", 9, "bold"),
+        wraplength=230,
+    )
+    status_label.pack(side="left", fill="x", expand=True)
+
+    def show_connection_status():
+        try:
+            exists = root.winfo_exists()
+        except tk.TclError:
+            return
+        if not exists:
+            return
+        status_label.config(
+            text=connection_status_text(),
+            foreground="#15803d" if _connection_state == "connected"
+            else "#b45309" if _connection_state == "checking"
+            else "#b91c1c",
+        )
+        connection_button.config(state="normal")
+
+    def test_connection():
+        connection_button.config(state="disabled")
+        _set_connection_state("checking")
+        show_connection_status()
+
+        def work():
+            check_connection()
+            _cmd_q.put(show_connection_status)
+        threading.Thread(target=work, daemon=True).start()
+
+    connection_button = ttk.Button(
+        status_frame,
+        text=t("check_connection"),
+        command=test_connection,
+    )
+    connection_button.pack(side="right", padx=(8, 0))
+
     msg = ttk.Label(frm, text="", foreground="#b91c1c", wraplength=360)
-    msg.grid(row=base + 4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+    msg.grid(row=base + 5, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
     def save():
         try:
@@ -1251,11 +1515,13 @@ def open_settings(icon=None, item=None):
                 pass
         root.destroy()
         notify(t("settings_saved"))
+        _run_bg(check_connection)
 
     bar = ttk.Frame(frm)
-    bar.grid(row=base + 5, column=0, columnspan=2, pady=16)
+    bar.grid(row=base + 6, column=0, columnspan=2, pady=16)
     ttk.Button(bar, text=t("save"), command=save).pack(side="left", padx=6)
     ttk.Button(bar, text=t("cancel"), command=root.destroy).pack(side="left")
+    root.after(80, test_connection)
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
@@ -1358,6 +1624,8 @@ def _set_mode(new_mode):
         else:
             stop_host_server()
             notify(t("client_on"))
+        _set_connection_state("checking")
+        _run_bg(check_connection)
         icon.update_menu()
     return handler
 
@@ -1392,6 +1660,9 @@ def create_tray_icon():
 
 def build_menu():
     return Menu(
+        MenuItem(lambda i: connection_status_text(), lambda icon, item: None, enabled=False),
+        MenuItem(lambda i: t("check_connection"), action_check_connection),
+        Menu.SEPARATOR,
         MenuItem(lambda i: t("send"), lambda icon, item: _run_bg(action_send_clipboard), default=True),
         MenuItem(lambda i: t("recv"), lambda icon, item: _run_bg(action_get_latest)),
         Menu.SEPARATOR,

@@ -6,8 +6,11 @@
 [Windows downloads](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.1:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe) ·
-[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe)
+**Windows 2.0.2:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe) ·
+[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe)
+
+The complete `2.0.2` release also contains both ready-made iPhone Shortcuts, the Python
+server, Docker/Compose files and the server requirements.
 
 > **Auto-sync on Windows:** this warning applies to both the installer and portable
 > versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by
@@ -214,16 +217,21 @@ A tray icon appears (right-click for the menu):
 - **Send clipboard -> server** / **Receive latest <- server** (text, images, files).
 - **Send a file...** and **Open received folder**. New remote files are downloaded
   automatically to `%USERPROFILE%\Downloads\Clipboard Bridge`; clicking their notification
-  opens File Explorer and selects the received file.
+  opens File Explorer and selects the received file. Received files are also placed on the
+  Windows clipboard, ready to paste into File Explorer or another compatible application.
 - **History...**, **Keyboard shortcuts** (default `Ctrl+Alt+C` sends, `Ctrl+Alt+V` receives).
 - **Language** (English / Italiano) and **Settings...** (server IP, port, token, account).
   Leave **Account** empty for the shared space, or enter an account name + password to use
   an isolated space.
+- The tray menu and Settings show **CONNECTED**, **NOT CONNECTED**, or
+  **SERVER FOUND, LOGIN REJECTED**. Use **Check connection now** after changing the address
+  or credentials.
 
 The installed application never writes runtime data inside `Program Files`. Configuration,
 local history, embedded Server-mode data and crash logs are stored in
 `%LOCALAPPDATA%\Clipboard Bridge`. Existing data found beside an older executable is copied
-automatically on first run.
+automatically on first run. Version 2.0.2 also searches old `Program Files` installations
+and recovers settings when 2.0.1 previously created an empty default configuration.
 
 ### Start with Windows
 `Win+R` -> `shell:startup`, then put a shortcut to the executable there.
@@ -240,13 +248,12 @@ paste text, upload and download files, and read the Shortcuts instructions. With
 
 ## 4. iPhone (Shortcuts)
 
-The ready-made Shortcuts were published as assets in the
-[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
-and remain compatible with Windows version 2.0.1:
+The ready-made Shortcuts are included as assets in the
+[Clipboard Bridge 2.0.2 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.2):
 
-- **[Download Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
+- **[Download Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Load.Clipboard.shortcut)** -
   sends the current iPhone clipboard to Clipboard Bridge.
-- **[Download Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)** -
+- **[Download Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Download.Clipboard.shortcut)** -
   receives the latest item from Clipboard Bridge.
 
 Open each `.shortcut` file on the iPhone and replace the placeholder server address with
@@ -311,20 +318,22 @@ build_client.bat
 To create both universal GitHub release assets:
 
 ```bat
-build_windows_release.bat 2.0.1
+build_windows_release.bat 2.0.2
 ```
 
 The script uses PyInstaller and Inno Setup, without personal paths or configuration files.
 It produces:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe
+Output\Clipboard.Bridge.Release.V2.0.2\
 ```
 
 The installer is per-user: it installs under `%LOCALAPPDATA%\Programs\Clipboard Bridge`
 and does not require administrator privileges. Application settings and received files
-remain in the current user's profile.
+remain in the current user's profile. The release folder contains the two Windows builds,
+both iPhone Shortcuts, the Python server and all Docker/Compose files needed to deploy it.
 
 Install missing build tools with:
 

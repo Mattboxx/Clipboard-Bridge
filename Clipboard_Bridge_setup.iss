@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.1"
+  #define MyAppVersion "2.0.2"
 #endif
 
 [Setup]
@@ -18,6 +18,7 @@ AppPublisherURL=https://github.com/mattbox03/Clipboard-Bridge
 AppSupportURL=https://github.com/mattbox03/Clipboard-Bridge/issues
 AppUpdatesURL=https://github.com/mattbox03/Clipboard-Bridge/releases/latest
 DefaultDirName={localappdata}\Programs\Clipboard Bridge
+UsePreviousAppDir=no
 UninstallDisplayIcon={app}\Clipboard Bridge.exe
 ; The bundled executable is built for x64 Windows and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
@@ -53,3 +54,43 @@ Name: "{userstartup}\Clipboard Bridge"; Filename: "{app}\Clipboard Bridge.exe"; 
 [Run]
 ; Launch the application when an interactive installation finishes.
 Filename: "{app}\Clipboard Bridge.exe"; Description: "{cm:LaunchProgram,Clipboard Bridge}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CopyLegacyConfig(const SourceDir: String);
+var
+  SourceFile, DestinationDir, DestinationFile: String;
+begin
+  SourceFile := AddBackslash(SourceDir) + 'config.json';
+  if not FileExists(SourceFile) then
+    Exit;
+
+  DestinationDir := ExpandConstant('{localappdata}\Clipboard Bridge');
+  DestinationFile := AddBackslash(DestinationDir) + 'config.legacy.json';
+  ForceDirectories(DestinationDir);
+  if CopyFile(SourceFile, DestinationFile, False) then
+    Log('Backed up legacy Clipboard Bridge configuration from ' + SourceFile);
+end;
+
+procedure BackupLegacyConfiguration;
+var
+  InstallLocation, UninstallKey: String;
+begin
+  UninstallKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{FF43BA53-C19E-4278-AD71-60162436216E}_is1';
+
+  CopyLegacyConfig(ExpandConstant('{commonpf32}\Clipboard Bridge'));
+  if IsWin64 then
+    CopyLegacyConfig(ExpandConstant('{commonpf64}\Clipboard Bridge'));
+
+  if RegQueryStringValue(HKLM32, UninstallKey, 'InstallLocation', InstallLocation) then
+    CopyLegacyConfig(InstallLocation);
+  if IsWin64 and RegQueryStringValue(HKLM64, UninstallKey, 'InstallLocation', InstallLocation) then
+    CopyLegacyConfig(InstallLocation);
+  if RegQueryStringValue(HKCU, UninstallKey, 'InstallLocation', InstallLocation) then
+    CopyLegacyConfig(InstallLocation);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    BackupLegacyConfiguration;
+end;

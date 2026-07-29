@@ -84,7 +84,7 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.1` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.2` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
@@ -106,14 +106,19 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **Send clipboard → server**: uploads whatever you copied (text, an image, or files
   selected in File Explorer). Also bound to `Ctrl+Alt+C` by default.
 - **Receive latest ← server**: puts the latest item back on your clipboard (files are
-  saved to `Downloads\Clipboard Bridge`). Also bound to `Ctrl+Alt+V`.
+  saved to `Downloads\Clipboard Bridge` and copied as File Explorer files). Also bound to
+  `Ctrl+Alt+V`.
 - **Send a file…**: pick any file(s) to upload.
 - **Auto-sync** (tray menu, off by default): when enabled, anything you copy — text,
   images **and files** — is sent to the server automatically, without clicking.
 - **Automatically download new files** (Settings, on by default): while the client is
   running, new PDFs and other files arrive without pressing Receive. Click the Windows
-  notification to open File Explorer with the received file selected.
+  notification to open File Explorer with the received file selected. The downloaded
+  file is also placed on the Windows clipboard, ready to paste.
 - **History…**: browse the server and local history; re-use or delete items.
+- **Connection status**: the tray menu and Settings explicitly show whether the client is
+  connected, offline, or reaching the server with rejected credentials. Use **Check
+  connection now** after editing the address, token or account.
 
 ### Modes: connect to a server, or BE the server
 Right-click the tray icon → **Mode**:
@@ -135,7 +140,9 @@ put a shortcut to the executable in that folder.
 The executable can safely remain in `Program Files`: Clipboard Bridge stores configuration,
 history, Server-mode data and logs in `%LOCALAPPDATA%\Clipboard Bridge`. Received files are
 stored in `%USERPROFILE%\Downloads\Clipboard Bridge`. Data from older versions found beside
-the executable is copied automatically on first run.
+the executable is copied automatically on first run. Version 2.0.2 also checks old
+`Program Files` installations and can recover settings after a 2.0.1 default configuration
+was created.
 
 > **Auto-sync and administrator privileges:** this applies to both the installer and
 > portable versions. Auto-sync may not detect clipboard changes made by applications that
@@ -153,12 +160,11 @@ to each shortcut.
 
 ### Download the ready-made Shortcuts
 
-Both prepared iPhone Shortcuts were published in the
-[Clipboard Bridge 2.0.0 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
-and remain compatible with Windows version 2.0.1:
+Both prepared iPhone Shortcuts are included in the
+[Clipboard Bridge 2.0.2 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.2):
 
-- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)
-- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)
+- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Load.Clipboard.shortcut)
+- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone, add them to the Shortcuts app and replace the
 placeholder address with the server address displayed by Clipboard Bridge. If applicable,

@@ -6,8 +6,11 @@
 [Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
 
-**Windows 2.0.1:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe) ·
-[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.1/Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe)
+**Windows 2.0.2:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe) ·
+[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe)
+
+La release completa `2.0.2` contiene anche entrambi i Comandi rapidi iPhone già pronti,
+il server Python, i file Docker/Compose e i requisiti del server.
 
 > **Sincronizzazione automatica su Windows:** questa avvertenza vale sia per la versione
 > installer sia per la portable. Windows può impedire a Clipboard Bridge di rilevare le
@@ -216,16 +219,22 @@ Compare un'icona nella tray (clic destro per il menu):
 - **Invia appunti -> server** / **Ricevi ultimo <- server** (testo, immagini, file).
 - **Invia un file...** e **Apri cartella ricevuti**. I nuovi file remoti vengono scaricati
   automaticamente in `%USERPROFILE%\Downloads\Clipboard Bridge`; cliccando la notifica si
-  apre Esplora file con il documento ricevuto selezionato.
+  apre Esplora file con il documento ricevuto selezionato. I file ricevuti vengono anche
+  inseriti negli appunti Windows, pronti da incollare in Esplora file o in un'app compatibile.
 - **Cronologia...**, **Scorciatoie da tastiera** (default `Ctrl+Alt+C` invia, `Ctrl+Alt+V` riceve).
 - **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token, account del server).
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
   per usare uno spazio isolato.
+- Il menu della tray e le Impostazioni mostrano chiaramente **COLLEGATO**,
+  **NON COLLEGATO** oppure **SERVER TROVATO, ACCESSO RIFIUTATO**. Usa
+  **Verifica connessione ora** dopo aver cambiato indirizzo o credenziali.
 
 L'app installata non scrive mai i dati di utilizzo dentro `Program Files`. Configurazione,
 cronologia locale, dati della modalità Server ed error log vengono salvati in
 `%LOCALAPPDATA%\Clipboard Bridge`. Al primo avvio vengono copiati automaticamente gli
-eventuali dati trovati accanto a un vecchio eseguibile.
+eventuali dati trovati accanto a un vecchio eseguibile. La versione 2.0.2 cerca anche nelle
+vecchie installazioni in `Program Files` e recupera le impostazioni se la 2.0.1 aveva già
+creato una configurazione predefinita vuota.
 
 ### Avvio automatico
 `Win+R` -> `shell:startup` e metti lì un collegamento all'eseguibile.
@@ -242,13 +251,12 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 
 ## 4. iPhone (Comandi rapidi)
 
-I Comandi rapidi già pronti sono stati pubblicati come asset nella
-[release Clipboard Bridge 2.0.0](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.0)
-e restano compatibili con la versione Windows 2.0.1:
+I Comandi rapidi già pronti sono inclusi come asset nella
+[release Clipboard Bridge 2.0.2](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.2):
 
-- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Load.Clipboard.shortcut)** -
+- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Load.Clipboard.shortcut)** -
   invia gli appunti attuali dell'iPhone a Clipboard Bridge.
-- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.0/Download.Clipboard.shortcut)** -
+- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Download.Clipboard.shortcut)** -
   riceve da Clipboard Bridge l'ultimo elemento salvato.
 
 Apri ogni file `.shortcut` sull'iPhone e sostituisci l'indirizzo server segnaposto con
@@ -312,20 +320,23 @@ build_client.bat
 Per creare entrambi i file universali da caricare nella Release GitHub:
 
 ```bat
-build_windows_release.bat 2.0.1
+build_windows_release.bat 2.0.2
 ```
 
 Lo script usa PyInstaller e Inno Setup senza includere percorsi o configurazioni personali.
 Produce:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.1.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.1.exe
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe
+Output\Clipboard.Bridge.Release.V2.0.2\
 ```
 
 L'installer è per singolo utente: installa il programma in
 `%LOCALAPPDATA%\Programs\Clipboard Bridge` e non richiede privilegi di amministratore.
 Impostazioni e file ricevuti restano nel profilo dell'utente corrente.
+La cartella della release contiene le due build Windows, entrambi i Comandi rapidi iPhone,
+il server Python e tutti i file Docker/Compose necessari per pubblicarlo.
 
 Se mancano gli strumenti di compilazione:
 
