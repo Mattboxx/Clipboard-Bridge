@@ -183,9 +183,12 @@ STRINGS = {
         "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
         "connected_notice": "Connected to {server}",
+        "tab_general": "General",
         "tab_connection": "Connection",
         "tab_automation": "Automation",
         "tab_shortcuts": "Shortcuts",
+        "section_mode": "Operating mode",
+        "section_application": "Application",
         "section_server": "Server address",
         "section_account": "Authentication",
         "section_status": "Connection status",
@@ -230,6 +233,8 @@ STRINGS = {
         "lbl_token": "Token (empty = none)",
         "lbl_user": "Account (empty = shared)",
         "lbl_pass": "Account password",
+        "lbl_language": "Interface language",
+        "lbl_history_limit": "Local history items",
         "lbl_interval": "Clipboard check interval (s)",
         "lbl_hk_send": "Send hotkey",
         "lbl_hk_recv": "Receive hotkey",
@@ -238,7 +243,7 @@ STRINGS = {
         "chk_auto_files": "Automatically download new files",
         "chk_monitor": "Record local history",
         "chk_hotkeys": "Keyboard shortcuts enabled",
-        "err_numbers": "Port and interval must be whole numbers.",
+        "err_numbers": "Port, interval and history limit must be whole numbers.",
         "save": "Save",
         "cancel": "Cancel",
     },
@@ -266,9 +271,12 @@ STRINGS = {
         "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
         "connected_notice": "Collegato a {server}",
+        "tab_general": "Generale",
         "tab_connection": "Connessione",
         "tab_automation": "Automazione",
         "tab_shortcuts": "Scorciatoie",
+        "section_mode": "Modalità operativa",
+        "section_application": "Applicazione",
         "section_server": "Indirizzo server",
         "section_account": "Autenticazione",
         "section_status": "Stato connessione",
@@ -313,6 +321,8 @@ STRINGS = {
         "lbl_token": "Token (vuoto = nessuno)",
         "lbl_user": "Account (vuoto = condiviso)",
         "lbl_pass": "Password account",
+        "lbl_language": "Lingua interfaccia",
+        "lbl_history_limit": "Elementi cronologia locale",
         "lbl_interval": "Intervallo controllo appunti (s)",
         "lbl_hk_send": "Hotkey invio",
         "lbl_hk_recv": "Hotkey ricezione",
@@ -321,7 +331,7 @@ STRINGS = {
         "chk_auto_files": "Scarica automaticamente i nuovi file",
         "chk_monitor": "Registra la cronologia locale",
         "chk_hotkeys": "Scorciatoie da tastiera attive",
-        "err_numbers": "Porta e intervallo devono essere numeri interi.",
+        "err_numbers": "Porta, intervallo e limite cronologia devono essere numeri interi.",
         "save": "Salva",
         "cancel": "Annulla",
     },
@@ -1499,9 +1509,11 @@ def open_settings(icon=None, item=None):
     notebook = ttk.Notebook(body, style="Settings.TNotebook")
     notebook.pack(fill="both", expand=True)
 
+    general_tab = ttk.Frame(notebook, padding=14)
     connection_tab = ttk.Frame(notebook, padding=14)
     automation_tab = ttk.Frame(notebook, padding=14)
     shortcuts_tab = ttk.Frame(notebook, padding=14)
+    notebook.add(general_tab, text=t("tab_general"))
     notebook.add(connection_tab, text=t("tab_connection"))
     notebook.add(automation_tab, text=t("tab_automation"))
     notebook.add(shortcuts_tab, text=t("tab_shortcuts"))
@@ -1515,6 +1527,57 @@ def open_settings(icon=None, item=None):
         entry = ttk.Entry(parent, textvariable=variable, show="*" if secret else "")
         entry.grid(row=row, column=1, sticky="ew", pady=6)
         entries[key] = variable
+
+    mode = tk.StringVar(value=config.get("mode", "client"))
+    mode_box = ttk.LabelFrame(
+        general_tab,
+        text=t("section_mode"),
+        style="Settings.Section.TLabelframe",
+    )
+    mode_box.pack(fill="x", pady=(0, 12))
+    ttk.Radiobutton(
+        mode_box,
+        text=t("mode_client"),
+        value="client",
+        variable=mode,
+    ).pack(anchor="w", pady=(0, 8))
+    ttk.Radiobutton(
+        mode_box,
+        text=t("mode_server"),
+        value="server",
+        variable=mode,
+    ).pack(anchor="w")
+
+    application_box = ttk.LabelFrame(
+        general_tab,
+        text=t("section_application"),
+        style="Settings.Section.TLabelframe",
+    )
+    application_box.pack(fill="x")
+    application_box.grid_columnconfigure(1, weight=1)
+    ttk.Label(application_box, text=t("lbl_language")).grid(
+        row=0, column=0, sticky="w", padx=(0, 14), pady=6
+    )
+    language = tk.StringVar(
+        value="Italiano" if config.get("lang", "en") == "it" else "English"
+    )
+    ttk.Combobox(
+        application_box,
+        textvariable=language,
+        values=("English", "Italiano"),
+        state="readonly",
+    ).grid(row=0, column=1, sticky="ew", pady=6)
+    ttk.Label(application_box, text=t("lbl_history_limit")).grid(
+        row=1, column=0, sticky="w", padx=(0, 14), pady=6
+    )
+    history_limit = tk.StringVar(value=str(config.get("max_local_history", 100)))
+    ttk.Spinbox(
+        application_box,
+        textvariable=history_limit,
+        from_=10,
+        to=1000,
+        increment=10,
+    ).grid(row=1, column=1, sticky="ew", pady=6)
 
     status_box = ttk.LabelFrame(
         connection_tab,
@@ -1624,17 +1687,30 @@ def open_settings(icon=None, item=None):
         try:
             port = int(entries["server_port"].get())
             host_port = int(entries["host_port"].get())
-            interval = (
-                int(entries["poll_interval"].get())
-                if validate_interval
-                else config.get("poll_interval", 3)
-            )
         except ValueError:
             msg.config(text=t("err_numbers"))
             notebook.select(connection_tab)
             return None
+        if validate_interval:
+            try:
+                interval = int(entries["poll_interval"].get())
+            except ValueError:
+                msg.config(text=t("err_numbers"))
+                notebook.select(automation_tab)
+                return None
+            try:
+                max_history = int(history_limit.get())
+            except ValueError:
+                msg.config(text=t("err_numbers"))
+                notebook.select(general_tab)
+                return None
+        else:
+            interval = config.get("poll_interval", 3)
+            max_history = config.get("max_local_history", 100)
         values = dict(config)
         values.update({
+            "lang": "it" if language.get() == "Italiano" else "en",
+            "mode": mode.get() if mode.get() in ("client", "server") else "client",
             "server_ip": entries["server_ip"].get().strip(),
             "server_port": port,
             "host_port": host_port,
@@ -1642,6 +1718,7 @@ def open_settings(icon=None, item=None):
             "username": entries["username"].get().strip(),
             "password": entries["password"].get(),
             "poll_interval": interval if interval > 0 else 3,
+            "max_local_history": min(1000, max(10, max_history)),
         })
         return values
 
@@ -1695,6 +1772,7 @@ def open_settings(icon=None, item=None):
         if values is None:
             return
         host_port = values["host_port"]
+        old_mode = config.get("mode", "client")
         old_host_port = config.get("host_port", 5088)
         config.update(values)
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
@@ -1704,17 +1782,24 @@ def open_settings(icon=None, item=None):
         config["monitor_clipboard"] = mon.get()
         config["hotkeys_enabled"] = hk.get()
         save_config(config)
+        _local_save(_local_load())
         if config["hotkeys_enabled"]:
             register_hotkeys()
         else:
             unregister_hotkeys()
-        # if the server port changed while running as server, restart it
-        if config.get("mode") == "server" and host_port != old_host_port:
+        if config.get("mode") == "server":
+            if old_mode != "server" or host_port != old_host_port:
+                stop_host_server()
+                if start_host_server():
+                    notify(t("server_on", addr=server_address()))
+        elif old_mode == "server":
             stop_host_server()
-            start_host_server()
-        if icon is not None:
+            notify(t("client_on"))
+        _set_connection_state("checking")
+        active_icon = icon or _icon
+        if active_icon is not None:
             try:
-                icon.update_menu()
+                active_icon.update_menu()
             except Exception:
                 pass
         root.destroy()

@@ -37,7 +37,7 @@ Interface in **English (default)** and Italian.
 
 ![Server mode vs Client mode](docs/modes.png)
 
-Switch anytime from the tray icon (**right-click → Mode**):
+Switch anytime from **Settings → General** or the tray icon (**right-click → Mode**):
 
 | | 🖥️ Server mode | 🔌 Client mode |
 |---|---|---|
@@ -226,9 +226,10 @@ A tray icon appears (right-click for the menu):
   opens File Explorer and selects the received file. Received files are also placed on the
   Windows clipboard, ready to paste into File Explorer or another compatible application.
 - **History...**, **Keyboard shortcuts** (default `Ctrl+Alt+C` sends, `Ctrl+Alt+V` receives).
-- **Language** (English / Italiano) and **Settings...** (server IP, port, token, account).
-  Leave **Account** empty for the shared space, or enter an account name + password to use
-  an isolated space.
+- **Settings...** contains operating mode, interface language, local-history limit,
+  server address, ports, token, account, automation and configurable hotkeys. Leave
+  **Account** empty for the shared space, or enter an account name + password to use an
+  isolated space.
 - The tray shows one compact green/red connection indicator. Settings provide the full
   status and **Check connection now** after changing the address or credentials.
 

@@ -103,9 +103,10 @@ python clipboard_bridge_windows.py
 ### Configure
 A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 1. Open **Settings…**
-2. Set **Server IP** = `SERVER_IP`, **Port** = `5088`.
-3. If your server uses a token, set **Token** = `YOUR_TOKEN`.
-4. Choose your interface language from the **Language** menu (English / Italiano).
+2. In **General**, choose Client/Server mode, interface language and the local-history limit.
+3. In **Connection**, set **Server IP** = `SERVER_IP`, **Port** = `5088`.
+4. If your server uses a token, set **Token** = `YOUR_TOKEN`.
+5. Use **Automation** and **Shortcuts** for automatic transfers and configurable hotkeys.
 
 ### Daily use
 - **Send clipboard → server**: uploads whatever you copied (text, an image, or files
@@ -126,7 +127,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   account.
 
 ### Modes: connect to a server, or BE the server
-Right-click the tray icon → **Mode**:
+Choose the mode from **Settings → General** or right-click the tray icon → **Mode**:
 - **Client (use external server)** — the default; connects to a separate Clipboard Bridge
   server (set its address in Settings).
 - **Server (this PC)** — no external server needed: this PC becomes the server and the

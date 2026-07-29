@@ -36,7 +36,8 @@ account. Interfaccia in **inglese (predefinita)** e in italiano.
 
 ![Modalità Server vs Modalità Client](docs/modes.png)
 
-Si cambia quando vuoi dall'icona nella tray (**clic destro → Modalità**):
+Si cambia quando vuoi da **Impostazioni → Generale** oppure dalla tray
+(**clic destro → Modalità**):
 
 | | 🖥️ Modalità Server | 🔌 Modalità Client |
 |---|---|---|
@@ -228,7 +229,8 @@ Compare un'icona nella tray (clic destro per il menu):
   apre Esplora file con il documento ricevuto selezionato. I file ricevuti vengono anche
   inseriti negli appunti Windows, pronti da incollare in Esplora file o in un'app compatibile.
 - **Cronologia...**, **Scorciatoie da tastiera** (default `Ctrl+Alt+C` invia, `Ctrl+Alt+V` riceve).
-- **Lingua** (English / Italiano) e **Impostazioni...** (IP, porta, token, account del server).
+- **Impostazioni...** raccoglie modalità operativa, lingua, limite della cronologia locale,
+  indirizzo e porte del server, token, account, automazione e scorciatoie configurabili.
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
   per usare uno spazio isolato.
 - La tray mostra un solo indicatore compatto verde/rosso. Le Impostazioni mostrano lo stato
