@@ -27,7 +27,7 @@ Python/Docker server on a NAS, Raspberry Pi, home server or any Docker host.
 
 | Platform | Download | What it includes |
 |---|---|---|
-| **Android 10+** | [Android APK 1.0.0-beta.6](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk) | Native app, Share integration, server history and Quick Settings tiles |
+| **Android 10+** | [Android APK 1.0.0-beta.7](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk) | Native app, universal Share target, server history and Quick Settings tiles |
 | **Windows installer** | [Clipboard Bridge Windows 2.0.4 installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Per-user installation; no administrator account required |
 | **Windows portable** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | One executable, no installation |
 | **iPhone Send Shortcut** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Sends the current iOS clipboard |
@@ -118,7 +118,7 @@ The native Android client supports Android 10 and later.
 
 ### Install the APK
 
-1. Download the [Android APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk).
+1. Download the [Android APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk).
 2. Open the downloaded file on the Android device.
 3. If requested, allow the browser or file manager to install apps from that source.
 4. Choose **Install** or **Update**.
@@ -159,8 +159,9 @@ same shared space or the same account.
 - **Receive latest:** downloads the newest server item and places it in the clipboard.
 - **Send file:** opens Android's file picker.
 - **History item:** downloads that exact server item.
-- **Share to Clipboard Bridge:** sends content from Photos, Files, a browser or another
-  application.
+- **Share to Clipboard Bridge:** appears in Android's Share menu for text, images,
+  documents and arbitrary file types. One or several selected files are uploaded
+  directly without leaving the main Clipboard Bridge screen open.
 
 ### Add the Quick Settings controls
 

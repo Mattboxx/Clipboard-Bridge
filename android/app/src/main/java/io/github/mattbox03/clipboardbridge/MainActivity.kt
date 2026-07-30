@@ -90,14 +90,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        if (intent?.action == Intent.ACTION_SEND) {
-            viewModel.sendSharedIntent(intent)
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        if (intent.action == Intent.ACTION_SEND) viewModel.sendSharedIntent(intent)
     }
 
     override fun onResume() {

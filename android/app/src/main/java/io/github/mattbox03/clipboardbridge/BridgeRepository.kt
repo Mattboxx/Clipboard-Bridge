@@ -29,16 +29,9 @@ class BridgeRepository(private val context: Context) {
 
     suspend fun sendSharedIntent(intent: Intent): OperationResult<String> =
         withContext(Dispatchers.IO) {
-            val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            val uris = sharedUris(intent)
             when {
-                uri != null -> send(
-                    OutgoingClipboard.Content(
-                        uri,
-                        context.contentResolver.displayName(uri),
-                        intent.type ?: context.contentResolver.getType(uri)
-                        ?: "application/octet-stream",
-                    ),
-                )
+                uris.isNotEmpty() -> sendSharedUris(uris, intent.type)
 
                 intent.getCharSequenceExtra(Intent.EXTRA_TEXT) != null ->
                     send(OutgoingClipboard.Text(intent.getCharSequenceExtra(Intent.EXTRA_TEXT).toString()))
@@ -46,6 +39,45 @@ class BridgeRepository(private val context: Context) {
                 else -> OperationResult.Error("The shared item is empty or unsupported.")
             }
         }
+
+    private fun sharedUris(intent: Intent): List<Uri> {
+        val result = mutableListOf<Uri>()
+        IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            ?.let(result::add)
+        IntentCompat.getParcelableArrayListExtra(
+            intent,
+            Intent.EXTRA_STREAM,
+            Uri::class.java,
+        )?.let(result::addAll)
+        intent.clipData?.let { clip ->
+            for (index in 0 until clip.itemCount) {
+                clip.getItemAt(index).uri?.let(result::add)
+            }
+        }
+        return result.distinct()
+    }
+
+    private fun sendSharedUris(uris: List<Uri>, declaredMime: String?): OperationResult<String> {
+        var lastId = ""
+        for (uri in uris) {
+            val mime = context.contentResolver.getType(uri)
+                ?: declaredMime?.takeUnless { it == "*/*" }
+                ?: "application/octet-stream"
+            when (
+                val result = send(
+                    OutgoingClipboard.Content(
+                        uri,
+                        context.contentResolver.displayName(uri),
+                        mime,
+                    ),
+                )
+            ) {
+                is OperationResult.Error -> return result
+                is OperationResult.Success -> lastId = result.value
+            }
+        }
+        return OperationResult.Success(lastId)
+    }
 
     suspend fun sendUri(uri: Uri): OperationResult<String> = withContext(Dispatchers.IO) {
         send(

@@ -9,6 +9,7 @@
     <string name="sync_running_detail">Tap to open the app</string>
     <string name="clipboard_sent">Clipboard sent</string>
     <string name="clipboard_received">Clipboard received</string>
+    <string name="share_sent">Shared content sent</string>
     <string name="tile_sending">Sending…</string>
     <string name="tile_receiving">Receiving…</string>
 </resources>

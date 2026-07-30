@@ -28,7 +28,7 @@ host Docker.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.6](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk) | App nativa, menu Condividi, cronologia server e pulsanti rapidi |
+| **Android 10+** | [APK Android 1.0.0-beta.7](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk) | App nativa, destinazione Condividi universale, cronologia server e pulsanti rapidi |
 | **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
 | **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
 | **Comando iPhone per inviare** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
@@ -120,7 +120,7 @@ Il client Android nativo supporta Android 10 e versioni successive.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk).
+1. Scarica l'[APK Android](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -162,7 +162,9 @@ usando lo stesso spazio condiviso oppure lo stesso account.
 - **Ricevi ultimo:** scarica l'elemento più recente e lo inserisce nella clipboard.
 - **Invia file:** apre il selettore file di Android.
 - **Elemento della cronologia:** scarica esattamente quell'elemento del server.
-- **Condividi con Clipboard Bridge:** invia contenuti da Foto, File, browser e altre app.
+- **Condividi con Clipboard Bridge:** appare nel menu Condividi di Android per testo,
+  immagini, documenti e file di qualsiasi tipo. Può caricare anche più file selezionati
+  senza lasciare aperta la schermata principale di Clipboard Bridge.
 
 ### Aggiungere i pulsanti alle Impostazioni rapide
 

@@ -9,6 +9,7 @@
     <string name="sync_running_detail">Tocca per aprire l\'app</string>
     <string name="clipboard_sent">Appunti inviati</string>
     <string name="clipboard_received">Appunti ricevuti</string>
+    <string name="share_sent">Contenuto condiviso inviato</string>
     <string name="tile_sending">Invio…</string>
     <string name="tile_receiving">Ricezione…</string>
 </resources>

@@ -3,10 +3,10 @@
 The native Android client connects Android phones and tablets to the same Clipboard
 Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
-**Current public build:** `1.0.0-beta.6`<br>
+**Current public build:** `1.0.0-beta.7`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk)
+[Download the signed universal APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk)
 
 ## Features
 
@@ -16,7 +16,8 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 - Put received text and files into the Android clipboard.
 - Live server history with up to 200 items.
 - Restore a specific item from server history.
-- Send content through the Android Share menu.
+- Appear as a universal Android Share target for text and every file MIME type.
+- Upload one or several files selected in another application.
 - **Send clipboard** and **Receive clipboard** Quick Settings tiles.
 - Optional foreground monitoring for new server items.
 - Configurable text, file and upload notifications.
@@ -25,7 +26,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
 ## Install
 
-1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk`.
+1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk`.
 2. Open the APK from Android's browser or file manager.
 3. If Android asks, allow that application to install unknown apps.
 4. Select **Install**.
@@ -89,7 +90,13 @@ Android only after Windows uploads them through manual send or automatic synchro
 - **Receive latest:** downloads `GET /clipboard/latest/raw`.
 - **Send file:** selects a document with Android's system picker.
 - **History row:** downloads that exact server item.
-- **Share menu:** accepts content shared from another Android application.
+- **Share menu:** accepts text, images, documents and arbitrary file types shared from
+  another Android application. `ACTION_SEND_MULTIPLE` selections are uploaded in order;
+  each file remains available in server history and the last upload becomes the latest
+  clipboard item.
+
+The Share target uses a transparent upload activity. Clipboard Bridge reports the result
+and closes immediately instead of opening and leaving the main application on screen.
 
 The latest item is determined only by arrival order. Text, images and files have equal
 priority.
