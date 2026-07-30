@@ -127,6 +127,17 @@ class ApiClient(
     fun downloadItem(id: String, cacheDir: File): OperationResult<ReceivedClipboard> =
         download("/clipboard/item/$id/raw", cacheDir)
 
+    fun deleteItem(id: String): OperationResult<String> = runCatching {
+        client.newCall(request("/clipboard/item/$id").delete().build()).execute().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error(httpError(response.code, payload))
+            id
+        }
+    }.fold(
+        onSuccess = { OperationResult.Success(it) },
+        onFailure = { OperationResult.Error(it.userMessage()) },
+    )
+
     private fun download(path: String, cacheDir: File): OperationResult<ReceivedClipboard> = runCatching {
         client.newCall(request(path).get().build()).execute().use { response ->
             if (!response.isSuccessful) {

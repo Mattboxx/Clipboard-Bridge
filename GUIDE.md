@@ -40,6 +40,11 @@ Client mode:          iPhone (Shortcuts)  ⇄  private server  ⇄  Windows app
 There is no mandatory cloud service or online account. Optional server accounts are local
 to your own installation.
 
+> **Token and account authentication are optional.** Without either one, Clipboard
+> Bridge uses the general shared space. URLs configured with `?token=...` or
+> `?user=...&password=...` contain those values in plain text. HTTP does not encrypt
+> them; keep the server on a trusted LAN/private VPN or use an HTTPS reverse proxy.
+
 ---
 
 ## 2. Before you start

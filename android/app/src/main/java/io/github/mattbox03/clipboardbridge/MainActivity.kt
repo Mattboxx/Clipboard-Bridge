@@ -36,7 +36,9 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.UploadFile
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,13 +54,16 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -129,6 +134,7 @@ private fun MainScreen(
     val state by viewModel.state.collectAsState()
     val copy = remember { UiCopy.current() }
     val snackbar = remember { SnackbarHostState() }
+    var pendingDelete by remember { mutableStateOf<HistoryItem?>(null) }
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -152,6 +158,29 @@ private fun MainScreen(
             delay(5_000)
             viewModel.refreshSilently()
         }
+    }
+
+    pendingDelete?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(copy.delete) },
+            text = { Text(copy.deleteConfirm) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDelete = null
+                        viewModel.deleteItem(item.id)
+                    },
+                ) {
+                    Text(copy.delete, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(copy.cancel)
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -264,7 +293,12 @@ private fun MainScreen(
                 }
             } else {
                 items(state.serverHistory, key = { it.id }) { item ->
-                    HistoryRow(item, copy) { viewModel.receiveItem(item.id) }
+                    HistoryRow(
+                        item = item,
+                        copy = copy,
+                        onDownload = { viewModel.receiveItem(item.id) },
+                        onDelete = { pendingDelete = item },
+                    )
                     HorizontalDivider(modifier = Modifier.padding(start = 64.dp))
                 }
             }
@@ -417,7 +451,12 @@ private fun SyncControls(
 }
 
 @Composable
-private fun HistoryRow(item: HistoryItem, copy: UiCopy, onClick: () -> Unit) {
+private fun HistoryRow(
+    item: HistoryItem,
+    copy: UiCopy,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val icon: ImageVector = when (item.type) {
         "text" -> Icons.Outlined.Description
         "image" -> Icons.Outlined.Image
@@ -431,7 +470,7 @@ private fun HistoryRow(item: HistoryItem, copy: UiCopy, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onDownload)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -458,6 +497,15 @@ private fun HistoryRow(item: HistoryItem, copy: UiCopy, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Icon(Icons.Outlined.Download, copy.receiveLatest)
+        IconButton(onClick = onDownload) {
+            Icon(Icons.Outlined.Download, copy.receiveLatest)
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Outlined.Delete,
+                copy.delete,
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }

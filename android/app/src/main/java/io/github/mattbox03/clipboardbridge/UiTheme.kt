@@ -62,6 +62,10 @@ data class UiCopy(
     val image: String,
     val sent: String,
     val received: String,
+    val delete: String,
+    val deleteConfirm: String,
+    val cancel: String,
+    val deleted: String,
     val backgroundNotice: String,
 ) {
     companion object {
@@ -87,6 +91,10 @@ data class UiCopy(
                 image = "Immagine",
                 sent = "Inviato",
                 received = "Ricevuto e copiato",
+                delete = "Elimina",
+                deleteConfirm = "Eliminare questo elemento dalla cronologia del server?",
+                cancel = "Annulla",
+                deleted = "Elemento eliminato",
                 backgroundNotice = "Il controllo continuo mostra una notifica permanente.",
             )
         } else {
@@ -111,6 +119,10 @@ data class UiCopy(
                 image = "Image",
                 sent = "Sent",
                 received = "Received and copied",
+                delete = "Delete",
+                deleteConfirm = "Delete this item from server history?",
+                cancel = "Cancel",
+                deleted = "Item deleted",
                 backgroundNotice = "Continuous monitoring displays a permanent notification.",
             )
         }

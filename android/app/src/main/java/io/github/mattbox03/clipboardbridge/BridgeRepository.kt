@@ -115,6 +115,10 @@ class BridgeRepository(private val context: Context) {
     suspend fun receiveItem(id: String, notify: Boolean = false): OperationResult<AppliedItem> =
         receive(id, notify)
 
+    suspend fun deleteItem(id: String) = withContext(Dispatchers.IO) {
+        api.deleteItem(id)
+    }
+
     private suspend fun receive(id: String?, notify: Boolean): OperationResult<AppliedItem> =
         withContext(Dispatchers.IO) {
             val downloaded = if (id == null) {

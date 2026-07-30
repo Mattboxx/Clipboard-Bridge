@@ -932,6 +932,7 @@ WEB_STRINGS = {
         "ip_send": "Send &mdash; clipboard to server (body: File)",
         "ip_recv": "Receive &mdash; latest item to clipboard",
         "token_note": "Token enabled: in the Shortcuts add the header",
+        "auth_optional": "Token and accounts are optional. Values placed in these URLs are visible in plain text; HTTP does not encrypt them.",
         "login": "Log in", "logout": "Log out", "shared": "shared",
         "acct_note": "You are in account <b>{name}</b> — these links carry its user &amp; password.",
         "foot": "This page also works from the iPhone browser.",
@@ -953,7 +954,8 @@ WEB_STRINGS = {
         "iphone_intro": "Bastano due comandi (Ottieni contenuto dell’URL): inviano o recuperano sempre l’ultimo elemento:",
         "ip_send": "Invia &mdash; appunti al server (corpo: File)",
         "ip_recv": "Ricevi &mdash; ultimo elemento negli appunti",
-        "token_note": "Token attivo: nelle Shortcut aggiungi l’intestazione",
+        "token_note": "Token attivo: nelle Shortcut aggiungi l'intestazione",
+        "auth_optional": "Token e account sono opzionali. I valori inseriti in questi URL sono visibili in chiaro; HTTP non li cifra.",
         "login": "Accedi", "logout": "Esci", "shared": "condiviso",
         "acct_note": "Sei nell'account <b>{name}</b> — questi link includono utente e password.",
         "foot": "Questa pagina funziona anche dal browser dell’iPhone.",
@@ -998,7 +1000,7 @@ def render_home():
     if not rows:
         rows = f'<div class="empty">{S["empty"]}</div>'
 
-    nota = ""
+    nota = f'<div class="nota">{S["auth_optional"]}</div>'
     if tok:
         nota = (f'<div class="nota">{S["token_note"]} '
                 f'<code>X-Auth-Token: {escape(tok)}</code>.</div>')

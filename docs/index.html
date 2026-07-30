@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Clipboard Bridge | Windows and iPhone Clipboard Sync</title>
-  <meta name="description" content="Share clipboard text, photos and files between Windows and iPhone over your local network. Use Windows directly or a self-hosted Docker server with iOS Shortcuts.">
-  <meta name="keywords" content="Windows iPhone clipboard sync, self-hosted clipboard, iOS Shortcuts clipboard, send files from iPhone to Windows, Docker clipboard server">
+  <title>Clipboard Bridge | Windows, Android and iPhone Clipboard Sync</title>
+  <meta name="description" content="Share clipboard text, photos and files between Windows, Android and iPhone over your private network. Use Windows directly or a self-hosted Docker server.">
+  <meta name="keywords" content="Windows Android iPhone clipboard sync, self-hosted clipboard, Android clipboard sharing, iOS Shortcuts clipboard, cross-device file sharing, Docker clipboard server">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <link rel="canonical" href="https://mattbox03.github.io/Clipboard-Bridge/">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Clipboard Bridge - Windows and iPhone Clipboard Sync">
-  <meta property="og:description" content="Transfer text, photos and files between Windows and iPhone. Local, open source and self-hosted.">
+  <meta property="og:title" content="Clipboard Bridge - Windows, Android and iPhone Clipboard Sync">
+  <meta property="og:description" content="Transfer text, photos and files between Windows, Android and iPhone. Local, open source and self-hosted.">
   <meta property="og:url" content="https://mattbox03.github.io/Clipboard-Bridge/">
   <meta property="og:image" content="https://mattbox03.github.io/Clipboard-Bridge/modes.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -21,9 +21,9 @@
     "@type": "SoftwareApplication",
     "name": "Clipboard Bridge",
     "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "Windows, iOS, Linux",
+    "operatingSystem": "Windows, Android, iOS, Linux",
     "softwareVersion": "2.0.4",
-    "description": "Open-source clipboard synchronization and file transfer between Windows and iPhone over a local network, using iOS Shortcuts and an optional self-hosted Docker server.",
+    "description": "Open-source clipboard synchronization and file transfer between Windows, Android and iPhone over a private network, with a native Android app, iOS Shortcuts and an optional Docker server.",
     "url": "https://mattbox03.github.io/Clipboard-Bridge/",
     "downloadUrl": "https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe",
     "softwareHelp": "https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md",
@@ -39,8 +39,8 @@
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "How can I share my clipboard between Windows and iPhone?",
-        "acceptedAnswer": {"@type": "Answer", "text": "Run Clipboard Bridge on Windows, then use two iOS Shortcuts to send or receive the latest text, photo or file over the local network."}
+        "name": "How can I share my clipboard between Windows, Android and iPhone?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Run Clipboard Bridge on Windows or a private server, use the native Android app, and configure two iOS Shortcuts to exchange the latest text, photo or file."}
       },
       {
         "@type": "Question",
@@ -93,7 +93,7 @@
     .item h3{margin:0 0 9px;font-size:19px;letter-spacing:0}
     .item p{margin:0;color:var(--muted)}
     #download{background:linear-gradient(180deg,#f7fafb 0%,#fff 100%)}
-    #download .grid{grid-template-columns:repeat(4,1fr)}
+    #download .grid{grid-template-columns:repeat(3,1fr)}
     #download .item:first-child,#download .item:nth-child(2){border-top:4px solid var(--blue)}
     #download .item:nth-child(3),#download .item:nth-child(4){border-top:4px solid var(--green)}
     #download .item .button{width:100%;min-height:44px;margin-top:6px}
@@ -143,8 +143,8 @@
   <header class="hero">
     <div class="hero-inner">
       <div class="eyebrow">Local and self-hosted clipboard sharing</div>
-      <h1>Share your clipboard between Windows and iPhone</h1>
-      <p class="lead">Transfer text, photos and files over your local network with two iOS Shortcuts. Run it directly from Windows or connect to your own always-on Docker server.</p>
+      <h1>One clipboard for Windows, Android and iPhone</h1>
+      <p class="lead">Transfer text, photos and files over your private network with the native Android app and two iOS Shortcuts. Run the server directly from Windows or use your own always-on Docker host.</p>
       <div class="actions">
         <a class="button primary" href="#download">Choose your download</a>
         <a class="button" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Setup guide</a>
@@ -162,8 +162,15 @@
       <div class="inner">
         <span class="section-kicker">Get started</span>
         <h2>Download Clipboard Bridge 2.0.4</h2>
-        <p class="section-copy">Install the Windows application first, then download the two ready-made iPhone Shortcuts. These buttons download the files directly, without opening the GitHub release page. The complete release also includes the Python server and its Docker/Compose files.</p>
+        <p class="section-copy">Download the client for each device. The Android APK, Windows builds and two ready-made iPhone Shortcuts are direct downloads. The complete release also includes the Python server and Docker/Compose files.</p>
         <div class="grid">
+          <article class="item">
+            <h3>Android app</h3>
+            <p>Native Android 10+ client with universal Share target, server history, per-item deletion and Quick Settings controls.</p>
+            <div class="actions">
+              <a class="button primary" style="background:#16805b;color:#fff;border-color:#16805b" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk">Download Android APK beta 8</a>
+            </div>
+          </article>
           <article class="item">
             <h3>Windows installer</h3>
             <p>Recommended. Installs Clipboard Bridge for the current Windows user without administrator privileges.</p>
@@ -201,7 +208,8 @@
           <span><strong>Checksums:</strong> <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/SHA256SUMS.V2.0.4.txt">verify the Windows downloads</a></span>
           <span><strong>Server:</strong> <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip">download the complete source and Docker bundle</a></span>
         </div>
-        <p class="section-copy" style="margin-top:24px">After adding the Shortcuts on the iPhone, set their complete URLs as shown in the iPhone section below. For all Windows, iPhone and server assets, open the <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4">complete 2.0.4 release</a>.</p>
+        <p class="section-copy" style="margin-top:24px;padding:18px 20px;background:#fff;border-left:4px solid #d49a22;border-radius:4px"><strong>Optional authentication:</strong> token and accounts are not required. If used in iPhone or Android links, <strong>token, username and password are visible in plain text in the URL</strong>. HTTP does not encrypt them; use a trusted LAN, private VPN or HTTPS reverse proxy.</p>
+        <p class="section-copy" style="margin-top:24px">After adding the Shortcuts on the iPhone, set their complete URLs as shown below. For all Windows, Android, iPhone and server assets, open the <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4">complete 2.0.4 release</a>.</p>
       </div>
     </section>
 
@@ -224,12 +232,13 @@
     <section id="features">
       <div class="inner">
         <span class="section-kicker">One simple workflow</span>
-        <h2>Windows and iPhone clipboard sync without the cloud</h2>
-        <p class="section-copy">Clipboard Bridge detects whether the latest item is text, an image or a file. The Windows tray client and iPhone Shortcuts use the same send and receive workflow for every supported content type.</p>
+        <h2>Windows, Android and iPhone clipboard sync without the cloud</h2>
+        <p class="section-copy">Clipboard Bridge detects whether the latest item is text, an image or a file. Windows, Android and iPhone use the same ordered server history for every supported content type.</p>
         <div class="grid">
           <article class="item"><h3>Text, photos and files</h3><p>Move the latest clipboard item without choosing a separate transfer mode.</p></article>
           <article class="item"><h3>Private local network</h3><p>Keep transfers on your LAN instead of sending clipboard data to a third-party cloud.</p></article>
           <article class="item"><h3>iOS Shortcuts</h3><p>Send and receive from the iPhone Share Sheet using two reusable Shortcuts.</p></article>
+          <article class="item"><h3>Native Android app</h3><p>Share one or multiple files of any type, browse and delete server history, and use two Quick Settings controls.</p></article>
           <article class="item"><h3>Windows tray client</h3><p>Centralized Settings for mode, language, history, automation, accounts, notifications and hotkeys, plus a compact green/red tray status and single-instance protection against duplicate icons. Choose alerts separately for received text, images and files; click a file notification to reveal the document.</p></article>
           <article class="item"><h3>Self-hosted Docker server</h3><p>Run an always-on clipboard server on a NAS, Raspberry Pi or home server. It accepts Unicode text and every file format through raw, multipart or JSON/Base64 uploads. Stable package: <a href="https://github.com/users/mattbox03/packages/container/package/clipboard-bridge-server">server 1.0.2</a>.</p></article>
           <article class="item"><h3>Multiple accounts</h3><p>Give each user an isolated history and file space while retaining a shared clipboard.</p></article>
@@ -241,7 +250,7 @@
       <div class="inner">
         <span class="section-kicker">Choose your setup</span>
         <h2>One application, two distinct modes</h2>
-        <p class="section-copy">Choose the simplest setup for your network. Both modes work with the same Windows actions and iPhone Shortcuts.</p>
+        <p class="section-copy">Choose the simplest setup for your network. Both modes work with Windows, the native Android app and iPhone Shortcuts.</p>
         <div class="modes">
           <article class="mode server"><h3>Windows Server mode</h3><p>The Windows application itself becomes the local clipboard server. Your iPhone connects directly to the PC, with no NAS, Docker container or separate web server.</p></article>
           <article class="mode"><h3>Client mode with private server</h3><p>Windows and iPhone connect to an always-on Flask server. Deploy it with Docker Compose or through ZimaOS, Portainer, Umbrel, Runtipi or Dockge.</p></article>
@@ -282,6 +291,7 @@
           </article>
         </div>
         <p class="section-copy" style="margin-top:24px">For faster access, add both Shortcuts to the iPhone <strong>Control Center</strong>: open Control Center, tap <strong>Add (+)</strong>, choose <strong>Add a Control &gt; Shortcut</strong>, then select Load Clipboard or Download Clipboard. Add one control for each action. See the <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">official Apple guide</a>.</p>
+        <p class="section-copy" style="margin-top:16px"><strong>Authentication is optional.</strong> Account URLs contain <code>user</code> and <code>password</code> in plain text; token URLs expose <code>token</code> in the same way. Do not use these HTTP links on an untrusted or public network.</p>
       </div>
     </section>
 
@@ -291,6 +301,8 @@
         <h2>Frequently asked questions</h2>
         <details><summary>How do I share a clipboard between Windows and iPhone?</summary><p>Start Clipboard Bridge in Windows Server mode or deploy the private server, then configure the two included iOS Shortcuts with the displayed local address.</p></details>
         <details><summary>Can I send photos and files from iPhone to Windows?</summary><p>Yes. Use the Share Sheet with the send Shortcut. Clipboard Bridge stores the latest item and the Windows client receives it in the appropriate format.</p></details>
+        <details><summary>Does Android support every file type?</summary><p>Yes. Clipboard Bridge appears as a Share target for text and every MIME type, including multiple selected files. Its history is read directly from the selected server account or shared space.</p></details>
+        <details><summary>Are a token or account required?</summary><p>No. Both are optional. When included in a URL they are visible in plain text, so use a trusted LAN, private VPN or HTTPS reverse proxy.</p></details>
         <details><summary>Do incoming files download automatically on Windows?</summary><p>Yes. While the Windows client is running, new PDFs and other files are saved automatically in Downloads\Clipboard Bridge. Click the notification to open File Explorer with the file selected.</p></details>
         <details><summary>Does it require iCloud or Microsoft Cloud Clipboard?</summary><p>No. Clipboard Bridge is open source and transfers content through your own network.</p></details>
         <details><summary>Can Windows work as the server?</summary><p>Yes. Select Server mode from the tray menu. The app displays the local IP address and port to use in your iPhone Shortcuts.</p></details>

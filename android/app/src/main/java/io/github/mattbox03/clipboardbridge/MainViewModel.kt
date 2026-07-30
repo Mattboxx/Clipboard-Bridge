@@ -96,6 +96,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.receiveItem(id).mapSuccess(UiCopy.current().received)
     }
 
+    fun deleteItem(id: String) = runOperation {
+        repository.deleteItem(id).mapSuccess(UiCopy.current().deleted)
+    }
+
     fun autoSendClipboardIfAllowed() {
         if (!config.load().autoUploadVisible) return
         if (System.currentTimeMillis() < config.suppressClipboardUntil()) return

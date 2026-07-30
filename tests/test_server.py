@@ -113,6 +113,42 @@ def test_accounts_are_isolated_and_support_url_or_headers(server):
     assert shared.data == b""
 
 
+def test_account_can_delete_only_its_own_history_item(server):
+    client = server.app.test_client()
+    alice_auth = "?user=alice&password=p%26ss%3Fword"
+    bob_headers = {
+        "X-Clipboard-User": "bob",
+        "X-Clipboard-Password": "second",
+    }
+
+    alice_item = client.post(
+        "/clipboard" + alice_auth,
+        data="delete me",
+        content_type="text/plain",
+    ).get_json()
+    bob_item = client.post(
+        "/clipboard",
+        data="keep me",
+        content_type="text/plain",
+        headers=bob_headers,
+    ).get_json()
+
+    unauthorized = client.delete(
+        f"/clipboard/item/{alice_item['id']}?user=alice&password=wrong",
+    )
+    assert unauthorized.status_code == 401
+
+    deleted = client.delete(f"/clipboard/item/{alice_item['id']}" + alice_auth)
+    assert deleted.status_code == 200
+    assert deleted.get_json()["status"] == "deleted"
+
+    assert client.get(f"/clipboard/item/{alice_item['id']}" + alice_auth).status_code == 404
+    assert client.get(
+        f"/clipboard/item/{bob_item['id']}",
+        headers=bob_headers,
+    ).status_code == 200
+
+
 def test_iphone_style_binary_round_trip(server):
     client = server.app.test_client()
     payload = b"%PDF-1.4\nclipboard bridge test\n%%EOF"

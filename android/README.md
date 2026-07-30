@@ -3,10 +3,10 @@
 The native Android client connects Android phones and tablets to the same Clipboard
 Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
-**Current public build:** `1.0.0-beta.7`<br>
+**Current public build:** `1.0.0-beta.8`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk)
+[Download the signed universal APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk)
 
 ## Features
 
@@ -16,6 +16,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 - Put received text and files into the Android clipboard.
 - Live server history with up to 200 items.
 - Restore a specific item from server history.
+- Delete an individual server-history item after confirmation.
 - Appear as a universal Android Share target for text and every file MIME type.
 - Upload one or several files selected in another application.
 - **Send clipboard** and **Receive clipboard** Quick Settings tiles.
@@ -26,7 +27,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
 ## Install
 
-1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk`.
+1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk`.
 2. Open the APK from Android's browser or file manager.
 3. If Android asks, allow that application to install unknown apps.
 4. Select **Install**.
@@ -44,6 +45,12 @@ http://192.168.1.20:5088
 ```
 
 Do not append `/clipboard` to the Android server address.
+
+Token and account authentication are both optional. Select **Shared space** and leave
+the token empty for an open general clipboard. In account mode Android places `user`
+and `password` in plain text in every request URL; token-based Shortcut URLs similarly
+expose `token`. Plain HTTP does not encrypt URL credentials, so use a trusted LAN,
+private VPN or HTTPS reverse proxy.
 
 ### Shared space
 
@@ -90,6 +97,8 @@ Android only after Windows uploads them through manual send or automatic synchro
 - **Receive latest:** downloads `GET /clipboard/latest/raw`.
 - **Send file:** selects a document with Android's system picker.
 - **History row:** downloads that exact server item.
+- **Trash button:** permanently deletes that item from the current server space after
+  confirmation. Account credentials are applied to the delete request as well.
 - **Share menu:** accepts text, images, documents and arbitrary file types shared from
   another Android application. `ACTION_SEND_MULTIPLE` selections are uploaded in order;
   each file remains available in server history and the last upload becomes the latest

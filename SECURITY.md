@@ -24,4 +24,9 @@ not encrypt traffic by itself. Do not expose port `5088` directly to the public
 Internet. For remote access, use a private VPN or an HTTPS reverse proxy and
 enable the available token, web password or isolated accounts.
 
+Tokens, the web password and isolated accounts are optional. Without them, the
+general clipboard is open to the local network. Shortcut and account URLs can
+contain `token`, `user` and `password` in plain text; these values can appear in
+browser history, logs and screenshots. Treat every such URL as a credential.
+
 The project does not collect telemetry or receive users' clipboard contents.

@@ -28,7 +28,7 @@ host Docker.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.7](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk) | App nativa, destinazione Condividi universale, cronologia server e pulsanti rapidi |
+| **Android 10+** | [APK Android 1.0.0-beta.8](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
 | **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
 | **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
 | **Comando iPhone per inviare** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
@@ -60,6 +60,11 @@ Tutti i dispositivi devono usare gli stessi:
 - indirizzo e porta del server;
 - spazio condiviso oppure account;
 - token, nome utente e password, quando l'autenticazione è abilitata.
+
+> **L'autenticazione è opzionale.** Se non configuri token o account, tutti i dispositivi
+> usano la clipboard generale condivisa. Nei link con token o account, `token`, `user` e
+> `password` sono visibili in chiaro nell'URL. HTTP locale non li cifra: usa soltanto una
+> LAN attendibile, una VPN privata oppure un reverse proxy HTTPS.
 
 La cronologia Android è una vista live di `GET /clipboard/history`. Non viene mantenuta
 una seconda cronologia Android.
@@ -111,6 +116,7 @@ Il client Android nativo supporta Android 10 e versioni successive.
 - Inserimento nella clipboard Android di testo e URI dei file ricevuti.
 - Cronologia live del server aggiornata ogni cinque secondi mentre l'app è visibile.
 - Ripristino di qualsiasi elemento della cronologia server.
+- Eliminazione delle singole voci server con richiesta di conferma.
 - Integrazione nel menu **Condividi** di Android.
 - Pulsanti **Invia clipboard** e **Ricevi clipboard** nelle Impostazioni rapide.
 - Controllo opzionale in primo piano dei nuovi elementi del server.
@@ -120,7 +126,7 @@ Il client Android nativo supporta Android 10 e versioni successive.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk).
+1. Scarica l'[APK Android](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -162,6 +168,8 @@ usando lo stesso spazio condiviso oppure lo stesso account.
 - **Ricevi ultimo:** scarica l'elemento più recente e lo inserisce nella clipboard.
 - **Invia file:** apre il selettore file di Android.
 - **Elemento della cronologia:** scarica esattamente quell'elemento del server.
+- **Pulsante cestino:** elimina soltanto quella voce dalla cronologia dell'account o
+  dello spazio condiviso selezionato, dopo una richiesta di conferma.
 - **Condividi con Clipboard Bridge:** appare nel menu Condividi di Android per testo,
   immagini, documenti e file di qualsiasi tipo. Può caricare anche più file selezionati
   senza lasciare aperta la schermata principale di Clipboard Bridge.
@@ -324,6 +332,10 @@ grandi usa `CLIPBOARD_ACCOUNTS_FILE`.
 
 Clipboard Bridge è progettato per reti private.
 
+- Token API e account isolati sono opzionali; la clipboard generale funziona senza
+  entrambi.
+- I link account di iPhone e Android contengono `user` e `password` in chiaro nell'URL.
+  I link con token mostrano allo stesso modo il valore di `token`.
 - Non esporre direttamente la porta `5088` su Internet.
 - Usa token o account se altre persone possono accedere alla rete.
 - Per l'accesso fuori casa usa una VPN. Tailscale è un esempio, non un requisito.

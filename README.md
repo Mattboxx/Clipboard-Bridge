@@ -27,7 +27,7 @@ Python/Docker server on a NAS, Raspberry Pi, home server or any Docker host.
 
 | Platform | Download | What it includes |
 |---|---|---|
-| **Android 10+** | [Android APK 1.0.0-beta.7](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk) | Native app, universal Share target, server history and Quick Settings tiles |
+| **Android 10+** | [Android APK 1.0.0-beta.8](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
 | **Windows installer** | [Clipboard Bridge Windows 2.0.4 installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Per-user installation; no administrator account required |
 | **Windows portable** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | One executable, no installation |
 | **iPhone Send Shortcut** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Sends the current iOS clipboard |
@@ -58,6 +58,11 @@ Every device must use the same:
 - server address and port;
 - shared space or account;
 - token, username and password when authentication is enabled.
+
+> **Authentication is optional.** With no token or accounts configured, every device
+> uses the general shared clipboard. When token or account links are used, `token`,
+> `user` and `password` are visible as plain text in the URL. Local HTTP does not encrypt
+> them: use only a trusted LAN, a private VPN, or an HTTPS reverse proxy.
 
 The Android history is a live view of `GET /clipboard/history`. It is not stored as a
 separate Android history.
@@ -109,6 +114,7 @@ The native Android client supports Android 10 and later.
 - Put received text or file URIs into the Android clipboard.
 - Live server history, refreshed every five seconds while the app is visible.
 - Restore any item directly from server history.
+- Delete individual server-history items after confirmation.
 - Android Share menu target for text, images and files.
 - **Send clipboard** and **Receive clipboard** Quick Settings tiles.
 - Optional foreground monitoring for new server items.
@@ -118,7 +124,7 @@ The native Android client supports Android 10 and later.
 
 ### Install the APK
 
-1. Download the [Android APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.7.apk).
+1. Download the [Android APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk).
 2. Open the downloaded file on the Android device.
 3. If requested, allow the browser or file manager to install apps from that source.
 4. Choose **Install** or **Update**.
@@ -159,6 +165,8 @@ same shared space or the same account.
 - **Receive latest:** downloads the newest server item and places it in the clipboard.
 - **Send file:** opens Android's file picker.
 - **History item:** downloads that exact server item.
+- **Trash button:** deletes only that item from the selected account or shared server
+  history after a confirmation prompt.
 - **Share to Clipboard Bridge:** appears in Android's Share menu for text, images,
   documents and arbitrary file types. One or several selected files are uploaded
   directly without leaving the main Clipboard Bridge screen open.
@@ -323,6 +331,10 @@ histories and there is no fixed account-count limit. For large installations, us
 
 Clipboard Bridge is designed for private networks.
 
+- API tokens and isolated accounts are optional; the general clipboard works without
+  either one.
+- iPhone and Android account links place `user` and `password` in plain text in the URL.
+  Token links do the same with `token`.
 - Do not expose port `5088` directly to the public internet.
 - Use a token or account when other people can access the network.
 - Use a VPN for access away from home. Tailscale is one option, not a requirement.

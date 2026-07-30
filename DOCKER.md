@@ -87,11 +87,18 @@ Restore it to the same location before restarting. Do not run
 
 ## Security and accounts
 
-Set `WEB_PASSWORD` and `API_TOKEN` outside a trusted LAN. `ACCOUNTS` accepts an
+`API_TOKEN`, `WEB_PASSWORD` and `ACCOUNTS` are optional. With all three empty, the
+general shared clipboard remains open. Set `WEB_PASSWORD` and `API_TOKEN` outside a
+trusted LAN. `ACCOUNTS` accepts an
 arbitrary practical number of comma-separated `user:password` pairs. Every
 account has isolated history and files. URL credentials remain supported for
 iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 `X-Clipboard-Password` headers.
+
+Query parameters such as `?token=...` and `?user=...&password=...` expose their values
+in plain text in the URL. HTTP also sends them without transport encryption. Do not
+publish port `5088` directly on the Internet; use a trusted LAN, private VPN or HTTPS
+reverse proxy.
 
 The server does not restrict file extensions. The universal `/clipboard` endpoint accepts
 raw iOS Shortcut bodies, multipart uploads and JSON/Base64, preserving the original bytes,
