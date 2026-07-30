@@ -2,7 +2,7 @@ manifestVersion: 1
 id: clipboard-bridge
 category: utilities
 name: Clipboard Bridge
-version: "1.0.1"
+version: "1.0.2"
 tagline: Share clipboard text and files across your devices
 description: >-
   A private clipboard and file bridge with history, multiple accounts,

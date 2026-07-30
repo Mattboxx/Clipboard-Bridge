@@ -222,7 +222,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Apri **App Store** in Runtipi.
 2. Seleziona **Add custom app**.
 3. Usa `clipboard-bridge` come ID e `Clipboard Bridge` come nome.
-4. Inserisci l’immagine `ghcr.io/mattbox03/clipboard-bridge-server:1.0.1`.
+4. Inserisci l’immagine `ghcr.io/mattbox03/clipboard-bridge-server:1.0.2`.
 5. Imposta la porta del container su `5088` e rendila esponibile.
 6. Aggiungi un volume persistente dalla directory applicativa proposta da
    Runtipi a `/data` nel container.
