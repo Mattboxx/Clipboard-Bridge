@@ -16,6 +16,7 @@ import json
 import uuid
 import base64
 import hashlib
+import re
 import queue
 import socket
 import mimetypes
@@ -26,6 +27,10 @@ import shutil
 import subprocess
 import time
 from ctypes import wintypes
+from email.message import Message
+from email.parser import BytesParser
+from email.policy import default as email_policy
+from urllib.parse import parse_qs, quote
 
 import requests
 import pyperclip
@@ -139,6 +144,10 @@ DEFAULT_CONFIG = {
     "auto_sync": False,
     "auto_receive_files": True,
     "monitor_clipboard": True,
+    "notifications_enabled": True,
+    "notify_text": True,
+    "notify_images": True,
+    "notify_files": True,
     "poll_interval": 3,
     "max_local_history": 100,
     "hotkeys_enabled": True,
@@ -188,6 +197,7 @@ STRINGS = {
         "tab_connection": "Connection",
         "tab_automation": "Automation",
         "tab_shortcuts": "Shortcuts",
+        "section_notifications": "Notifications",
         "section_mode": "Operating mode",
         "section_application": "Application",
         "section_server": "Server address",
@@ -207,6 +217,8 @@ STRINGS = {
         "send_err": "Send error: {e}",
         "text_recv": "Text copied to the clipboard",
         "image_recv": "Image copied to the clipboard",
+        "text_arrived": "New text received and copied to the clipboard",
+        "image_arrived": "New image received and copied to the clipboard",
         "file_saved": "File saved: {name}",
         "file_arrived": "New file received: {name}\nClick to show it in the folder.",
         "no_items": "Nothing on the server",
@@ -243,6 +255,10 @@ STRINGS = {
         "chk_autosync": "Automatic synchronization",
         "chk_auto_files": "Automatically download new files",
         "chk_monitor": "Record local history",
+        "chk_notifications": "Enable notifications",
+        "chk_notify_text": "Text received",
+        "chk_notify_images": "Images received",
+        "chk_notify_files": "Files received",
         "chk_hotkeys": "Keyboard shortcuts enabled",
         "err_numbers": "Port, interval and history limit must be whole numbers.",
         "save": "Save",
@@ -276,6 +292,7 @@ STRINGS = {
         "tab_connection": "Connessione",
         "tab_automation": "Automazione",
         "tab_shortcuts": "Scorciatoie",
+        "section_notifications": "Notifiche",
         "section_mode": "Modalità operativa",
         "section_application": "Applicazione",
         "section_server": "Indirizzo server",
@@ -295,6 +312,8 @@ STRINGS = {
         "send_err": "Errore invio: {e}",
         "text_recv": "Testo ricevuto negli appunti",
         "image_recv": "Immagine ricevuta negli appunti",
+        "text_arrived": "Nuovo testo ricevuto e copiato negli appunti",
+        "image_arrived": "Nuova immagine ricevuta e copiata negli appunti",
         "file_saved": "File salvato: {name}",
         "file_arrived": "Nuovo file ricevuto: {name}\nClicca per mostrarlo nella cartella.",
         "no_items": "Nessun elemento sul server",
@@ -331,6 +350,10 @@ STRINGS = {
         "chk_autosync": "Sincronizzazione automatica",
         "chk_auto_files": "Scarica automaticamente i nuovi file",
         "chk_monitor": "Registra la cronologia locale",
+        "chk_notifications": "Abilita notifiche",
+        "chk_notify_text": "Testo ricevuto",
+        "chk_notify_images": "Immagini ricevute",
+        "chk_notify_files": "File ricevuti",
         "chk_hotkeys": "Scorciatoie da tastiera attive",
         "err_numbers": "Porta, intervallo e limite cronologia devono essere numeri interi.",
         "save": "Salva",
@@ -519,6 +542,10 @@ def action_check_connection(icon=None, item=None):
 
 def notify(message, action=None):
     global _notification_action
+    if not config.get("notifications_enabled", True):
+        with _notification_lock:
+            _notification_action = None
+        return
     with _notification_lock:
         _notification_action = action
     if _icon is not None:
@@ -528,6 +555,18 @@ def notify(message, action=None):
         except Exception:
             pass
     print("[Clipboard Bridge]", message)
+
+
+def notify_received(kind, message, action=None):
+    """Show a notification only when its received-content category is enabled."""
+    setting = {
+        "text": "notify_text",
+        "image": "notify_images",
+        "file": "notify_files",
+    }.get(kind)
+    if setting and not config.get(setting, True):
+        return
+    notify(message, action=action)
 
 
 def apply_window_icon(win):
@@ -724,6 +763,10 @@ def push_text(text):
                       json={"text": text}, headers=auth_headers(),
                       params=auth_params(), timeout=5)
     r.raise_for_status()
+    try:
+        return r.json().get("id")
+    except (ValueError, AttributeError):
+        return None
 
 
 def push_bytes(filename, raw):
@@ -841,7 +884,8 @@ def _auto_receive_remote_files():
         record_local_file(dest)
         _mark_remote_file_seen(item["id"])
         received_paths.append(dest)
-        notify(
+        notify_received(
+            "file",
             t("file_arrived", name=os.path.basename(dest)),
             action=lambda path=dest: reveal_received_file(path),
         )
@@ -890,6 +934,107 @@ def _host_with_content(e):
     return out
 
 
+def _host_clean_filename(filename):
+    if filename is None:
+        return None
+    filename = str(filename).replace("\\", "/").rsplit("/", 1)[-1]
+    filename = "".join(ch for ch in filename if ch >= " " and ch not in "\r\n\x7f").strip()
+    return filename[:240] or None
+
+
+def _host_mime(content_type):
+    return (content_type or "").split(";", 1)[0].strip().lower()
+
+
+def _host_header_filename(headers):
+    for header in ("X-Filename", "X-File-Name", "X-Clipboard-Filename"):
+        if headers.get(header):
+            return _host_clean_filename(headers.get(header))
+    message = Message()
+    message["Content-Disposition"] = headers.get("Content-Disposition", "")
+    if message.get_filename():
+        return _host_clean_filename(message.get_filename())
+    message = Message()
+    message["Content-Type"] = headers.get("Content-Type", "")
+    return _host_clean_filename(message.get_param("name"))
+
+
+def _host_decode_text(raw, content_type="", allow_legacy=False):
+    message = Message()
+    message["Content-Type"] = content_type
+    candidates = []
+    if message.get_content_charset():
+        candidates.append(message.get_content_charset())
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        candidates.append("utf-16")
+    candidates.extend(("utf-8-sig", "utf-8"))
+    if allow_legacy:
+        candidates.append("latin-1")
+    for encoding in candidates:
+        try:
+            return raw.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return None
+
+
+def _host_looks_like_text(raw, content_type=""):
+    text = _host_decode_text(raw, content_type)
+    return text is not None and all(ch.isprintable() or ch in "\r\n\t" for ch in text)
+
+
+def _host_json_text(data):
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        for key in ("text", "value", "content", "clipboard", "string"):
+            if key in data:
+                value = data[key]
+                return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False)
+
+
+def _host_decode_base64(value):
+    if not isinstance(value, str):
+        return None, None
+    encoded = value.strip()
+    data_mime = None
+    if encoded.lower().startswith("data:") and "," in encoded:
+        header, encoded = encoded.split(",", 1)
+        if ";base64" not in header.lower():
+            return None, None
+        data_mime = _host_mime(header[5:].split(";", 1)[0])
+    encoded = re.sub(r"\s+", "", encoded)
+    encoded += "=" * (-len(encoded) % 4)
+    try:
+        return base64.b64decode(encoded, altchars=b"-_", validate=True), data_mime
+    except (ValueError, base64.binascii.Error):
+        return None, None
+
+
+def _host_multipart(body, content_type):
+    """Return the first uploaded file or text field from a multipart iOS request."""
+    prefix = (
+        "Content-Type: " + content_type + "\r\n"
+        "MIME-Version: 1.0\r\n\r\n"
+    ).encode("utf-8")
+    message = BytesParser(policy=email_policy).parsebytes(prefix + body)
+    text_value = None
+    for part in message.iter_parts():
+        filename = _host_clean_filename(part.get_filename())
+        payload = part.get_payload(decode=True) or b""
+        if filename is not None:
+            return "file", payload, filename, part.get_content_type()
+        field = part.get_param("name", header="content-disposition")
+        if field in ("text", "value", "content", "clipboard", "string") or text_value is None:
+            text_value = _host_decode_text(
+                payload,
+                part.get("Content-Type", "text/plain"),
+                allow_legacy=True,
+            )
+    return ("text", text_value, None, None) if text_value is not None else None
+
+
 def _host_add(kind, payload, filename=None, mime=None):
     os.makedirs(HOST_ITEMS, exist_ok=True)
     iid = uuid.uuid4().hex[:12]
@@ -900,7 +1045,13 @@ def _host_add(kind, payload, filename=None, mime=None):
         entry = {"id": iid, "type": "text", "timestamp": _now(), "file": fn, "filename": None,
                  "mime": "text/plain", "size": len(payload.encode("utf-8")), "preview": payload[:140]}
     else:
-        ext = os.path.splitext(filename or "")[1].lower() or (mimetypes.guess_extension(mime or "") or ".bin")
+        filename = _host_clean_filename(filename)
+        mime = _host_mime(mime)
+        candidate = os.path.splitext(filename or "")[1]
+        ext = candidate.lower() if (
+            len(candidate) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", candidate or "")
+        ) else ""
+        ext = ext or (mimetypes.guess_extension(mime or "") or ".bin")
         fn = iid + ext
         with open(os.path.join(HOST_ITEMS, fn), "wb") as f:
             f.write(payload)
@@ -926,11 +1077,21 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass  # keep the console quiet
 
-    def _send(self, code, body=b"", ctype="application/json", filename=None):
+    def _send(self, code, body=b"", ctype="application/json", filename=None, item=None):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         if filename:
-            self.send_header("Content-Disposition", f'inline; filename="{filename}"')
+            fallback = "".join(
+                ch for ch in filename if 32 <= ord(ch) < 127 and ch not in '"\\'
+            ) or "download"
+            self.send_header(
+                "Content-Disposition",
+                f'inline; filename="{fallback}"; filename*=UTF-8\'\'{quote(filename, safe="")}',
+            )
+            self.send_header("X-Clipboard-Filename", quote(filename, safe=""))
+        if item:
+            self.send_header("X-Clipboard-Id", item["id"])
+            self.send_header("X-Clipboard-Type", item["type"])
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if body:
@@ -943,10 +1104,21 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
         path = os.path.join(HOST_ITEMS, e["file"])
         if e["type"] == "text":
             with open(path, "r", encoding="utf-8") as f:
-                self._send(200, f.read().encode("utf-8"), "text/plain; charset=utf-8")
+                self._send(
+                    200,
+                    f.read().encode("utf-8"),
+                    "text/plain; charset=utf-8",
+                    item=e,
+                )
         else:
             with open(path, "rb") as f:
-                self._send(200, f.read(), e.get("mime") or "application/octet-stream", e.get("filename"))
+                self._send(
+                    200,
+                    f.read(),
+                    e.get("mime") or "application/octet-stream",
+                    e.get("filename"),
+                    item=e,
+                )
 
     def do_GET(self):
         try:
@@ -977,32 +1149,106 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             path = self.path.split("?", 1)[0]
             n = int(self.headers.get("Content-Length", 0) or 0)
             body = self.rfile.read(n) if n else b""
-            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            content_type = self.headers.get("Content-Type") or ""
+            ctype = _host_mime(content_type)
+            filename = _host_header_filename(self.headers)
+            multipart = (
+                _host_multipart(body, content_type)
+                if ctype == "multipart/form-data"
+                else None
+            )
+
             if path == "/clipboard/text":
-                e = _host_add("text", (json.loads(body or b"{}")).get("text", ""))
-                return self._json({"status": "ok", "id": e["id"]})
-            if path == "/clipboard/file":
-                d = json.loads(body or b"{}")
-                raw = base64.b64decode((d.get("data") or "").encode())
-                e = _host_add("bin", raw, d.get("filename") or "file.bin")
-                return self._json({"status": "ok", "id": e["id"]})
-            if path in ("/clipboard", "/clipboard/image"):
                 if ctype == "application/json":
-                    d = json.loads(body or b"{}")
-                    if d.get("data"):
-                        e = _host_add("bin", base64.b64decode(d["data"].encode()),
-                                      d.get("filename") or "clipboard", d.get("mime"))
-                        return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
-                    e = _host_add("text", d.get("text", ""))
-                    return self._json({"status": "ok", "id": e["id"], "type": "text"})
-                if ctype.startswith("text/") or ctype in ("", "application/x-www-form-urlencoded"):
                     try:
-                        e = _host_add("text", body.decode("utf-8"))
+                        text = _host_json_text(json.loads(body.decode("utf-8-sig")))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        return self._json({"error": "invalid JSON"}, 400)
+                elif ctype == "application/x-www-form-urlencoded":
+                    form = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
+                    key = next((k for k in ("text", "value", "content", "clipboard", "string") if k in form), None)
+                    text = form[key][0] if key else (next(iter(form.values()))[0] if form else "")
+                else:
+                    text = _host_decode_text(body, content_type, allow_legacy=True)
+                    if text is None:
+                        return self._json({"error": "invalid text encoding"}, 400)
+                e = _host_add("text", text)
+                return self._json({"status": "ok", "id": e["id"]})
+
+            if path == "/clipboard/file":
+                raw = body
+                mime = ctype or None
+                if multipart and multipart[0] == "file":
+                    _, raw, filename, mime = multipart
+                elif ctype == "application/json" and filename is None:
+                    try:
+                        data = json.loads(body.decode("utf-8-sig"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        return self._json({"error": "invalid JSON"}, 400)
+                    if not isinstance(data, dict) or "data" not in data:
+                        return self._json({"error": "file data missing"}, 400)
+                    raw, data_mime = _host_decode_base64(data.get("data"))
+                    if raw is None:
+                        return self._json({"error": "invalid base64"}, 400)
+                    filename = _host_clean_filename(data.get("filename"))
+                    mime = _host_mime(data.get("mime")) or data_mime
+                filename = filename or (
+                    "clipboard" + (mimetypes.guess_extension(mime or "") or ".bin")
+                )
+                e = _host_add("bin", raw, filename, mime)
+                return self._json({"status": "ok", "id": e["id"]})
+
+            if path in ("/clipboard", "/clipboard/image"):
+                if multipart:
+                    if multipart[0] == "file":
+                        _, raw, multipart_name, mime = multipart
+                        e = _host_add("bin", raw, multipart_name or "clipboard.bin", mime)
+                    else:
+                        e = _host_add("text", multipart[1])
+                    return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+
+                if ctype == "application/json":
+                    if filename:
+                        e = _host_add("bin", body, filename, ctype)
+                        return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+                    try:
+                        data = json.loads(body.decode("utf-8-sig"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        return self._json({"error": "invalid JSON"}, 400)
+                    if isinstance(data, dict) and "data" in data:
+                        raw, data_mime = _host_decode_base64(data.get("data"))
+                        if raw is None:
+                            return self._json({"error": "invalid base64"}, 400)
+                        mime = _host_mime(data.get("mime")) or data_mime
+                        name = _host_clean_filename(data.get("filename")) or (
+                            "clipboard" + (mimetypes.guess_extension(mime or "") or ".bin")
+                        )
+                        e = _host_add("bin", raw, name, mime)
+                        return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+                    e = _host_add("text", _host_json_text(data))
+                    return self._json({"status": "ok", "id": e["id"], "type": "text"})
+
+                if ctype == "application/x-www-form-urlencoded":
+                    form = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
+                    key = next((k for k in ("text", "value", "content", "clipboard", "string") if k in form), None)
+                    text = form[key][0] if key else (next(iter(form.values()))[0] if form else "")
+                    e = _host_add("text", text)
+                    return self._json({"status": "ok", "id": e["id"], "type": "text"})
+
+                if filename is None and (
+                    ctype.startswith("text/") or (not ctype and body and _host_looks_like_text(body, content_type))
+                ):
+                    text = _host_decode_text(body, content_type, allow_legacy=ctype.startswith("text/"))
+                    if text is not None:
+                        e = _host_add("text", text)
                         return self._json({"status": "ok", "id": e["id"], "type": "text"})
-                    except UnicodeDecodeError:
-                        pass
-                fn = self.headers.get("X-Filename") or ("clipboard" + (mimetypes.guess_extension(ctype) or ".bin"))
-                e = _host_add("bin", body, fn, ctype or None)
+
+                if not body and filename is None and not ctype.startswith("text/"):
+                    return self._json({"error": "no data"}, 400)
+                filename = filename or (
+                    "clipboard" + (mimetypes.guess_extension(ctype) or ".bin")
+                )
+                e = _host_add("bin", body, filename, ctype or None)
                 return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
             self._json({"error": "not found"}, 404)
         except Exception as ex:
@@ -1173,18 +1419,19 @@ def action_get_latest(icon=None, item=None):
         kind = data.get("type")
         if kind == "text":
             set_clipboard_text(data.get("text", ""))
-            notify(t("text_recv"))
+            notify_received("text", t("text_recv"))
         elif kind == "image":
             raw = base64.b64decode(data["data"])
             set_clipboard_image(Image.open(io.BytesIO(raw)))
-            notify(t("image_recv"))
+            notify_received("image", t("image_recv"))
         elif kind == "file":
             raw = base64.b64decode(data["data"])
             dest = save_received(data.get("filename", "file.bin"), raw)
             set_clipboard_files([dest])
             record_local_file(dest)
             _mark_remote_file_seen(data.get("id"))
-            notify(
+            notify_received(
+                "file",
                 t("file_arrived", name=os.path.basename(dest)),
                 action=lambda path=dest: reveal_received_file(path),
             )
@@ -1261,7 +1508,9 @@ def sync_loop():
                             record_local_image(img)
                             if config.get("auto_sync"):
                                 try:
-                                    push_image(img)
+                                    sent_id = push_image(img)
+                                    if sent_id:
+                                        last_server = sent_id
                                 except Exception:
                                     pass
                     else:
@@ -1271,7 +1520,9 @@ def sync_loop():
                             record_local_text(text)
                             if config.get("auto_sync"):
                                 try:
-                                    push_text(text)
+                                    sent_id = push_text(text)
+                                    if sent_id:
+                                        last_server = sent_id
                                 except Exception:
                                     pass
 
@@ -1285,12 +1536,14 @@ def sync_loop():
                             txt = data.get("text", "")
                             set_clipboard_text(txt)
                             last_text = txt
+                            notify_received("text", t("text_arrived"))
                         elif data.get("type") == "image":
                             raw = base64.b64decode(data["data"])
                             im = Image.open(io.BytesIO(raw))
                             set_clipboard_image(im)
                             rb = get_clipboard_image()
                             last_img = _img_hash(rb) if rb is not None else _img_hash(im)
+                            notify_received("image", t("image_arrived"))
                 except Exception:
                     pass
         except Exception:
@@ -1370,7 +1623,8 @@ def open_history_window(icon=None, item=None):
                     set_clipboard_files([dest])
                     record_local_file(dest)
                     _mark_remote_file_seen(full.get("id"))
-                    notify(
+                    notify_received(
+                        "file",
                         t("file_arrived", name=os.path.basename(dest)),
                         action=lambda path=dest: reveal_received_file(path),
                     )
@@ -1632,6 +1886,10 @@ def open_settings(icon=None, item=None):
     auto = tk.BooleanVar(value=config.get("auto_sync", False))
     auto_files = tk.BooleanVar(value=config.get("auto_receive_files", True))
     mon = tk.BooleanVar(value=config.get("monitor_clipboard", True))
+    notifications = tk.BooleanVar(value=config.get("notifications_enabled", True))
+    notify_text = tk.BooleanVar(value=config.get("notify_text", True))
+    notify_images = tk.BooleanVar(value=config.get("notify_images", True))
+    notify_files = tk.BooleanVar(value=config.get("notify_files", True))
     automation_box = ttk.LabelFrame(
         automation_tab,
         text=t("tab_automation"),
@@ -1659,6 +1917,41 @@ def open_settings(icon=None, item=None):
     interval_box = ttk.Frame(automation_box)
     interval_box.pack(fill="x", pady=(10, 0))
     add_field(interval_box, 0, t("lbl_interval"), "poll_interval")
+
+    notifications_box = ttk.LabelFrame(
+        automation_tab,
+        text=t("section_notifications"),
+        style="Settings.Section.TLabelframe",
+    )
+    notifications_box.pack(fill="x", pady=(12, 0))
+    notification_category_controls = []
+
+    def update_notification_controls():
+        state = "normal" if notifications.get() else "disabled"
+        for control in notification_category_controls:
+            control.config(state=state)
+
+    ttk.Checkbutton(
+        notifications_box,
+        text=t("chk_notifications"),
+        variable=notifications,
+        command=update_notification_controls,
+        style="Settings.TCheckbutton",
+    ).pack(anchor="w")
+    for label, variable in (
+        (t("chk_notify_text"), notify_text),
+        (t("chk_notify_images"), notify_images),
+        (t("chk_notify_files"), notify_files),
+    ):
+        control = ttk.Checkbutton(
+            notifications_box,
+            text=label,
+            variable=variable,
+            style="Settings.TCheckbutton",
+        )
+        control.pack(anchor="w", padx=(22, 0))
+        notification_category_controls.append(control)
+    update_notification_controls()
 
     hk = tk.BooleanVar(value=config.get("hotkeys_enabled", True))
     shortcuts_box = ttk.LabelFrame(
@@ -1781,6 +2074,10 @@ def open_settings(icon=None, item=None):
         config["auto_sync"] = auto.get()
         config["auto_receive_files"] = auto_files.get()
         config["monitor_clipboard"] = mon.get()
+        config["notifications_enabled"] = notifications.get()
+        config["notify_text"] = notify_text.get()
+        config["notify_images"] = notify_images.get()
+        config["notify_files"] = notify_files.get()
         config["hotkeys_enabled"] = hk.get()
         save_config(config)
         _local_save(_local_load())

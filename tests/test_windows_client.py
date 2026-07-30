@@ -118,6 +118,87 @@ def test_notification_click_runs_the_file_action(tmp_path, monkeypatch):
     assert calls == [("file", None)]
 
 
+def test_notification_master_switch_and_received_categories(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    original_notify = client.notify
+    notifications = []
+    monkeypatch.setattr(
+        client,
+        "notify",
+        lambda message, action=None: notifications.append((message, action)),
+    )
+
+    client.config.update({
+        "notifications_enabled": True,
+        "notify_text": False,
+        "notify_images": True,
+        "notify_files": False,
+    })
+    client.notify_received("text", "text")
+    client.notify_received("image", "image")
+    client.notify_received("file", "file")
+
+    assert notifications == [("image", None)]
+
+    class FakeIcon:
+        def __init__(self):
+            self.messages = []
+
+        def notify(self, message, title):
+            self.messages.append((message, title))
+
+    icon = FakeIcon()
+    monkeypatch.setattr(client, "notify", original_notify)
+    monkeypatch.setattr(client, "_icon", icon)
+    client.config["notifications_enabled"] = False
+    client.notify("hidden")
+    assert icon.messages == []
+
+
+def test_auto_sync_notifies_when_remote_text_is_copied(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    copied = []
+    notifications = []
+
+    class OneIteration:
+        done = False
+
+        def is_set(self):
+            return self.done
+
+        def wait(self, timeout):
+            self.done = True
+
+    client.config.update({
+        "auto_sync": True,
+        "auto_receive_files": False,
+        "monitor_clipboard": False,
+        "notifications_enabled": True,
+        "notify_text": True,
+    })
+    monkeypatch.setattr(client, "stop_event", OneIteration())
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "")
+    monkeypatch.setattr(
+        client,
+        "pull_latest",
+        lambda: {"id": "remote-text", "type": "text", "text": "From iPhone"},
+    )
+    monkeypatch.setattr(client, "set_clipboard_text", lambda text: copied.append(text))
+    monkeypatch.setattr(
+        client,
+        "notify",
+        lambda message, action=None: notifications.append(message),
+    )
+
+    client.sync_loop()
+
+    assert copied == ["From iPhone"]
+    assert notifications == [client.t("text_arrived")]
+
+
 def test_embedded_server_file_arrives_without_manual_receive(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     notifications = []
@@ -159,6 +240,78 @@ def test_embedded_server_file_arrives_without_manual_receive(tmp_path, monkeypat
         assert len(notifications) == 1
         assert callable(notifications[0][1])
         assert clipboard_files == [[str(received)]]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_embedded_server_accepts_iphone_text_and_file_variants(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    server = client.http.server.ThreadingHTTPServer(("127.0.0.1", 0), client._SrvHandler)
+    port = server.server_address[1]
+    base = f"http://127.0.0.1:{port}"
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        text = "Caffè ☕️\n中文 العربية\n👩‍💻"
+        response = requests.post(
+            base + "/clipboard",
+            data=text.encode("utf-16"),
+            headers={"Content-Type": "text/plain; charset=utf-16"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        assert response.json()["type"] == "text"
+        latest = requests.get(base + "/clipboard/latest/raw", timeout=5)
+        assert latest.content == text.encode("utf-8")
+        assert latest.headers["X-Clipboard-Type"] == "text"
+
+        response = requests.post(base + "/clipboard", json=text, timeout=5)
+        response.raise_for_status()
+        assert requests.get(base + "/clipboard/latest/raw", timeout=5).text == text
+
+        pdf = b"%PDF-1.7\n\x00binary\n%%EOF"
+        response = requests.post(
+            base + "/clipboard/file",
+            data=pdf,
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Disposition": "attachment; filename*=UTF-8''scheda%20caff%C3%A8.pdf",
+            },
+            timeout=5,
+        )
+        response.raise_for_status()
+        latest = requests.get(base + "/clipboard/latest/raw", timeout=5)
+        assert latest.content == pdf
+        assert latest.headers["X-Clipboard-Filename"] == "scheda%20caff%C3%A8.pdf"
+
+        archive = b"PK\x03\x04\x00custom"
+        response = requests.post(
+            base + "/clipboard",
+            files={"file": ("backup.unknown", archive, "application/x-custom")},
+            timeout=5,
+        )
+        response.raise_for_status()
+        assert response.json()["type"] == "file"
+        latest = requests.get(base + "/clipboard/latest/raw", timeout=5)
+        assert latest.content == archive
+        assert latest.headers["Content-Type"] == "application/x-custom"
+
+        image = b"\x89PNG\r\n\x1a\nimage"
+        response = requests.post(
+            base + "/clipboard",
+            json={
+                "filename": "photo.png",
+                "data": "data:image/png;base64,"
+                + base64.b64encode(image).decode("ascii"),
+            },
+            timeout=5,
+        )
+        response.raise_for_status()
+        assert response.json()["type"] == "image"
+        assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == image
     finally:
         server.shutdown()
         server.server_close()
