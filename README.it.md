@@ -61,8 +61,8 @@ l'ordine di arrivo.
 | **Android 10+** | [APK Android 1.0.0-beta.8](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
 | **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
 | **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
-| **Comando iPhone per inviare** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
-| **Comando iPhone per ricevere** | [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
+| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
+| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
 | **Server Python** | [clipboard_bridge-Server.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
 | **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
 
@@ -274,7 +274,7 @@ iOS usa due Comandi rapidi universali. Gli stessi comandi gestiscono testo, foto
 
 ### Inviare la clipboard attuale
 
-Installa [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)
+Installa [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
 e imposta l'URL della richiesta:
 
 ```text
@@ -283,7 +283,7 @@ http://IP_SERVER:5088/clipboard
 
 ### Ricevere l'ultimo elemento
 
-Installa [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)
+Installa [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
 e imposta:
 
 ```text

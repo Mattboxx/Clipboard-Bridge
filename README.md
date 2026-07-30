@@ -61,8 +61,8 @@ the only rule.
 | **Android 10+** | [Android APK 1.0.0-beta.8](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
 | **Windows installer** | [Clipboard Bridge Windows 2.0.4 installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Per-user installation; no administrator account required |
 | **Windows portable** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | One executable, no installation |
-| **iPhone Send Shortcut** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Sends the current iOS clipboard |
-| **iPhone Receive Shortcut** | [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut) | Receives the latest server item |
+| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
+| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
 | **Python server** | [clipboard_bridge-Server.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
 | **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Uncompiled Windows client source |
 
@@ -272,7 +272,7 @@ iOS uses two universal Shortcuts. The same Shortcut handles text, photos and fil
 
 ### Send the current clipboard
 
-Install [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)
+Install [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
 and set its request URL to:
 
 ```text
@@ -281,7 +281,7 @@ http://SERVER_IP:5088/clipboard
 
 ### Receive the latest item
 
-Install [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)
+Install [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
 and set its URL to:
 
 ```text

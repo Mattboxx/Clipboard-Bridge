@@ -65,8 +65,8 @@ if exist "%RELEASE_DIR%" rmdir /S /Q "%RELEASE_DIR%"
 mkdir "%RELEASE_DIR%"
 copy /Y "Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe" "%RELEASE_DIR%\" >nul
 copy /Y "Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe" "%RELEASE_DIR%\" >nul
-copy /Y "Iphone Shortcuts\Load Clipboard.shortcut" "%RELEASE_DIR%\Load.Clipboard.shortcut" >nul
-copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\Download.Clipboard.shortcut" >nul
+copy /Y "Iphone Shortcuts\Load Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Load.Clipboard.shortcut" >nul
+copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Download.Clipboard.shortcut" >nul
 copy /Y "clipboard_bridge-Server.py" "%RELEASE_DIR%\" >nul
 copy /Y "Dockerfile" "%RELEASE_DIR%\" >nul
 copy /Y "docker-compose.yml" "%RELEASE_DIR%\" >nul
