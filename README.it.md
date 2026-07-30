@@ -7,13 +7,13 @@
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore) ·
 [Policy di firma](CODE_SIGNING.md)
 
-**Windows 2.0.2:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.2.exe) ·
-[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Clipboard.Bridge.Portable.Windows.x64.V2.0.2.exe)
+**Windows 2.0.3:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.3.exe) ·
+[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge.Portable.Windows.x64.V2.0.3.exe)
 
-La release completa `2.0.2` contiene anche entrambi i Comandi rapidi iPhone già pronti,
+La release completa `2.0.3` contiene anche entrambi i Comandi rapidi iPhone già pronti,
 il server Python, i file Docker/Compose e i requisiti del server.
 
-> **Sicurezza Windows:** la release 2.0.2 al momento non è firmata e può essere bloccata
+> **Sicurezza Windows:** la release 2.0.3 al momento non è firmata e può essere bloccata
 > da Smart App Control di Windows 11. Il progetto sta predisponendo una firma Authenticode
 > attendibile; consulta la [policy di firma](CODE_SIGNING.md). Un certificato autofirmato
 > non renderebbe attendibile un download pubblico.
@@ -265,11 +265,11 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 ## 4. iPhone (Comandi rapidi)
 
 I Comandi rapidi già pronti sono inclusi come asset nella
-[release Clipboard Bridge 2.0.2](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.2):
+[release Clipboard Bridge 2.0.3](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.3):
 
-- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Load.Clipboard.shortcut)** -
+- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut)** -
   invia gli appunti attuali dell'iPhone a Clipboard Bridge.
-- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Download.Clipboard.shortcut)** -
+- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut)** -
   riceve da Clipboard Bridge l'ultimo elemento salvato.
 
 Apri ogni file `.shortcut` sull'iPhone e sostituisci l'indirizzo server segnaposto con

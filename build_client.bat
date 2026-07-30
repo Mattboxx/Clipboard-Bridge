@@ -13,6 +13,7 @@ echo.
 echo Compiling...
 python -m PyInstaller --noconfirm --onefile --windowed ^
   --icon icon.ico --name "Clipboard Bridge" ^
+  --version-file windows_version_info.txt ^
   --add-data "icon.ico;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^

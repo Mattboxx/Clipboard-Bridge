@@ -17,6 +17,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+findstr /C:"StringStruct('ProductVersion', '%VERSION%')" "windows_version_info.txt" >nul
+if errorlevel 1 (
+  echo windows_version_info.txt does not match version %VERSION%.
+  echo Update its FileVersion, ProductVersion, filevers and prodvers values first.
+  exit /b 1
+)
+
 echo [1/5] Installing build dependencies...
 "%PYTHON_EXE%" -m pip install --upgrade pyinstaller requests pyperclip pystray pillow keyboard
 if errorlevel 1 exit /b 1
@@ -24,6 +31,7 @@ if errorlevel 1 exit /b 1
 echo [2/5] Building the portable Windows executable...
 "%PYTHON_EXE%" -m PyInstaller --noconfirm --clean ^
   --icon icon.ico --name "Clipboard Bridge" ^
+  --version-file windows_version_info.txt ^
   --add-data "icon.ico;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
@@ -62,16 +70,28 @@ copy /Y "compose.yaml" "%RELEASE_DIR%\" >nul
 copy /Y "requirements-server.txt" "%RELEASE_DIR%\" >nul
 copy /Y "requirements-client.txt" "%RELEASE_DIR%\" >nul
 copy /Y "clipboard_bridge_windows.py" "%RELEASE_DIR%\" >nul
+copy /Y "build_client.bat" "%RELEASE_DIR%\" >nul
+copy /Y "build_windows_release.bat" "%RELEASE_DIR%\" >nul
+copy /Y "Clipboard_Bridge_setup.iss" "%RELEASE_DIR%\" >nul
+copy /Y "windows_version_info.txt" "%RELEASE_DIR%\" >nul
+copy /Y "icon.ico" "%RELEASE_DIR%\" >nul
 copy /Y ".env.example" "%RELEASE_DIR%\clipboard-bridge.env.example" >nul
 copy /Y "GUIDE.md" "%RELEASE_DIR%\Clipboard.Bridge.GUIDE.md" >nul
 copy /Y "README.md" "%RELEASE_DIR%\README.md" >nul
 copy /Y "README.it.md" "%RELEASE_DIR%\README.it.md" >nul
+copy /Y "DOCKER.md" "%RELEASE_DIR%\" >nul
 copy /Y "CODE_SIGNING.md" "%RELEASE_DIR%\" >nul
 copy /Y "LICENSE" "%RELEASE_DIR%\" >nul
+if errorlevel 1 exit /b 1
+
+powershell -NoProfile -Command "$items = Get-Item -LiteralPath 'Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe','Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe'; $lines = $items | ForEach-Object { '{0}  {1}' -f (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant(), $_.Name }; Set-Content -LiteralPath 'Output\SHA256SUMS.V%VERSION%.txt' -Value $lines -Encoding ascii"
+if errorlevel 1 exit /b 1
+copy /Y "Output\SHA256SUMS.V%VERSION%.txt" "%RELEASE_DIR%\" >nul
 if errorlevel 1 exit /b 1
 
 echo [5/5] Build complete.
 echo Portable: Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe
 echo Installer: Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe
+echo Checksums: Output\SHA256SUMS.V%VERSION%.txt
 echo Complete release assets: %RELEASE_DIR%
 exit /b 0

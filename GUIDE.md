@@ -84,12 +84,12 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.2` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.3` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.2 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.3 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -174,10 +174,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.2 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.2):
+[Clipboard Bridge 2.0.3 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.3):
 
-- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Load.Clipboard.shortcut)
-- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.2/Download.Clipboard.shortcut)
+- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut)
+- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone, add them to the Shortcuts app and replace the
 placeholder address with the server address displayed by Clipboard Bridge. If applicable,
