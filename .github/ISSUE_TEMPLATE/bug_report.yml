@@ -1,0 +1,54 @@
+name: Bug report
+description: Report reproducible incorrect behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include tokens, passwords, private addresses or clipboard contents.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Windows client
+        - Docker/Python server
+        - iPhone Shortcut
+        - Web interface
+        - App Store package
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: Windows 2.0.4 or Server 1.0.2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest sequence that consistently shows the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows version, iOS version, Docker host and network type
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Sensitive data
+      options:
+        - label: I removed passwords, tokens, private clipboard data and sensitive logs.
+          required: true

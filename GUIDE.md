@@ -23,25 +23,31 @@ Throughout this guide, replace the placeholders with your own values:
 
 ## 1. How it works
 
-A small **server** keeps the last items you copied (text, images, files). Any device on
-the same network can **send** items to it or **receive** the latest one, over plain HTTP.
+Clipboard Bridge always stores the latest text, image or file in a server space. You can
+choose between two distinct modes:
+
+| Mode | What runs the server | Choose it when |
+|------|----------------------|----------------|
+| **Windows Server mode** | the Windows tray app itself | you want the fastest PC ↔ iPhone setup |
+| **Client mode** | a separate Python/Docker server | you want an always-on service, web page or multiple accounts |
 
 ```
-   iPhone (Shortcuts)  ─┐                            ┌─  Windows client (tray app)
-                        ├──►   SERVER (port 5088)  ◄─┤
-   Any web browser     ─┘      stores history        └─  Web interface (browser)
+Windows Server mode:  iPhone (Shortcuts)  ⇄  Windows app
+
+Client mode:          iPhone (Shortcuts)  ⇄  private server  ⇄  Windows app
 ```
 
-There is no cloud and no account: everything stays on your local network.
+There is no mandatory cloud service or online account. Optional server accounts are local
+to your own installation.
 
 ---
 
 ## 2. Before you start
 
-- A computer to run the server. It can be **Windows, macOS, Linux, a Raspberry Pi or a
-  NAS** — anything that runs Python or Docker. It should stay on while you use the app.
-- **Python 3.8+** (to run from source) or **Docker** (to run in a container).
+- A **Windows 10/11 PC** and an iPhone with the Shortcuts app.
 - All your devices on the **same local network** (same Wi‑Fi/LAN).
+- Only for Client mode: a computer, NAS or Raspberry Pi for the separate server, with
+  **Python 3.12** or **Docker**.
 
 ### Find your server's IP address (`SERVER_IP`)
 - **Windows**: open *Command Prompt*, run `ipconfig`, read the **IPv4 Address**
@@ -53,7 +59,9 @@ You will use this address (with port `5088`) on every other device.
 
 ---
 
-## 3. Set up the server
+## 3. Set up the separate server (Client mode only)
+
+Skip this section when using **Windows Server mode**.
 
 ### Option A — Run with Python
 ```bash
@@ -84,12 +92,12 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.3` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.4` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.3 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.4 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -103,9 +111,14 @@ python clipboard_bridge_windows.py
 ### Configure
 A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 1. Open **Settings…**
-2. In **General**, choose Client/Server mode, interface language and the local-history limit.
-3. In **Connection**, set **Server IP** = `SERVER_IP`, **Port** = `5088`.
-4. If your server uses a token, set **Token** = `YOUR_TOKEN`.
+2. In **General**, choose a mode:
+   - **Server**: the app displays the address to place in the iPhone Shortcuts. No
+     separate server is required.
+   - **Client**: in **Connection**, set **Server IP** = `SERVER_IP` and **Port** = `5088`.
+3. In Client mode, enter the optional token or account credentials configured by the
+   server.
+4. Click **Check connection now**. The detailed status must become **CONNECTED** and the
+   compact tray status must turn green.
 5. Use **Automation** and **Shortcuts** for automatic transfers and configurable hotkeys.
 
 ### Daily use
@@ -174,14 +187,20 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.3 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.3):
+[Clipboard Bridge 2.0.4 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4):
 
-- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut)
-- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut)
+- [Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)
+- [Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)
 
-Open the downloaded files on the iPhone, add them to the Shortcuts app and replace the
-placeholder address with the server address displayed by Clipboard Bridge. If applicable,
-also add the API token or append `?user=NAME&password=PASS` to the URL.
+Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
+**Get Contents of URL** action and replace the complete example URL:
+
+- **Load Clipboard:** `http://SERVER_IP:5088/clipboard`
+- **Download Clipboard:** `http://SERVER_IP:5088/clipboard/latest/raw`
+
+Use the address displayed by Clipboard Bridge in place of `SERVER_IP`. If applicable,
+also add the API token. For an isolated account, append
+`?user=NAME&password=PASS` to both URLs.
 
 ### Add both Shortcuts to Control Center
 

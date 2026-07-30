@@ -2,18 +2,19 @@
 
 [English](README.md) · **Italiano**
 
-[Sito web](https://mattbox03.github.io/Clipboard-Bridge/) ·
-[Download Windows](https://github.com/mattbox03/Clipboard-Bridge/releases) ·
+[Sito e download diretti](https://mattbox03.github.io/Clipboard-Bridge/#download) ·
+[Ultima release](https://github.com/mattbox03/Clipboard-Bridge/releases/latest) ·
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore) ·
 [Policy di firma](CODE_SIGNING.md)
 
-**Windows 2.0.3:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.3.exe) ·
-[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge.Portable.Windows.x64.V2.0.3.exe)
+**Windows 2.0.4:** [Installer, senza privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) ·
+[Portable, senza installazione o privilegi amministratore](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) ·
+[Server e sorgenti](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip)
 
-La release completa `2.0.3` contiene anche entrambi i Comandi rapidi iPhone già pronti,
+La release completa `2.0.4` contiene anche entrambi i Comandi rapidi iPhone già pronti,
 il server Python, i file Docker/Compose e i requisiti del server.
 
-> **Sicurezza Windows:** la release 2.0.3 al momento non è firmata e può essere bloccata
+> **Sicurezza Windows:** la release 2.0.4 al momento non è firmata e può essere bloccata
 > da Smart App Control di Windows 11. Il progetto sta predisponendo una firma Authenticode
 > attendibile; consulta la [policy di firma](CODE_SIGNING.md). Un certificato autofirmato
 > non renderebbe attendibile un download pubblico.
@@ -27,10 +28,12 @@ il server Python, i file Docker/Compose e i requisiti del server.
 ![modes](https://img.shields.io/badge/modalit%C3%A0-Server%20%C2%B7%20Client-6f42c1)
 ![network](https://img.shields.io/badge/rete-solo%20locale-2ea44f)
 ![license](https://img.shields.io/badge/licenza-MIT-555)
+[![Verifica progetto](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
+[![Ultima release](https://img.shields.io/github/v/release/mattbox03/Clipboard-Bridge?label=release)](https://github.com/mattbox03/Clipboard-Bridge/releases/latest)
 
 Condividi gli appunti — testo, immagini e **file di qualsiasi tipo** — tra **Windows e
-iPhone** in rete locale, tramite l'app Comandi rapidi (Shortcuts). Niente cloud, niente
-account. Interfaccia in **inglese (predefinita)** e in italiano.
+iPhone** in rete locale, tramite l'app Comandi rapidi (Shortcuts). Non servono servizi
+cloud o account online obbligatori. Interfaccia in **inglese (predefinita)** e in italiano.
 
 ## ⚡ Funziona in due modalità distinte
 
@@ -44,9 +47,26 @@ Si cambia quando vuoi da **Impostazioni → Generale**:
 | **L'iPhone si connette a** | il tuo PC, direttamente | il server |
 | **Configurazione extra** | nessuna — basta l'interruttore | far girare il server da qualche parte |
 | **Pagina web** | no (minimale) | sì |
-| **Ideale per** | PC ↔ iPhone al volo, zero setup | sempre disponibile, anche a PC spento o anche tra molteplici PC |
+| **Ideale per** | scambi rapidi PC ↔ iPhone senza host aggiuntivi | servizio sempre attivo condiviso da più dispositivi |
 
-> 📖 **Prima volta?** Segui la [guida passo-passo](GUIDE.md) (in inglese).
+## Avvio in tre passaggi
+
+1. **Installa l'app Windows** con l'installer per l'utente corrente, poi apri l'icona di
+   Clipboard Bridge nell'area di notifica.
+2. Apri **Impostazioni → Generale** e scegli **modalità Server** per la configurazione più
+   rapida, oppure **modalità Client** se hai già il server Docker/Python. In modalità
+   Client inserisci l'indirizzo nella scheda **Connessione** e usa
+   **Controlla connessione ora**.
+3. Installa **Load Clipboard** e **Download Clipboard** dai link in alto. Nei due Comandi
+   rapidi imposta gli URL completi indicati nella
+   [sezione iPhone](#4-iphone-comandi-rapidi).
+
+La tendina mostra **🟢 Connesso** quando la modalità scelta è pronta. In modalità Server,
+consenti Clipboard Bridge nel Firewall di Windows quando viene richiesto e lascia l'app
+in esecuzione.
+
+> Per immagini, URL degli account, Centro di Controllo e risoluzione dei problemi,
+> consulta la [guida completa](GUIDE.md).
 
 **Clipboard Bridge è uno strumento open source e self-hosted per sincronizzare gli
 appunti e trasferire file tra Windows e iPhone.** Può funzionare direttamente sul PC
@@ -67,6 +87,8 @@ di Microsoft o servizi cloud esterni.
   (**Impostazioni → Generale → Server**), così l'iPhone si connette direttamente al tuo PC
   con lo stesso supporto per testo Unicode e file senza limiti di formato del server Docker.
 - **Token** opzionale per l'API e **password** opzionale per la pagina web.
+- **Account isolati** opzionali, senza un limite fisso e con cronologia separata per ogni
+  utente.
 - Server eseguibile direttamente oppure in **Docker**.
 
 <img width="888" height="650" alt="features" src="https://github.com/user-attachments/assets/6894847e-004d-4f2e-8f5d-9c3c4b226ae7" />
@@ -98,6 +120,7 @@ di Microsoft o servizi cloud esterni.
 | `build_client.bat` | compila il client in un singolo `.exe` |
 | `build_windows_release.bat` | crea EXE portable e installer Windows |
 | `Clipboard_Bridge_setup.iss` | definizione universale dell'installer Inno Setup |
+| `VERSION`, `scripts/release_metadata.py` | versione e controlli di coerenza della release |
 | `icon.ico` | icona dell'applicazione |
 
 > Scarica l'installer o il portable già verificati dalle Release. Il file tracciato
@@ -142,7 +165,7 @@ docker compose up -d --build
 La cronologia resta nella cartella `./data` e sopravvive ai riavvii. Funziona in
 qualsiasi ambiente Docker.
 
-Immagine server stabile: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.1`.
+Immagine server stabile: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.2`.
 
 Per i dettagli sui container, i backup e i tag delle immagini, consulta
 [Installazione Docker e app store](DOCKER.md).
@@ -265,16 +288,19 @@ Con il token: `http://SERVER_IP:5088/?token=IL_TUO_TOKEN`. Aggiungi `?lang=it` p
 ## 4. iPhone (Comandi rapidi)
 
 I Comandi rapidi già pronti sono inclusi come asset nella
-[release Clipboard Bridge 2.0.3](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.3):
+[release Clipboard Bridge 2.0.4](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4):
 
-- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut)** -
+- **[Scarica Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)** -
   invia gli appunti attuali dell'iPhone a Clipboard Bridge.
-- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut)** -
+- **[Scarica Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)** -
   riceve da Clipboard Bridge l'ultimo elemento salvato.
 
-Apri ogni file `.shortcut` sull'iPhone e sostituisci l'indirizzo server segnaposto con
-quello mostrato dall'app Windows o con l'indirizzo del server esterno. Se li hai
-attivati, inserisci anche token oppure credenziali dell'account.
+Apri ogni file `.shortcut` sull'iPhone e modifica l'azione
+**Ottieni contenuto dell'URL**. Imposta l'URL completo di Load su
+`http://SERVER_IP:5088/clipboard` e quello di Download su
+`http://SERVER_IP:5088/clipboard/latest/raw`, usando l'indirizzo mostrato dall'app
+Windows o quello del server esterno. Se li hai attivati, inserisci anche token oppure
+credenziali dell'account.
 
 ### Aggiungere i Comandi rapidi al Centro di Controllo
 
@@ -339,7 +365,7 @@ build_client.bat
 Per creare entrambi i file universali da caricare nella Release GitHub:
 
 ```bat
-build_windows_release.bat 2.0.3
+build_windows_release.bat 2.0.4
 ```
 
 Per usare invece l'interfaccia di Inno Setup: esegui `build_client.bat`, apri
@@ -350,9 +376,9 @@ Lo script usa PyInstaller e Inno Setup senza includere percorsi o configurazioni
 Produce:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.3.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.3.exe
-Output\Clipboard.Bridge.Release.V2.0.3\
+Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe
+Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe
+Output\Clipboard.Bridge.Release.V2.0.4\
 ```
 
 L'installer è per singolo utente: installa il programma in

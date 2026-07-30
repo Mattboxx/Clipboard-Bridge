@@ -9,7 +9,7 @@ Authenticode signatures:
 
 > Free code signing provided by SignPath.io, certificate by SignPath Foundation.
 
-## Project roles
+## Current release roles
 
 - Committer and reviewer: [mattbox03](https://github.com/mattbox03)
 - Release and signing approver: [mattbox03](https://github.com/mattbox03)
@@ -17,6 +17,10 @@ Authenticode signatures:
 Only release artifacts built from this repository may be submitted for signing.
 The portable Windows executable is signed before it is included in the
 installer, and the completed installer is signed separately.
+
+Every public release also includes SHA-256 checksums. Until trusted signing is
+active, the release notes and download page clearly identify the Windows files
+as unsigned.
 
 ## Privacy
 

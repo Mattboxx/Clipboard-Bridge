@@ -22,9 +22,10 @@
     "name": "Clipboard Bridge",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Windows, iOS, Linux",
+    "softwareVersion": "2.0.4",
     "description": "Open-source clipboard synchronization and file transfer between Windows and iPhone over a local network, using iOS Shortcuts and an optional self-hosted Docker server.",
     "url": "https://mattbox03.github.io/Clipboard-Bridge/",
-    "downloadUrl": "https://github.com/mattbox03/Clipboard-Bridge/releases",
+    "downloadUrl": "https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe",
     "softwareHelp": "https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md",
     "license": "https://opensource.org/license/mit",
     "isAccessibleForFree": true,
@@ -102,6 +103,13 @@
     .mode.server{border-top-color:var(--green)}
     .mode h3{font-size:23px;margin:0 0 9px}
     .mode p{color:var(--muted);margin:0 0 12px}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:step}
+    .step{position:relative;padding:30px 24px 24px 72px;border-top:1px solid var(--line);counter-increment:step}
+    .step:before{content:counter(step);position:absolute;left:20px;top:25px;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--ink);color:#fff;font-weight:800}
+    .step h3{margin:0 0 7px;font-size:18px}
+    .step p{margin:0;color:var(--muted)}
+    .trust-row{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:22px;color:var(--muted);font-size:14px}
+    .trust-row strong{color:var(--ink)}
     .showcase{display:grid;grid-template-columns:1.4fr .8fr;gap:24px;align-items:center}
     .showcase-copy{max-width:430px}
     .screens{display:grid;grid-template-columns:1fr .72fr;gap:16px;align-items:center}
@@ -115,8 +123,8 @@
     footer{padding:38px 24px;border-top:1px solid var(--line);color:var(--muted);background:#f8fafb}
     footer .inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
     @media(max-width:960px){#download .grid{grid-template-columns:1fr 1fr}}
-    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:65% center}.grid{grid-template-columns:1fr 1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}}
-    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:590px}.hero:before{background:rgba(10,27,42,.87)}.hero-inner{padding:60px 20px 42px}h1{font-size:42px}.lead{font-size:18px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid,.modes,#download .grid{grid-template-columns:1fr}.screens{grid-template-columns:1fr 1fr;gap:10px}main section{padding:64px 20px}.item,.mode{padding:22px}.button{width:100%}}
+    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:65% center}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}}
+    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:680px}.hero:before{background:rgba(10,27,42,.94)}.hero-inner{padding:38px 20px 26px}.eyebrow{font-size:11px}h1{font-size:36px;line-height:1.04;margin:12px 0 16px}.lead{font-size:16px}.actions{margin-top:20px}.button{width:100%;min-height:44px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:28px;padding-top:17px}.hero-facts span{font-size:12px}.grid,.modes,#download .grid{grid-template-columns:1fr}.screens{grid-template-columns:1fr 1fr;gap:10px}main section{padding:58px 20px}.item,.mode{padding:22px}}
   </style>
 </head>
 <body>
@@ -124,6 +132,7 @@
     <a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a>
     <div class="nav-links">
       <a href="#download">Download</a>
+      <a href="#start">Quick start</a>
       <a href="#features">Features</a>
       <a href="#modes">Two modes</a>
       <a href="#faq">FAQ</a>
@@ -152,41 +161,63 @@
     <section id="download">
       <div class="inner">
         <span class="section-kicker">Get started</span>
-        <h2>Download Clipboard Bridge 2.0.3</h2>
+        <h2>Download Clipboard Bridge 2.0.4</h2>
         <p class="section-copy">Install the Windows application first, then download the two ready-made iPhone Shortcuts. These buttons download the files directly, without opening the GitHub release page. The complete release also includes the Python server and its Docker/Compose files.</p>
         <div class="grid">
           <article class="item">
             <h3>Windows installer</h3>
-            <p>Installs Clipboard Bridge for the current user. No administrator privileges are required.</p>
+            <p>Recommended. Installs Clipboard Bridge for the current Windows user without administrator privileges.</p>
             <div class="actions">
-              <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.3.exe">Download installer for Windows x64</a>
+              <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe">Install on Windows x64</a>
             </div>
           </article>
           <article class="item">
             <h3>Windows portable</h3>
             <p>Run the complete Client and Server modes directly, without installation or administrator privileges.</p>
             <div class="actions">
-              <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Clipboard.Bridge.Portable.Windows.x64.V2.0.3.exe">Download portable for Windows x64</a>
+              <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe">Download portable for Windows x64</a>
             </div>
           </article>
           <article class="item">
             <h3>Send from iPhone</h3>
             <p>Load Clipboard sends the current text, photo or file from the iPhone to Clipboard Bridge.</p>
             <div class="actions">
-              <a class="button primary" style="background:#16805b;color:#fff;border-color:#16805b" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut">Download Load Clipboard</a>
+              <a class="button primary" style="background:#16805b;color:#fff;border-color:#16805b" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut">Download Load Clipboard</a>
             </div>
           </article>
           <article class="item">
             <h3>Receive on iPhone</h3>
             <p>Download Clipboard receives the latest text, photo or file stored in Clipboard Bridge.</p>
             <div class="actions">
-              <a class="button primary" style="background:#16805b;color:#fff;border-color:#16805b" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut">Download Download Clipboard</a>
+              <a class="button primary" style="background:#16805b;color:#fff;border-color:#16805b" href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut">Download Download Clipboard</a>
             </div>
           </article>
         </div>
         <p class="section-copy" style="margin-top:24px;padding:18px 20px;background:#fff;border-left:4px solid #e26d4f;border-radius:4px"><strong>Auto-sync on Windows:</strong> this applies to both the installer and portable versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by applications running as administrator. If auto-sync does not work, start Clipboard Bridge with <strong>Run as administrator</strong>.</p>
-        <p class="section-copy" style="margin-top:16px;padding:18px 20px;background:#fff;border-left:4px solid #d49a22;border-radius:4px"><strong>Windows security notice:</strong> version 2.0.3 is currently unsigned and Windows 11 Smart App Control can block it. Trusted Authenticode signing is being prepared. A self-signed certificate would not make a public download trusted. See the <a href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/CODE_SIGNING.md">code signing policy</a>.</p>
-        <p class="section-copy" style="margin-top:24px">After adding the Shortcuts on the iPhone, replace the placeholder server address with the address displayed by the Windows app or your external server. For all Windows, iPhone and server assets, open the <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.3">complete 2.0.3 release</a>.</p>
+        <p class="section-copy" style="margin-top:16px;padding:18px 20px;background:#fff;border-left:4px solid #d49a22;border-radius:4px"><strong>Windows security notice:</strong> version 2.0.4 is currently unsigned and Windows 11 Smart App Control can block it. Trusted Authenticode signing is being prepared. A self-signed certificate would not make a public download trusted. See the <a href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/CODE_SIGNING.md">code signing policy</a>.</p>
+        <div class="trust-row">
+          <span><strong>Open source:</strong> inspect the complete source on GitHub</span>
+          <span><strong>No telemetry:</strong> clipboard data is not sent to the maintainers</span>
+          <span><strong>Checksums:</strong> <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/SHA256SUMS.V2.0.4.txt">verify the Windows downloads</a></span>
+          <span><strong>Server:</strong> <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip">download the complete source and Docker bundle</a></span>
+        </div>
+        <p class="section-copy" style="margin-top:24px">After adding the Shortcuts on the iPhone, set their complete URLs as shown in the iPhone section below. For all Windows, iPhone and server assets, open the <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4">complete 2.0.4 release</a>.</p>
+      </div>
+    </section>
+
+    <section class="band" id="start">
+      <div class="inner">
+        <span class="section-kicker">First connection</span>
+        <h2>Ready in three steps</h2>
+        <p class="section-copy">The Windows app does not require a separate server. Start with Server mode, then move to the Docker server only when you need an always-on shared service.</p>
+        <div class="steps">
+          <article class="step"><h3>Open Settings</h3><p>Install the app, open its tray icon and choose Server mode under General.</p></article>
+          <article class="step"><h3>Confirm the connection</h3><p>Use the address shown by the app. The tray changes to a green Connected status when it is ready.</p></article>
+          <article class="step"><h3>Connect the iPhone</h3><p>Install both Shortcuts and set their complete URLs using the displayed address and port.</p></article>
+        </div>
+        <div class="actions">
+          <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Open the complete setup guide</a>
+        </div>
       </div>
     </section>
 
@@ -200,7 +231,7 @@
           <article class="item"><h3>Private local network</h3><p>Keep transfers on your LAN instead of sending clipboard data to a third-party cloud.</p></article>
           <article class="item"><h3>iOS Shortcuts</h3><p>Send and receive from the iPhone Share Sheet using two reusable Shortcuts.</p></article>
           <article class="item"><h3>Windows tray client</h3><p>Centralized Settings for mode, language, history, automation, accounts, notifications and hotkeys, plus a compact green/red tray status and single-instance protection against duplicate icons. Choose alerts separately for received text, images and files; click a file notification to reveal the document.</p></article>
-          <article class="item"><h3>Self-hosted Docker server</h3><p>Run an always-on clipboard server on a NAS, Raspberry Pi or home server. It accepts Unicode text and every file format through raw, multipart or JSON/Base64 uploads. Stable package: <a href="https://github.com/users/mattbox03/packages/container/package/clipboard-bridge-server">server 1.0.1</a>.</p></article>
+          <article class="item"><h3>Self-hosted Docker server</h3><p>Run an always-on clipboard server on a NAS, Raspberry Pi or home server. It accepts Unicode text and every file format through raw, multipart or JSON/Base64 uploads. Stable package: <a href="https://github.com/users/mattbox03/packages/container/package/clipboard-bridge-server">server 1.0.2</a>.</p></article>
           <article class="item"><h3>Multiple accounts</h3><p>Give each user an isolated history and file space while retaining a shared clipboard.</p></article>
         </div>
       </div>
@@ -237,17 +268,17 @@
       <div class="inner">
         <span class="section-kicker">Two actions for every content type</span>
         <h2>Ready-made iPhone Shortcuts</h2>
-        <p class="section-copy">The two prepared iOS Shortcuts are included with version 2.0.3. Install them on the iPhone, then replace the placeholder with the local address shown by Clipboard Bridge.</p>
+        <p class="section-copy">The two prepared iOS Shortcuts are included with version 2.0.4. Install them on the iPhone, then set the complete Load URL to <strong>http://SERVER_IP:5088/clipboard</strong> and the complete Download URL to <strong>http://SERVER_IP:5088/clipboard/latest/raw</strong>, using the address shown by Clipboard Bridge.</p>
         <div class="modes">
           <article class="mode server">
             <h3>Load Clipboard</h3>
             <p>Send the current iPhone clipboard to Windows or your private server.</p>
-            <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Load.Clipboard.shortcut">Download send Shortcut</a>
+            <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut">Download send Shortcut</a>
           </article>
           <article class="mode">
             <h3>Download Clipboard</h3>
             <p>Receive the latest text, photo or file saved in Clipboard Bridge.</p>
-            <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.3/Download.Clipboard.shortcut">Download receive Shortcut</a>
+            <a href="https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut">Download receive Shortcut</a>
           </article>
         </div>
         <p class="section-copy" style="margin-top:24px">For faster access, add both Shortcuts to the iPhone <strong>Control Center</strong>: open Control Center, tap <strong>Add (+)</strong>, choose <strong>Add a Control &gt; Shortcut</strong>, then select Load Clipboard or Download Clipboard. Add one control for each action. See the <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">official Apple guide</a>.</p>
@@ -273,6 +304,6 @@
     </section>
   </main>
 
-  <footer><div class="inner"><span>Clipboard Bridge is open-source software released under the MIT License.</span><span><a href="https://github.com/mattbox03/Clipboard-Bridge">GitHub repository</a> · <a href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/CODE_SIGNING.md">Code signing policy</a></span></div></footer>
+  <footer><div class="inner"><span>Clipboard Bridge is open-source software released under the MIT License.</span><span><a href="https://github.com/mattbox03/Clipboard-Bridge">GitHub repository</a> · <a href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/CODE_SIGNING.md">Code signing</a></span></div></footer>
 </body>
 </html>

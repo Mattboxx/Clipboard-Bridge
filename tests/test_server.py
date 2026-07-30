@@ -101,6 +101,23 @@ def test_iphone_style_binary_round_trip(server):
     assert "document.pdf" in response.headers["Content-Disposition"]
 
 
+def test_original_published_shortcut_routes_remain_compatible(server):
+    client = server.app.test_client()
+
+    response = client.post(
+        "/1?token=shared-token",
+        data="original shortcut",
+        content_type="text/plain; charset=utf-8",
+    )
+    assert response.status_code == 200
+    assert response.get_json()["type"] == "text"
+
+    latest = client.get("/clipboard/raw?token=shared-token")
+    assert latest.status_code == 200
+    assert latest.data == b"original shortcut"
+    assert latest.headers["X-Clipboard-Type"] == "text"
+
+
 def test_iphone_text_variants_preserve_every_character(server):
     client = server.app.test_client()
     url = "/clipboard?token=shared-token"

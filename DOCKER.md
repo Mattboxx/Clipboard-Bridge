@@ -7,7 +7,7 @@ sidecar. The image supports `linux/amd64` and `linux/arm64`.
 Current stable server image:
 
 ```text
-ghcr.io/mattbox03/clipboard-bridge-server:1.0.1
+ghcr.io/mattbox03/clipboard-bridge-server:1.0.2
 ```
 
 ## Docker Compose

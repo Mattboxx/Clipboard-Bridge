@@ -69,6 +69,21 @@ HOST_INDEX = os.path.join(HOST_DIR, "index.json")
 SYNC_STATE_FILE = os.path.join(DATA_DIR, "sync_state.json")
 ERROR_LOG = os.path.join(DATA_DIR, "error.log")
 ICON_PATH = os.path.join(RES_DIR, "icon.ico")
+VERSION_PATH = os.path.join(RES_DIR, "VERSION")
+
+
+def _read_app_version():
+    try:
+        with open(VERSION_PATH, "r", encoding="ascii") as version_file:
+            version = version_file.read().strip()
+        if re.fullmatch(r"\d+\.\d+\.\d+", version):
+            return version
+    except OSError:
+        pass
+    return "development"
+
+
+APP_VERSION = _read_app_version()
 
 
 def _copy_legacy_dir(source, destination):
@@ -208,6 +223,7 @@ STRINGS = {
         "server_err": "Cannot start server: {e}",
         "lbl_host_port": "Server port (server mode)",
         "settings": "Settings…",
+        "version_label": "Version {version}",
         "exit": "Exit",
         "image_sent": "Image sent",
         "file_sent": "File sent",
@@ -303,6 +319,7 @@ STRINGS = {
         "server_err": "Impossibile avviare il server: {e}",
         "lbl_host_port": "Porta server (modalità server)",
         "settings": "Impostazioni…",
+        "version_label": "Versione {version}",
         "exit": "Esci",
         "image_sent": "Immagine inviata",
         "file_sent": "File inviato",
@@ -1128,7 +1145,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 return self._json({"status": "ok", "items": len(index)})
             if path == "/clipboard/latest":
                 return self._json(_host_with_content(index[0]) if index else {"type": "empty"})
-            if path == "/clipboard/latest/raw":
+            if path in ("/clipboard/latest/raw", "/clipboard/raw"):
                 return self._raw(index[0]) if index else self._send(200, b"", "text/plain; charset=utf-8")
             if path == "/clipboard/history":
                 return self._json({"items": [_host_meta(e) for e in index], "count": len(index)})
@@ -1198,7 +1215,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 e = _host_add("bin", raw, filename, mime)
                 return self._json({"status": "ok", "id": e["id"]})
 
-            if path in ("/clipboard", "/clipboard/image"):
+            if path in ("/clipboard", "/clipboard/image", "/1"):
                 if multipart:
                     if multipart[0] == "file":
                         _, raw, multipart_name, mime = multipart
@@ -1753,7 +1770,7 @@ def open_settings(icon=None, item=None):
     ).pack(anchor="w")
     tk.Label(
         title_box,
-        text=t("settings").rstrip("…"),
+        text=f"{t('settings').rstrip('…')} · {t('version_label', version=APP_VERSION)}",
         background="#ffffff",
         foreground="#64748b",
         font=("Segoe UI", 9),

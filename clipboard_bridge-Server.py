@@ -683,7 +683,14 @@ def latest_raw():
     return _raw_item_response(index[0])
 
 
+@app.route("/clipboard/raw", methods=["GET"])
+def shortcut_latest_raw_legacy():
+    """Compatibility alias used by the original published iPhone Shortcut."""
+    return latest_raw()
+
+
 @app.route("/clipboard", methods=["POST"])
+@app.route("/1", methods=["POST"])
 def push_any():
     """Single endpoint: store whatever arrives (text or binary) with no distinction.
     Made for a single iPhone Shortcut that sends the clipboard whatever its type."""

@@ -28,6 +28,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
+    assert client.APP_VERSION == "2.0.4"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
@@ -312,6 +313,15 @@ def test_embedded_server_accepts_iphone_text_and_file_variants(tmp_path, monkeyp
         response.raise_for_status()
         assert response.json()["type"] == "image"
         assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == image
+
+        response = requests.post(
+            base + "/1",
+            data="original shortcut",
+            headers={"Content-Type": "text/plain; charset=utf-8"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        assert requests.get(base + "/clipboard/raw", timeout=5).text == "original shortcut"
     finally:
         server.shutdown()
         server.server_close()
