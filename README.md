@@ -63,10 +63,12 @@ the only rule.
 | **Windows portable** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | One executable, no installation |
 | **iPhone Send Shortcut** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Sends the current iOS clipboard |
 | **iPhone Receive Shortcut** | [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut) | Receives the latest server item |
-| **Server bundle** | [Source and server ZIP](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip) | Python server, Docker files, documentation and tests |
+| **Python server** | [clipboard_bridge-Server.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
+| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Uncompiled Windows client source |
 
-The Android app is currently a public beta. APK and Windows checksums are included in
-the release assets.
+The Android app is currently a public beta. The release contains only ready-to-use
+downloads and the two main Python scripts. Developers can clone the repository for
+documentation, tests, Docker files and complete source code.
 
 > **Windows download warning:** the current Windows executables are not yet signed with
 > a public Authenticode certificate. Defender or Smart App Control can therefore show a
