@@ -1,6 +1,6 @@
-# Clipboard Bridge
+# Clipboard Bridge: condivisione multipiattaforma di clipboard e file
 
-## Un'unica clipboard per Windows, Android e iPhone
+## Un'unica clipboard privata per Windows, Android, iPhone e iPad
 
 [English](README.md) | **Italiano**
 
@@ -16,13 +16,43 @@
 [![Licenza](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)
 [![Verifica](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
 
-Clipboard Bridge trasferisce **l'ultimo testo, immagine o file** tra Windows, Android e
-iPhone tramite un server privato. Funziona in rete locale, non richiede account cloud e
-permette a tutti i dispositivi di usare la stessa cronologia del server.
+Copia un testo su Windows e ricevilo su Android. Condividi un PDF da Android e scaricalo
+su iPhone. Invia una foto da iOS e ricevila automaticamente sul PC.
 
-Per la configurazione più semplice, usa direttamente l'app Windows come server. In
-alternativa, esegui il server Python/Docker su NAS, Raspberry Pi, home server o qualsiasi
-host Docker.
+Clipboard Bridge collega **Windows, Android e iOS/iPadOS** tramite un'unica clipboard
+privata e self-hosted. Testo, fotografie e file di qualsiasi tipo usano lo stesso flusso
+Invia/Ricevi: l'ultimo elemento caricato è sempre la clipboard corrente.
+
+Non serve un account cloud. Puoi usare direttamente l'app Windows come server oppure
+eseguire il server Python/Docker su NAS, Raspberry Pi, home server o host Docker.
+
+## Piattaforme supportate
+
+| Piattaforma | Integrazione | Invio | Ricezione | Cronologia server |
+|---|---|---|---|---|
+| **Windows 10/11** | Applicazione nella tray | Clipboard, hotkey configurabili e auto-sync | Manuale o automatica, con notifiche file cliccabili | Cronologia locale e operazioni server |
+| **Android 10+** | Applicazione nativa | Clipboard, selettore file, menu Condividi universale e Impostazioni rapide | Ultimo elemento, voce specifica o controllo automatico | Lista live con download ed eliminazione singola |
+| **iPhone/iPad** | Due Comandi rapidi iOS | Testo, foto e file dalla clipboard o dal menu Condividi | Ultimo testo, foto o file | Disponibile dall'interfaccia web |
+| **Browser web** | Pagina del server indipendente | Incolla testo o carica file | Copia o scarica qualsiasi elemento | Visualizza, aggiorna ed elimina |
+
+### Cosa può essere trasferito
+
+- Testo Unicode, link e contenuti su più righe.
+- Fotografie e immagini presenti nella clipboard.
+- PDF, archivi, documenti Office, audio, video e file con estensioni personalizzate.
+- Uno o più file selezionati dal menu Condividi di Android.
+
+Clipboard Bridge non assegna priorità maggiore a file o immagini: conta soltanto
+l'ordine di arrivo.
+
+## Avvio rapido
+
+1. Scegli il server: attiva la **Modalità Server** nell'app Windows oppure avvia il server
+   indipendente Docker/Python.
+2. Usa lo stesso indirizzo server su Windows, Android e nei due Comandi rapidi iPhone.
+3. Lascia vuota l'autenticazione per la clipboard generale, oppure configura lo stesso
+   token/account opzionale su tutti i dispositivi.
+4. Invia da un dispositivo e ricevi l'ultimo elemento da un altro.
 
 ## Download
 
@@ -45,10 +75,10 @@ dell'APK e dei programmi Windows.
 ## Come funziona
 
 ```text
-App Windows  ─┐
-App Android  ─┼── HTTP sulla rete privata ── Server Clipboard Bridge
-Shortcut iOS ─┘                              ├─ ultimo elemento
-Browser web ─────────────────────────────────└─ cronologia condivisa
+App Windows ----\
+App Android -----+--> Server Clipboard Bridge --> ultimo elemento + cronologia
+Comandi iOS -----+
+Browser web -----/
 ```
 
 Il server mantiene una cronologia ordinata per ogni spazio clipboard. **Testo, immagini

@@ -1,6 +1,6 @@
-# Clipboard Bridge
+# Clipboard Bridge: cross-platform clipboard and file sharing
 
-## One clipboard for Windows, Android and iPhone
+## One private clipboard for Windows, Android, iPhone and iPad
 
 **English** | [Italiano](README.it.md)
 
@@ -16,12 +16,43 @@
 [![License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
 [![Validate](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
 
-Clipboard Bridge moves the **latest text, image or file** between Windows, Android and
-iPhone through a private server. It works on a local network, does not require a cloud
-account, and keeps every device on the same server history.
+Copy text on Windows and receive it on Android. Share a PDF from Android and download it
+on an iPhone. Send a photo from iOS and receive it automatically on the PC.
 
-Use the Windows app as the server for the simplest setup, or run the standalone
-Python/Docker server on a NAS, Raspberry Pi, home server or any Docker host.
+Clipboard Bridge connects **Windows, Android and iOS/iPadOS** through one private,
+self-hosted clipboard. Text, photos and files of any type use the same Send and Receive
+workflow: the most recently uploaded item is always the current clipboard item.
+
+No cloud account is required. Use the Windows app itself as the server, or run the
+standalone Python/Docker server on a NAS, Raspberry Pi, home server or Docker host.
+
+## Platform support
+
+| Platform | Integration | Send | Receive | Server history |
+|---|---|---|---|---|
+| **Windows 10/11** | Tray application | Clipboard, configurable hotkeys and auto-sync | Manual or automatic, with clickable file notifications | Local history plus server operations |
+| **Android 10+** | Native application | Clipboard, file picker, universal Share target and Quick Settings | Latest item, exact history item or automatic monitoring | Live list with download and per-item deletion |
+| **iPhone/iPad** | Two iOS Shortcuts | Text, photos and files from the clipboard or Share Sheet | Latest text, photo or file | Available through the web interface |
+| **Web browser** | Standalone server page | Paste text or upload files | Copy or download any history item | Browse, refresh and delete |
+
+### What can be transferred
+
+- Unicode text, links and multiline content.
+- Photos and clipboard images.
+- PDFs, archives, office documents, audio, video and files with custom extensions.
+- One file or multiple files selected from Android's Share menu.
+
+Clipboard Bridge does not assign a higher priority to files or images. Arrival order is
+the only rule.
+
+## Quick start
+
+1. Choose a server: enable **Server mode** in the Windows app, or start the standalone
+   Docker/Python server.
+2. Use the same server address on Windows, Android and both iPhone Shortcuts.
+3. Leave authentication empty for the general shared clipboard, or configure the same
+   optional token/account on every device.
+4. Send from one device and receive the latest item from another.
 
 ## Download
 
@@ -44,10 +75,10 @@ the release assets.
 ## How it works
 
 ```text
-Windows app  ─┐
-Android app  ─┼── HTTP on your private network ── Clipboard Bridge server
-iOS Shortcut ─┘                                  ├─ latest item
-Web browser  ────────────────────────────────────└─ shared history
+Windows app ----\
+Android app -----+--> Clipboard Bridge server --> latest item + ordered history
+iOS Shortcuts ---+
+Web browser -----/
 ```
 
 The server has one ordered history for each clipboard space. **Text, images and files
