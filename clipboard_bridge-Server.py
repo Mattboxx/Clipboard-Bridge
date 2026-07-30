@@ -797,12 +797,13 @@ def health():
 
 # Inline logo and icons (SVG): no external images, works offline.
 LOGO_SVG = ('<svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">'
-            '<rect x="9" y="6" width="30" height="38" rx="6" fill="#4f46e5"/>'
-            '<rect x="14" y="11" width="20" height="28" rx="3" fill="#ffffff"/>'
-            '<rect x="18" y="3" width="12" height="9" rx="3" fill="#94a3b8"/>'
-            '<rect x="18.5" y="17" width="13" height="2.6" rx="1.3" fill="#4f46e5"/>'
-            '<rect x="18.5" y="23" width="11" height="2.4" rx="1.2" fill="#cbd5e1"/>'
-            '<rect x="18.5" y="28.5" width="11" height="2.4" rx="1.2" fill="#cbd5e1"/></svg>')
+            '<rect x="8" y="7" width="32" height="38" rx="6" fill="#263242"/>'
+            '<rect x="12" y="13" width="24" height="27" rx="3.5" fill="#f5f7fa"/>'
+            '<rect x="15" y="7" width="18" height="8" rx="3" fill="#96a0ac"/>'
+            '<rect x="19" y="3" width="10" height="9" rx="3" fill="#606a78"/>'
+            '<path d="M16 20h15l2 2-2 2H16l-2-2 2-2z" fill="#2d7df6"/>'
+            '<rect x="16" y="27" width="16" height="2.5" rx="1.25" fill="#b0bac6"/>'
+            '<rect x="16" y="33" width="16" height="2.5" rx="1.25" fill="#b0bac6"/></svg>')
 
 _S = ('viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
       'stroke-linecap="round" stroke-linejoin="round"')

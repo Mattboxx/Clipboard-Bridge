@@ -1,427 +1,358 @@
-# Clipboard Bridge - Windows and iPhone Clipboard Sync <img width="38" height="38" alt="Clipboard Bridge application icon" src="https://github.com/user-attachments/assets/dac966a8-3d10-43e7-87e8-161ff5d45b16" />
+# Clipboard Bridge
 
-**English** · [Italiano](README.it.md)
+## One clipboard for Windows, Android and iPhone
 
-[Website and direct downloads](https://mattbox03.github.io/Clipboard-Bridge/#download) ·
-[Latest release](https://github.com/mattbox03/Clipboard-Bridge/releases/latest) ·
-[Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore) ·
-[Code signing policy](CODE_SIGNING.md)
+**English** | [Italiano](README.it.md)
 
-**Windows 2.0.4:** [Installer, no administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) ·
-[Portable, no installation or administrator privileges](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) ·
-[Server and source bundle](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip)
+[Website](https://mattbox03.github.io/Clipboard-Bridge/) |
+[Downloads](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4) |
+[Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore) |
+[Setup guide](GUIDE.md)
 
-The complete `2.0.4` release also contains both ready-made iPhone Shortcuts, the Python
-server, Docker/Compose files and the server requirements.
+[![Windows](https://img.shields.io/badge/Windows-client%20%2B%20server-2563eb)](#windows)
+[![Android](https://img.shields.io/badge/Android-native%20app-16805b)](#android)
+[![iOS](https://img.shields.io/badge/iPhone-Shortcuts-111827)](#iphone-and-ipad)
+[![Docker](https://img.shields.io/badge/server-Docker%20%2B%20Python-0ea5e9)](#standalone-server)
+[![License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
+[![Validate](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
 
-> **Windows security:** release 2.0.4 is currently unsigned and can be blocked by
-> Windows 11 Smart App Control. The project is preparing trusted Authenticode signing;
-> see the [code signing policy](CODE_SIGNING.md). A self-signed certificate would not
-> make a public download trusted.
+Clipboard Bridge moves the **latest text, image or file** between Windows, Android and
+iPhone through a private server. It works on a local network, does not require a cloud
+account, and keeps every device on the same server history.
 
-> **Auto-sync on Windows:** this warning applies to both the installer and portable
-> versions. Windows may prevent Clipboard Bridge from detecting clipboard changes made by
-> applications running as administrator. If auto-sync does not work, right-click Clipboard
-> Bridge and choose **Run as administrator**.
+Use the Windows app as the server for the simplest setup, or run the standalone
+Python/Docker server on a NAS, Raspberry Pi, home server or any Docker host.
 
-![platform](https://img.shields.io/badge/platform-Windows%20%2B%20iPhone-2563eb)
-![modes](https://img.shields.io/badge/modes-Server%20%C2%B7%20Client-6f42c1)
-![network](https://img.shields.io/badge/network-local%20only-2ea44f)
-![license](https://img.shields.io/badge/license-MIT-555)
-[![Validate project](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
-[![Latest release](https://img.shields.io/github/v/release/mattbox03/Clipboard-Bridge?label=release)](https://github.com/mattbox03/Clipboard-Bridge/releases/latest)
+## Download
 
-
-Share your clipboard — text, images and **files of any type** — between **Windows and
-iPhone** over your local network, using the iOS Shortcuts app. No mandatory cloud service
-or online account. Interface in **English (default)** and Italian.
-
-## ⚡ It works in two distinct modes
-
-![Server mode vs Client mode](docs/modes.png)
-
-Switch anytime from **Settings → General**:
-
-| | 🖥️ Server mode | 🔌 Client mode |
+| Platform | Download | What it includes |
 |---|---|---|
-| **Who is the server** | the **Windows app itself** | a **separate server** (PC, NAS, Raspberry Pi, Docker) |
-| **The iPhone connects to** | your PC, directly | the server |
-| **Extra setup** | none — just flip the switch | run the server somewhere |
-| **Web page** | no (minimal) | yes |
-| **Best for** | quick PC ↔ iPhone transfers with no extra host | an always-on service shared by multiple devices |
+| **Android 10+** | [Android APK 1.0.0-beta.6](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk) | Native app, Share integration, server history and Quick Settings tiles |
+| **Windows installer** | [Clipboard Bridge Windows 2.0.4 installer](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Per-user installation; no administrator account required |
+| **Windows portable** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | One executable, no installation |
+| **iPhone Send Shortcut** | [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut) | Sends the current iOS clipboard |
+| **iPhone Receive Shortcut** | [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut) | Receives the latest server item |
+| **Server bundle** | [Source and server ZIP](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Source.and.Server.V2.0.4.zip) | Python server, Docker files, documentation and tests |
 
-## Start in three steps
+The Android app is currently a public beta. APK and Windows checksums are included in
+the release assets.
 
-1. **Install the Windows app** with the current-user installer above, then open the
-   Clipboard Bridge tray icon.
-2. Open **Settings → General** and choose **Server mode** for the fastest setup, or
-   **Client mode** if you already run the Docker/Python server. In Client mode, enter the
-   server address under **Connection** and use **Check connection now**.
-3. Install **Load Clipboard** and **Download Clipboard** from the links above. Replace the
-   complete URL in each iPhone Shortcut using the canonical addresses shown in the
-   [iPhone section](#4-iphone-shortcuts).
+> **Windows download warning:** the current Windows executables are not yet signed with
+> a public Authenticode certificate. Defender or Smart App Control can therefore show a
+> warning. See [CODE_SIGNING.md](CODE_SIGNING.md).
 
-The tray shows **🟢 Connected** when the selected mode is ready. In Windows Server mode,
-allow Clipboard Bridge through Windows Firewall when prompted and keep the app running.
+## How it works
 
-> For screenshots, account URLs, Control Center setup and troubleshooting, follow the
-> complete [Setup & Usage Guide](GUIDE.md).
+```text
+Windows app  ─┐
+Android app  ─┼── HTTP on your private network ── Clipboard Bridge server
+iOS Shortcut ─┘                                  ├─ latest item
+Web browser  ────────────────────────────────────└─ shared history
+```
 
-**Clipboard Bridge is an open-source, self-hosted clipboard synchronization and file
-transfer tool for Windows and iPhone.** It can run entirely on a Windows PC or connect
-multiple devices to a private Flask and Docker server. It transfers the latest clipboard
-item over the local network without relying on iCloud, Microsoft Cloud Clipboard or an
-external cloud service.
+The server has one ordered history for each clipboard space. **Text, images and files
+have exactly the same priority:** the latest request is always the latest item.
 
-## Features
-- Exchange **text, images and files** of any type.
-- **History** on the server and on the client.
-- **Windows client** in the tray: send/receive and global keyboard shortcuts.
-- **Automatic incoming files:** new PDFs and other files are downloaded while the client
-  is running; click the Windows notification to reveal the file.
-- **Web interface** on the server (usable from the iPhone browser too) to paste text and
-  upload/download files.
-- Integration with **iPhone Shortcuts** via simple HTTP requests.
-- **No separate server needed (optional):** the Windows app can be the server itself
-  (**Settings → General → Server**) — the iPhone connects straight to your PC, with the
-  same Unicode text and unrestricted file-format support as the Docker server.
-- Optional **token** for the API and an optional **password** for the web page.
-- Optional **isolated accounts**, with no fixed account limit and a separate history for
-  each user.
-- Run the server directly or with **Docker**.
+Every device must use the same:
 
-<img width="296" height="216" alt="features" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" />
+- server address and port;
+- shared space or account;
+- token, username and password when authentication is enabled.
 
-<img width="264" height="356" alt="settings" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" />
+The Android history is a live view of `GET /clipboard/history`. It is not stored as a
+separate Android history.
 
-## Common use cases
+## Choose a server mode
 
-- **Sync the clipboard between Windows and iPhone** using two iOS Shortcuts.
-- **Send photos and files from an iPhone to a Windows PC** over Wi-Fi.
-- **Copy text from Windows and paste it on iOS**, or receive iPhone clipboard content
-  on Windows.
-- Run a **self-hosted clipboard server** on a NAS, Raspberry Pi, home server or Docker
-  host.
-- Use **Windows as the clipboard server** when no NAS or separate server is available.
-- Share one server between multiple people through **isolated clipboard accounts**.
-- Keep clipboard and file transfers inside a **private local network**.
+Clipboard Bridge supports two distinct setups.
 
-## Repository layout
+| | **Windows Server mode** | **Standalone server** |
+|---|---|---|
+| Server runs on | The Windows app | Docker/Python host |
+| Extra computer required | No | Yes, or an always-on NAS/home server |
+| Web interface | No | Yes |
+| Android support | Yes | Yes |
+| iPhone Shortcuts | Yes | Yes |
+| Windows client | The same app | One or more Windows clients |
+| Best for | Fast setup and direct phone-to-PC use | Multiple users and an always-on service |
 
-| File | Description |
-|------|-------------|
-| `clipboard_bridge-Server.py` | server (Flask): API, web interface, history |
-| `clipboard_bridge_windows.py` | Windows client (tray icon) |
-| `Dockerfile`, `docker-compose.yml` | run the server in a container |
-| `requirements-server.txt`, `requirements-client.txt` | dependencies |
-| `build_client.bat` | build the client into a single `.exe` |
-| `build_windows_release.bat` | build both the portable EXE and Windows installer |
-| `Clipboard_Bridge_setup.iss` | universal Inno Setup installer definition |
-| `VERSION`, `scripts/release_metadata.py` | release version and consistency checks |
-| `icon.ico` | application icon |
+![Windows Server mode and standalone server mode](docs/modes.png)
 
-> Download the tested installer or portable executable from Releases. The tracked
-> `dist\Clipboard Bridge.exe` can also be rebuilt locally with the scripts below.
+### Fastest setup: use Windows as the server
 
----
+1. Install or open Clipboard Bridge on Windows.
+2. Open **Settings > General** and select **Server mode**.
+3. Keep port `5088`, unless it is already used.
+4. Copy the address displayed by the Windows app, for example
+   `http://192.168.1.20:5088`.
+5. Allow Clipboard Bridge through Windows Firewall when requested.
+6. Enter the same address in Android and in both iPhone Shortcuts.
 
-## 1. Server
+No Docker container or separate web server is required.
 
-### Install from an app store
+### Always-on setup: use Docker or Python
 
-The server is also distributed through the separate
-**[Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)**.
-Its README contains detailed installation and update instructions for:
+1. Start the standalone server on a NAS, Raspberry Pi, PC or Docker host.
+2. Open `http://SERVER_IP:5088/` to verify the web interface.
+3. Put the Windows app in **Client mode**.
+4. Configure Android and iPhone with the same server address.
 
-- **ZimaOS** one-click installation
-- **Portainer** App Templates
-- **Umbrel** Community App Store
-- **Runtipi** custom app
-- **Docker Compose**, Docker Desktop and Dockge
+## Android
 
-Open the **[App Store installation guide](https://github.com/mattbox03/Clipboard-Bridge-AppStore#readme)**
-and follow the section for your platform. The permanent ZimaOS source is:
+The native Android client supports Android 10 and later.
+
+### Features
+
+- Send and receive Unicode text.
+- Send photos, PDFs, archives and arbitrary files.
+- Save received files in `Downloads/Clipboard Bridge`.
+- Put received text or file URIs into the Android clipboard.
+- Live server history, refreshed every five seconds while the app is visible.
+- Restore any item directly from server history.
+- Android Share menu target for text, images and files.
+- **Send clipboard** and **Receive clipboard** Quick Settings tiles.
+- Optional foreground monitoring for new server items.
+- Separate notification settings for incoming text, incoming files and sent items.
+- Shared token and isolated account authentication.
+- English and Italian interface.
+
+### Install the APK
+
+1. Download the [Android APK](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.6.apk).
+2. Open the downloaded file on the Android device.
+3. If requested, allow the browser or file manager to install apps from that source.
+4. Choose **Install** or **Update**.
+5. Open Clipboard Bridge and allow notifications if you want automatic monitoring.
+
+Updates signed by this project keep the existing Android configuration.
+
+### Configure Android
+
+1. Open the gear button.
+2. Enter only the server base address, for example:
+
+   ```text
+   http://192.168.1.20:5088
+   ```
+
+3. Choose **Shared space** when using the general clipboard.
+4. Enter the API token only when the server uses `CLIPBOARD_TOKEN`.
+5. Choose **Account** only when that username exists in `CLIPBOARD_ACCOUNTS`.
+6. Enter the account username and password.
+7. Run **Test connection**, then save.
+
+For account mode, the status strip must show **Connected - @USERNAME**. Android appends
+`user` and `password` to every request URL, so it loads that account's isolated
+clipboard rather than the shared space. The **Server history** section then displays
+the same items returned by:
+
+```text
+http://SERVER_IP:5088/clipboard/history?limit=200&user=USERNAME&password=PASSWORD
+```
+
+If Android and the web page show different histories, check that both are using the
+same shared space or the same account.
+
+### Use the Android app
+
+- **Send clipboard:** uploads the current Android clipboard.
+- **Receive latest:** downloads the newest server item and places it in the clipboard.
+- **Send file:** opens Android's file picker.
+- **History item:** downloads that exact server item.
+- **Share to Clipboard Bridge:** sends content from Photos, Files, a browser or another
+  application.
+
+### Add the Quick Settings controls
+
+1. Pull down Android Quick Settings twice.
+2. Tap **Edit** or the pencil button.
+3. Find **Send clipboard** and **Receive clipboard**.
+4. Drag both into the active controls.
+
+The controls use a transparent helper because Android requires a focused activity for
+reliable clipboard access. Clipboard Bridge immediately returns to the previous screen;
+the main app is not opened.
+
+### Android automatic synchronization
+
+Android 10 and later prevent ordinary background applications from continuously reading
+the clipboard. Clipboard Bridge therefore uses these supported workflows:
+
+- incoming monitoring uses an optional foreground service and notification;
+- **Receive clipboard** is always available from Quick Settings;
+- outgoing auto-send works while Clipboard Bridge is visible;
+- the Share menu and **Send clipboard** tile work from other applications.
+
+Some Android manufacturers apply additional battery restrictions. If monitoring stops,
+exclude Clipboard Bridge from battery optimization and keep its foreground notification
+enabled.
+
+See [android/README.md](android/README.md) for build instructions and technical details.
+
+## Windows
+
+The Windows client runs from the notification area.
+
+### Main features
+
+- Client mode for an external server.
+- Server mode with a built-in HTTP server.
+- Manual send and receive.
+- Configurable global keyboard shortcuts.
+- Automatic clipboard synchronization.
+- Local clipboard history.
+- Automatic download of incoming files.
+- Clickable file notifications.
+- Configurable text, image and file notifications.
+- Shared token and account authentication.
+- Single-instance protection.
+- English and Italian interface.
+
+### Windows local history versus server history
+
+The Windows app can record a private local history. This is different from server
+history:
+
+- **local history** contains clipboard events observed on that Windows PC;
+- **server history** contains items actually uploaded to the selected server;
+- Android, iPhone and the web interface can only see server history.
+
+Enable **Automatic synchronization** or use **Send clipboard** to publish Windows items
+to the server.
+
+> Clipboard changes made by applications running as administrator may be hidden from a
+> normal Windows process. If Windows auto-sync misses those changes, run Clipboard Bridge
+> as administrator too.
+
+## iPhone and iPad
+
+iOS uses two universal Shortcuts. The same Shortcut handles text, photos and files.
+
+### Send the current clipboard
+
+Install [Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)
+and set its request URL to:
+
+```text
+http://SERVER_IP:5088/clipboard
+```
+
+### Receive the latest item
+
+Install [Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)
+and set its URL to:
+
+```text
+http://SERVER_IP:5088/clipboard/latest/raw
+```
+
+Add both Shortcuts to the iPhone Control Center for one-swipe access:
+
+1. Open Control Center customization.
+2. Add a **Shortcut** control.
+3. Select **Load Clipboard**.
+4. Add a second control and select **Download Clipboard**.
+
+For an isolated account, append the encoded username and password:
+
+```text
+http://SERVER_IP:5088/clipboard?user=alice&password=secret
+http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret
+```
+
+For the shared API token:
+
+```text
+http://SERVER_IP:5088/clipboard?token=YOUR_TOKEN
+http://SERVER_IP:5088/clipboard/latest/raw?token=YOUR_TOKEN
+```
+
+The [complete setup guide](GUIDE.md) includes detailed Shortcut actions and file/photo
+behavior.
+
+## Standalone server
+
+### Docker Compose
+
+```bash
+git clone https://github.com/mattbox03/Clipboard-Bridge.git
+cd Clipboard-Bridge
+docker compose up -d --build
+```
+
+Open `http://localhost:5088/`. Persistent data is stored in `./data`.
+
+### Python
+
+```bash
+pip install -r requirements-server.txt
+python clipboard_bridge-Server.py
+```
+
+### App stores
+
+The separate [Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
+provides installation instructions for ZimaOS, Portainer, Umbrel, Runtipi, Dockge and
+standard Docker Compose.
+
+The permanent ZimaOS source is:
 
 ```text
 https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
-### Run directly
-```bash
-pip install -r requirements-server.txt
-python clipboard_bridge-Server.py
-```
-The server listens on all interfaces, port **5088**. Open `http://localhost:5088/` in a
-browser for the web interface.
-
-### Docker
-```bash
-docker compose up -d --build
-```
-The history is stored in the `./data` folder and survives restarts. Works in any Docker
-environment.
-
-Stable server image: `ghcr.io/mattbox03/clipboard-bridge-server:1.0.2`.
-
-For container details, backups and image tags, see
-[Docker and app-store installation](DOCKER.md).
-
-### Options (environment variables)
+## Server configuration
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `CLIPBOARD_PORT` | `5088` | listening port |
-| `CLIPBOARD_TOKEN` | *(empty)* | if set, the API (`/clipboard/*`) needs the `X-Auth-Token` header |
-| `CLIPBOARD_PASSWORD` | *(empty)* | if set, the web page requires a login (long-lived per-device session) |
-| `CLIPBOARD_ACCOUNTS` | *(empty)* | extra isolated accounts, format `user1:pass1,user2:pass2` (see below) |
-| `CLIPBOARD_ACCOUNTS_FILE` | *(empty)* | path to a file with one `user:password` per line (for many accounts) |
-| `CLIPBOARD_MAX_HISTORY` | `200` | number of items kept in the history |
-| `CLIPBOARD_MAX_UPLOAD_MB` | `64` | maximum size of one request or uploaded file in MB |
-| `CLIPBOARD_DATA_DIR` | `./clipboard_data` | data folder |
+|---|---:|---|
+| `CLIPBOARD_PORT` | `5088` | Listening port |
+| `CLIPBOARD_TOKEN` | empty | Optional shared API token |
+| `CLIPBOARD_PASSWORD` | empty | Optional web login password |
+| `CLIPBOARD_ACCOUNTS` | empty | Comma-separated `user:password` accounts |
+| `CLIPBOARD_ACCOUNTS_FILE` | empty | File containing one `user:password` per line |
+| `CLIPBOARD_MAX_HISTORY` | `200` | Server history limit |
+| `CLIPBOARD_MAX_UPLOAD_MB` | `64` | Maximum upload size |
+| `CLIPBOARD_DATA_DIR` | `./clipboard_data` | Persistent data folder |
 
-> For use outside the local network, set a token and use a VPN or a reverse proxy with
-> HTTPS. [Tailscale](https://tailscale.com/) is one simple VPN option: install it on the
-> iPhone and on the PC/server, then use the server's Tailscale IP in the Shortcuts
-> (`http://100.x.y.z:5088`). You do not need to expose port 5088 on the router. On the
-> local network, allow port 5088 through the host firewall. This also works when the
-> Windows app runs in **Server mode**: use that Windows PC's Tailscale IP and the port
-> configured in the app.
+The shared clipboard remains available when accounts are added. Accounts have separate
+histories and there is no fixed account-count limit. For large installations, use
+`CLIPBOARD_ACCOUNTS_FILE`.
 
-### Multiple accounts (optional)
+## Network and security
 
-The **shared space** is always available. To add extra, **isolated** spaces (each with its
-own history), set `CLIPBOARD_ACCOUNTS`:
+Clipboard Bridge is designed for private networks.
 
-```bash
-CLIPBOARD_ACCOUNTS="alice:secret1,bob:secret2"
-```
+- Do not expose port `5088` directly to the public internet.
+- Use a token or account when other people can access the network.
+- Use a VPN for access away from home. Tailscale is one option, not a requirement.
+- A VPN works with both the standalone server and Windows Server mode.
+- HTTPS termination can be added through a trusted reverse proxy.
 
-There is **no limit** on the number of accounts. For many users, instead of a long variable
-use an accounts **file** (one `user:password` per line, `#` for comments) and point
-`CLIPBOARD_ACCOUNTS_FILE` to it:
-
-```bash
-# accounts.txt
-alice:secret1
-bob:secret2
-# ...as many as you want
-```
-```bash
-CLIPBOARD_ACCOUNTS_FILE=/data/accounts.txt python clipboard_bridge-Server.py
-```
-
-Pick an account by adding its credentials **at the end of the URL** — handy in a Shortcut or
-in the Windows client:
-
-```
-http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=secret1
-```
-
-These URL credentials remain supported for iPhone Shortcuts. As an optional alternative,
-API clients may send `X-Clipboard-User` and `X-Clipboard-Password` headers instead.
-
-In a browser, open `http://SERVER_IP:5088/` and **log in** (username = account, or leave it
-empty for the shared space). The session is remembered per device. The shared space keeps
-using `CLIPBOARD_TOKEN` / `CLIPBOARD_PASSWORD` as before.
-
----
-
-## 2. Windows client
-
-Replace `SERVER_IP` with the address of the machine running the server.
-
-### Executable
-Download the ready-made installer/portable build from Releases, or build only the portable
-client with `build_client.bat` (requires Python). You get `dist\Clipboard Bridge.exe`,
-which runs without installing anything.
-
-### From source
-```bash
-pip install -r requirements-client.txt
-python clipboard_bridge_windows.py
-```
-
-A tray icon appears (right-click for the menu):
-- **Send clipboard -> server** / **Receive latest <- server** (text, images, files).
-- **Send a file...** and **Open received folder**. New remote files are downloaded
-  automatically to `%USERPROFILE%\Downloads\Clipboard Bridge`; clicking their notification
-  opens File Explorer and selects the received file. Received files are also placed on the
-  Windows clipboard, ready to paste into File Explorer or another compatible application.
-- **History...** and **Language** remain immediately available in the tray.
-- **Settings...** contains operating mode, interface language, local-history limit,
-  server address, ports, token, account, automation, notifications and configurable
-  hotkeys. Notifications can be disabled completely or enabled separately for received
-  text, images and files. Leave
-  **Account** empty for the shared space, or enter an account name + password to use an
-  isolated space. Default hotkeys are `Ctrl+Alt+C` to send and `Ctrl+Alt+V` to receive.
-- The tray shows one compact green/red connection indicator. Settings provide the full
-  status and **Check connection now** after changing the address or credentials.
-- Windows allows only one Clipboard Bridge instance at a time, preventing duplicate
-  processes and cloned tray icons.
-
-The installed application never writes runtime data inside `Program Files`. Configuration,
-local history, embedded Server-mode data and crash logs are stored in
-`%LOCALAPPDATA%\Clipboard Bridge`. Existing data found beside an older executable is copied
-automatically on first run. Version 2.0.2 also searches old `Program Files` installations
-and recovers settings when 2.0.1 previously created an empty default configuration.
-
-### Start with Windows
-`Win+R` -> `shell:startup`, then put a shortcut to the executable there.
-
----
-
-## 3. Web interface
-
-Opening the server address in a browser (also from an iPhone) shows a page where you can
-paste text, upload and download files, and read the Shortcuts instructions. With a token:
-`http://SERVER_IP:5088/?token=YOUR_TOKEN`. Add `?lang=it` for Italian.
-
----
-
-## 4. iPhone (Shortcuts)
-
-The ready-made Shortcuts are included as assets in the
-[Clipboard Bridge 2.0.4 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4):
-
-- **[Download Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Load.Clipboard.shortcut)** -
-  sends the current iPhone clipboard to Clipboard Bridge.
-- **[Download Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Download.Clipboard.shortcut)** -
-  receives the latest item from Clipboard Bridge.
-
-Open each `.shortcut` file on the iPhone and edit its **Get Contents of URL** action.
-Set the complete Load URL to `http://SERVER_IP:5088/clipboard` and the complete Download
-URL to `http://SERVER_IP:5088/clipboard/latest/raw`, using the address shown by the
-Windows app or your external server. Also add your token or account credentials when
-enabled.
-
-### Add the Shortcuts to Control Center
-
-For one-swipe access without opening the Shortcuts app:
-
-1. Open **Control Center** on the iPhone and tap the **Add (+)** button.
-2. Tap **Add a Control**, select **Shortcut**, then tap **Choose**.
-3. Select **Load Clipboard**. Repeat the steps and select **Download Clipboard** for a
-   second control.
-
-The two controls can now send or receive the latest clipboard item directly from Control
-Center. See [Apple's Control Center guide](https://support.apple.com/guide/shortcuts/apd06a9201d4/ios).
-
-### Create them manually
-
-Create shortcuts using the **Get Contents of URL** action. If you use a token, add the
-`X-Auth-Token` header.
-
-- **General send** - POST to `http://SERVER_IP:5088/clipboard` (request body: **File** →
-  **Clipboard**). The same URL accepts Unicode text, photos and files of any format.
-- **General receive** - GET `http://SERVER_IP:5088/clipboard/latest/raw`, then copy the
-  result to the clipboard or save it as a file.
-- **Send text** — POST to `http://SERVER_IP:5088/clipboard/text` (JSON body, field `text`).
-- **Receive text** — GET `http://SERVER_IP:5088/clipboard/text/raw`, then *Copy to Clipboard*.
-- **Send photo/file** — POST to `http://SERVER_IP:5088/clipboard/image` (body: File).
-- **Receive image** — GET `http://SERVER_IP:5088/clipboard/image/latest/raw`, then *Save to Album*.
-
-> Using an account? Just append `?user=NAME&password=PASS` to the end of each URL.
->
-> The universal endpoint accepts raw bodies, multipart uploads and JSON/Base64. File
-> extensions are never restricted; the server preserves the original bytes, Unicode
-> filename and MIME type supplied by iOS.
-
----
-
-## 5. Server API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | server status (public) |
-| POST | `/clipboard` | save Unicode text or any binary file; accepts raw, multipart and JSON/Base64 |
-| POST | `/clipboard/text` | save text from a JSON string/object, form or UTF-8/UTF-16 body |
-| GET | `/clipboard/text/raw` | latest text as text/plain |
-| POST | `/clipboard/image` | save a file/image (base64, multipart or binary) |
-| GET | `/clipboard/image/latest/raw` | latest image as binary |
-| POST | `/clipboard/file` | save any file using raw data, multipart or JSON `{filename, data}` |
-| GET | `/clipboard/latest` | latest item of any type, content included |
-| GET | `/clipboard/latest/raw` | latest item (any type) as raw content / file |
-| GET | `/clipboard/history?limit=N` | history list (metadata) |
-| GET/DELETE | `/clipboard/item/<id>` | read or delete an item |
-| DELETE | `/clipboard/history` | clear the history |
-
----
-
-## Building the Windows packages
-
-To build only the portable executable:
-
-```bat
-build_client.bat
-```
-
-To create both universal GitHub release assets:
-
-```bat
-build_windows_release.bat 2.0.4
-```
-
-For the Inno Setup interface instead: run `build_client.bat`, open
-`Clipboard_Bridge_setup.iss` in Inno Setup, then choose **Build → Compile**. The complete
-installer code is already contained in that `.iss` file.
-
-The script uses PyInstaller and Inno Setup, without personal paths or configuration files.
-It produces:
+With Tailscale, replace the LAN address with the server's private Tailscale address:
 
 ```text
-Output\Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe
-Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe
-Output\Clipboard.Bridge.Release.V2.0.4\
+http://100.x.y.z:5088
 ```
 
-The installer is per-user: it installs under `%LOCALAPPDATA%\Programs\Clipboard Bridge`
-and does not require administrator privileges. Application settings and received files
-remain in the current user's profile. The release folder contains the two Windows builds,
-both iPhone Shortcuts, the Python server and all Docker/Compose files needed to deploy it.
+See [SECURITY.md](SECURITY.md) before exposing a server beyond a trusted LAN.
 
-Install missing build tools with:
+## Repository
 
-```powershell
-winget install --id Python.Python.3.12 --exact
-winget install --id JRSoftware.InnoSetup --exact
-```
+| Path | Purpose |
+|---|---|
+| `android/` | Native Android application |
+| `clipboard_bridge_windows.py` | Windows client and built-in server |
+| `clipboard_bridge-Server.py` | Standalone Flask server and web interface |
+| `Iphone Shortcuts/` | Ready-made iOS Shortcuts |
+| `Dockerfile`, `compose.yaml` | Container deployment |
+| `tests/` | Server and Windows regression tests |
+| `docs/` | GitHub Pages website |
 
-## Frequently asked questions
+## Build and contribute
 
-### Can I share the clipboard between Windows and iPhone without iCloud?
+- Android build: [android/README.md](android/README.md)
+- Windows packaging: [build and signing guide](CODE_SIGNING.md)
+- Docker deployment: [DOCKER.md](DOCKER.md)
+- Contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-Yes. Clipboard Bridge sends text, photos and files through your local network. The
-iPhone uses the Shortcuts app and Windows uses the tray client.
-
-### Does it require a separate server?
-
-No. In **Server mode**, the Windows application accepts connections directly from the
-iPhone. In **Client mode**, it connects to an always-on Clipboard Bridge server running
-on Docker, a NAS, Raspberry Pi or another computer.
-
-### Can it transfer photos and arbitrary files?
-
-Yes. The unified endpoints and iPhone Shortcuts handle text, images and files according
-to the latest item saved on the server. There is no file-extension allowlist: PDFs,
-archives, Office/Pages documents, media, unknown formats and even empty files are stored
-without changing their bytes.
-
-### Is Clipboard Bridge a cloud clipboard service?
-
-No. It is self-hosted and designed primarily for local networks. Remote access should
-be protected with HTTPS through a VPN or reverse proxy.
-
-### Which self-hosting platforms are supported?
-
-The server supports Docker Compose and includes installation instructions for ZimaOS,
-Portainer, Umbrel, Runtipi, Docker Desktop and Dockge in the
-[Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore).
-
-### Does it support multiple users?
-
-Yes. The shared clipboard remains available, while an arbitrary practical number of
-password-protected accounts can have separate histories and files.
-
-## License
-
-Released under the [MIT](LICENSE) license.
+Clipboard Bridge is released under the [MIT License](LICENSE).

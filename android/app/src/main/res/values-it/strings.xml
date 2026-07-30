@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Clipboard Bridge</string>
+    <string name="tile_send">Invia appunti</string>
+    <string name="tile_receive">Ricevi appunti</string>
+    <string name="sync_channel">Sincronizzazione in background</string>
+    <string name="incoming_channel">Appunti in arrivo</string>
+    <string name="outgoing_channel">Risultati sincronizzazione</string>
+    <string name="sync_running">Clipboard Bridge controlla il server</string>
+    <string name="sync_running_detail">Tocca per aprire l\'app</string>
+    <string name="clipboard_sent">Appunti inviati</string>
+    <string name="clipboard_received">Appunti ricevuti</string>
+    <string name="tile_sending">Invio…</string>
+    <string name="tile_receiving">Ricezione…</string>
+</resources>

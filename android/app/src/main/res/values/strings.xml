@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Clipboard Bridge</string>
+    <string name="tile_send">Send clipboard</string>
+    <string name="tile_receive">Receive clipboard</string>
+    <string name="sync_channel">Background synchronization</string>
+    <string name="incoming_channel">Incoming clipboard</string>
+    <string name="outgoing_channel">Synchronization results</string>
+    <string name="sync_running">Clipboard Bridge is monitoring the server</string>
+    <string name="sync_running_detail">Tap to open the app</string>
+    <string name="clipboard_sent">Clipboard sent</string>
+    <string name="clipboard_received">Clipboard received</string>
+    <string name="tile_sending">Sending…</string>
+    <string name="tile_receiving">Receiving…</string>
+</resources>

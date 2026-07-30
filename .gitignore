@@ -34,3 +34,11 @@ Thumbs.db
 .claude/
 .vscode/
 .idea/
+
+# Android build tools and private signing material
+android/.gradle/
+android/local.properties
+android/**/build/
+android/*.jks
+android/*.keystore
+android/keystore.properties

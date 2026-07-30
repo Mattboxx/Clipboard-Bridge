@@ -1,0 +1,2 @@
+-keepattributes *Annotation*
+-dontwarn org.codehaus.mojo.animal_sniffer.*

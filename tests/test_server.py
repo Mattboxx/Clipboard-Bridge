@@ -45,6 +45,39 @@ def test_shared_clipboard_and_security_headers(server):
     assert response.headers["Referrer-Policy"] == "no-referrer"
 
 
+def test_latest_item_follows_arrival_order_regardless_of_type(server):
+    client = server.app.test_client()
+    token = "?token=shared-token"
+
+    first_file = client.post(
+        "/clipboard" + token,
+        data=b"\x01\x02\x03",
+        content_type="application/octet-stream",
+        headers={"X-Clipboard-Filename": "first.bin"},
+    ).get_json()
+    newest_text = client.post(
+        "/clipboard" + token,
+        data="newest text",
+        content_type="text/plain; charset=utf-8",
+    ).get_json()
+
+    history = client.get("/clipboard/history" + token).get_json()["items"]
+    assert [item["id"] for item in history[:2]] == [newest_text["id"], first_file["id"]]
+    assert client.get("/clipboard/latest/raw" + token).data == b"newest text"
+
+    newest_file = client.post(
+        "/clipboard" + token,
+        data=b"\x10\x20\x30",
+        content_type="application/octet-stream",
+        headers={"X-Clipboard-Filename": "newest.bin"},
+    ).get_json()
+
+    latest = client.get("/clipboard/latest" + token).get_json()
+    assert latest["id"] == newest_file["id"]
+    assert latest["type"] == "file"
+    assert client.get("/clipboard/latest/raw" + token).data == b"\x10\x20\x30"
+
+
 def test_accounts_are_isolated_and_support_url_or_headers(server):
     client = server.app.test_client()
 
