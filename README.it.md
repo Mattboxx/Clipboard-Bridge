@@ -64,7 +64,8 @@ di Microsoft o servizi cloud esterni.
   incollare testo e caricare/scaricare file.
 - Integrazione con le **Shortcuts iPhone** tramite semplici richieste HTTP.
 - **Nessun server a parte (opzionale):** l'app Windows può fare da server
-  (**Impostazioni → Generale → Server**), così l'iPhone si connette direttamente al tuo PC.
+  (**Impostazioni → Generale → Server**), così l'iPhone si connette direttamente al tuo PC
+  con lo stesso supporto per testo Unicode e file senza limiti di formato del server Docker.
 - **Token** opzionale per l'API e **password** opzionale per la pagina web.
 - Server eseguibile direttamente oppure in **Docker**.
 
@@ -229,7 +230,9 @@ Compare un'icona nella tray (clic destro per il menu):
   inseriti negli appunti Windows, pronti da incollare in Esplora file o in un'app compatibile.
 - **Cronologia...** e **Lingua** restano immediatamente disponibili nella tray.
 - **Impostazioni...** raccoglie modalità operativa, lingua, limite della cronologia locale,
-  indirizzo e porte del server, token, account, automazione e scorciatoie configurabili.
+  indirizzo e porte del server, token, account, automazione, notifiche e scorciatoie
+  configurabili. Le notifiche possono essere disattivate completamente oppure abilitate
+  separatamente per testo, immagini e file ricevuti.
   Lascia **Account** vuoto per lo spazio condiviso, oppure inserisci nome account + password
   per usare uno spazio isolato. Le scorciatoie predefinite sono `Ctrl+Alt+C` per inviare e
   `Ctrl+Alt+V` per ricevere.
@@ -289,14 +292,20 @@ Centro di Controllo. Consulta anche la [guida Apple](https://support.apple.com/g
 
 Crea dei comandi con l'azione **Ottieni contenuto dell'URL**. Se usi un token, aggiungi
 l'intestazione `X-Auth-Token`.
-- **Invio Generale** - POST to `http://SERVER_IP:5088/clipboard` (Request body : File, File -> Clipboard).
-- **Ricezione Generale** - GET contents of `http://SERVER_IP:5088/clipboard/latest/raw`(Method : GET ; Copy "Contents of URL" to clipboard).
+- **Invio generale** - POST a `http://SERVER_IP:5088/clipboard` (corpo richiesta:
+  **File** → **Appunti**). Lo stesso URL accetta testo Unicode, foto e file di ogni formato.
+- **Ricezione generale** - GET da `http://SERVER_IP:5088/clipboard/latest/raw`, quindi
+  copia il risultato negli appunti oppure salvalo come file.
 - **Invia testo** — POST a `http://SERVER_IP:5088/clipboard/text` (corpo JSON, campo `text`).
 - **Ricevi testo** — GET a `http://SERVER_IP:5088/clipboard/text/raw`, poi *Copia negli appunti*.
 - **Invia foto/file** — POST a `http://SERVER_IP:5088/clipboard/image` (corpo: File).
 - **Ricevi immagine** — GET a `http://SERVER_IP:5088/clipboard/image/latest/raw`, poi *Salva nell'album*.
 
 > Usi un account? Aggiungi semplicemente `?user=NOME&password=PASS` alla fine di ogni URL.
+>
+> L'endpoint universale accetta corpi grezzi, upload multipart e JSON/Base64. Le estensioni
+> non vengono mai limitate: il server conserva i byte originali, il nome Unicode e il tipo
+> MIME forniti da iOS.
 
 ---
 
@@ -305,12 +314,12 @@ l'intestazione `X-Auth-Token`.
 | Metodo | Endpoint | Descrizione |
 |--------|----------|-------------|
 | GET | `/health` | stato del server (pubblico) |
-| POST | `/clipboard` | salva qualsiasi cosa (testo o binario), tipo rilevato in automatico |
-| POST | `/clipboard/text` | salva testo (JSON, form o corpo grezzo) |
+| POST | `/clipboard` | salva testo Unicode o qualsiasi file; accetta raw, multipart e JSON/Base64 |
+| POST | `/clipboard/text` | salva testo da stringa/oggetto JSON, form o corpo UTF-8/UTF-16 |
 | GET | `/clipboard/text/raw` | ultimo testo come text/plain |
 | POST | `/clipboard/image` | salva un file/immagine (base64, multipart o binario) |
 | GET | `/clipboard/image/latest/raw` | ultima immagine come binario |
-| POST | `/clipboard/file` | salva un file (JSON `{filename, data}`) |
+| POST | `/clipboard/file` | salva qualsiasi file tramite dati raw, multipart o JSON `{filename, data}` |
 | GET | `/clipboard/latest` | ultimo elemento di qualsiasi tipo, contenuto incluso |
 | GET | `/clipboard/latest/raw` | ultimo elemento (qualsiasi tipo) come contenuto grezzo |
 | GET | `/clipboard/history?limit=N` | elenco dello storico (metadati) |
@@ -375,7 +384,9 @@ acceso su Docker, NAS, Raspberry Pi o un altro computer.
 ### Può trasferire fotografie e file di qualsiasi tipo?
 
 Sì. Gli endpoint unificati e i Comandi rapidi iPhone gestiscono testo, immagini e file
-in base all'ultimo elemento salvato sul server.
+in base all'ultimo elemento salvato sul server. Non esiste una lista di estensioni
+consentite: PDF, archivi, documenti Office/Pages, contenuti multimediali, formati
+sconosciuti e perfino file vuoti vengono conservati senza modificarne i byte.
 
 ### Clipboard Bridge è un servizio cloud?
 

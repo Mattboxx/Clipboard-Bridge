@@ -92,3 +92,7 @@ arbitrary practical number of comma-separated `user:password` pairs. Every
 account has isolated history and files. URL credentials remain supported for
 iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 `X-Clipboard-Password` headers.
+
+The server does not restrict file extensions. The universal `/clipboard` endpoint accepts
+raw iOS Shortcut bodies, multipart uploads and JSON/Base64, preserving the original bytes,
+Unicode filename and MIME type. Increase `MAX_UPLOAD_MB` when transferring larger files.

@@ -65,7 +65,8 @@ external cloud service.
   upload/download files.
 - Integration with **iPhone Shortcuts** via simple HTTP requests.
 - **No separate server needed (optional):** the Windows app can be the server itself
-  (**Settings → General → Server**) — the iPhone connects straight to your PC.
+  (**Settings → General → Server**) — the iPhone connects straight to your PC, with the
+  same Unicode text and unrestricted file-format support as the Docker server.
 - Optional **token** for the API and an optional **password** for the web page.
 - Run the server directly or with **Docker**.
 
@@ -227,7 +228,9 @@ A tray icon appears (right-click for the menu):
   Windows clipboard, ready to paste into File Explorer or another compatible application.
 - **History...** and **Language** remain immediately available in the tray.
 - **Settings...** contains operating mode, interface language, local-history limit,
-  server address, ports, token, account, automation and configurable hotkeys. Leave
+  server address, ports, token, account, automation, notifications and configurable
+  hotkeys. Notifications can be disabled completely or enabled separately for received
+  text, images and files. Leave
   **Account** empty for the shared space, or enter an account name + password to use an
   isolated space. Default hotkeys are `Ctrl+Alt+C` to send and `Ctrl+Alt+V` to receive.
 - The tray shows one compact green/red connection indicator. Settings provide the full
@@ -285,14 +288,20 @@ Center. See [Apple's Control Center guide](https://support.apple.com/guide/short
 Create shortcuts using the **Get Contents of URL** action. If you use a token, add the
 `X-Auth-Token` header.
 
-- **General send** - POST to `http://SERVER_IP:5088/clipboard` (Request body : File, File -> Clipboard).
-- **General Recieve** - GET contents of `http://SERVER_IP:5088/clipboard/latest/raw`(Method : GET ; Copy "Contents of URL" to clipboard).
+- **General send** - POST to `http://SERVER_IP:5088/clipboard` (request body: **File** →
+  **Clipboard**). The same URL accepts Unicode text, photos and files of any format.
+- **General receive** - GET `http://SERVER_IP:5088/clipboard/latest/raw`, then copy the
+  result to the clipboard or save it as a file.
 - **Send text** — POST to `http://SERVER_IP:5088/clipboard/text` (JSON body, field `text`).
 - **Receive text** — GET `http://SERVER_IP:5088/clipboard/text/raw`, then *Copy to Clipboard*.
 - **Send photo/file** — POST to `http://SERVER_IP:5088/clipboard/image` (body: File).
 - **Receive image** — GET `http://SERVER_IP:5088/clipboard/image/latest/raw`, then *Save to Album*.
 
 > Using an account? Just append `?user=NAME&password=PASS` to the end of each URL.
+>
+> The universal endpoint accepts raw bodies, multipart uploads and JSON/Base64. File
+> extensions are never restricted; the server preserves the original bytes, Unicode
+> filename and MIME type supplied by iOS.
 
 ---
 
@@ -301,12 +310,12 @@ Create shortcuts using the **Get Contents of URL** action. If you use a token, a
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | server status (public) |
-| POST | `/clipboard` | save anything (text or binary), type auto-detected |
-| POST | `/clipboard/text` | save text (JSON, form or raw body) |
+| POST | `/clipboard` | save Unicode text or any binary file; accepts raw, multipart and JSON/Base64 |
+| POST | `/clipboard/text` | save text from a JSON string/object, form or UTF-8/UTF-16 body |
 | GET | `/clipboard/text/raw` | latest text as text/plain |
 | POST | `/clipboard/image` | save a file/image (base64, multipart or binary) |
 | GET | `/clipboard/image/latest/raw` | latest image as binary |
-| POST | `/clipboard/file` | save a file (JSON `{filename, data}`) |
+| POST | `/clipboard/file` | save any file using raw data, multipart or JSON `{filename, data}` |
 | GET | `/clipboard/latest` | latest item of any type, content included |
 | GET | `/clipboard/latest/raw` | latest item (any type) as raw content / file |
 | GET | `/clipboard/history?limit=N` | history list (metadata) |
@@ -370,7 +379,9 @@ on Docker, a NAS, Raspberry Pi or another computer.
 ### Can it transfer photos and arbitrary files?
 
 Yes. The unified endpoints and iPhone Shortcuts handle text, images and files according
-to the latest item saved on the server.
+to the latest item saved on the server. There is no file-extension allowlist: PDFs,
+archives, Office/Pages documents, media, unknown formats and even empty files are stored
+without changing their bytes.
 
 ### Is Clipboard Bridge a cloud clipboard service?
 

@@ -121,6 +121,10 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   running, new PDFs and other files arrive without pressing Receive. Click the Windows
   notification to open File Explorer with the received file selected. The downloaded
   file is also placed on the Windows clipboard, ready to paste.
+- **Notifications** (Settings → Automation): use the main switch to disable every Windows
+  notification, or choose independently whether received text, images and files should
+  produce an alert. Automatically received text and images are copied to the clipboard
+  before their notification appears.
 - **History…**: browse the server and local history; re-use or delete items.
 - **Connection status**: the tray contains one compact green/red indicator. Settings show
   the detailed result and **Check connection now** after editing the address, token or
@@ -137,7 +141,8 @@ Choose the mode from **Settings → General**:
   appears in the tray menu (click it to copy the address); use that address in your iPhone
   shortcuts instead of `SERVER_IP`. The port is `5088` by default and can be changed in
   Settings. In this mode only the essentials run (history + the latest text/image/file);
-  there is no web page.
+  there is no web page. Its iPhone endpoints accept the same Unicode text, raw files,
+  multipart uploads and JSON/Base64 payloads as the external server.
 
 > The first time you enable Server mode, allow the app through the Windows firewall on the
 > private network so the iPhone can reach it.
@@ -200,7 +205,9 @@ Apple documents the same procedure in its
    - Request Body: **File** → set it to the **Clipboard** variable.
 4. Name it (e.g. "Send") and add it to the Home Screen for one-tap use.
 
-Copy anything — text or a photo — and run it: it is sent to the server as is.
+Copy anything and run it: Unicode text, photos and files are sent to the server without
+changing their contents. The endpoint accepts the raw body produced by Shortcuts as well
+as multipart and JSON/Base64 uploads.
 
 ### 5.2 Receive (server → clipboard)
 1. Tap **+** → add **Get Contents of URL**:
@@ -211,10 +218,12 @@ Copy anything — text or a photo — and run it: it is sent to the server as is
 
 It always copies the latest item from the server — text or photo — to your clipboard.
 
-> **Optional — other file types:** these two shortcuts cover text and photos through the
-> clipboard. To send an arbitrary file, make a Share-Sheet shortcut that POSTs the file to
+> **Other file types:** to send a document that is not currently in the clipboard, make a
+> Share-Sheet shortcut that POSTs the file to
 > `http://SERVER_IP:5088/clipboard`; to receive one, GET
 > `http://SERVER_IP:5088/clipboard/latest/raw` and use **Save File** instead of Copy to Clipboard.
+> The server has no extension allowlist and preserves unknown formats, MIME types, Unicode
+> filenames and empty files.
 
 ---
 
@@ -294,6 +303,6 @@ headers instead.
 |---------|-------|
 | The web page won't open | Is the server running? Right `SERVER_IP`? Same network? Port 5088 allowed in the firewall? |
 | `401 unauthorized` | The token is missing or wrong (`X-Auth-Token` / Settings → Token). |
-| iPhone shortcut fails | Verify the URL and method; if you use a token, the header must be present. |
+| iPhone shortcut fails | Verify the URL and method; if you use a token, the header must be present. For universal sending use POST with **File → Clipboard**. |
 | A received image isn't on the Windows clipboard | Some apps only accept certain formats; the client copies images as bitmap (works in Office, Paint, chats). |
 | Duplicate tray icons | Make sure only one instance of the client is running (close extra ones from Task Manager). |

@@ -33,7 +33,8 @@ Example with a token (PowerShell):
 from flask import Flask, request, jsonify, Response, send_file, redirect, session, g
 from markupsafe import escape
 from werkzeug.exceptions import RequestEntityTooLarge
-from urllib.parse import quote
+from werkzeug.http import parse_options_header
+from urllib.parse import quote, unquote
 import base64
 import hmac
 import os
@@ -48,7 +49,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.1"
+SERVER_VERSION = "1.0.2"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -253,12 +254,32 @@ def _add_text(text):
     return entry
 
 
+def _clean_filename(filename):
+    """Return a safe display filename while preserving Unicode and spaces."""
+    if filename is None:
+        return None
+    filename = str(filename).replace("\\", "/").rsplit("/", 1)[-1]
+    filename = "".join(ch for ch in filename if ch >= " " and ch not in "\r\n\x7f").strip()
+    return filename[:240] or None
+
+
+def _clean_mime(mime):
+    if not mime:
+        return None
+    mime = str(mime).split(";", 1)[0].strip().lower()
+    return mime or None
+
+
 def _add_binary(raw, orig_filename=None, mime=None):
+    orig_filename = _clean_filename(orig_filename)
+    mime = _clean_mime(mime)
     entry_id = uuid.uuid4().hex[:12]
     # Extension: from the original filename, otherwise from the mime type
     ext = ""
-    if orig_filename and "." in orig_filename:
-        ext = "." + orig_filename.rsplit(".", 1)[1].lower()
+    if orig_filename:
+        candidate = os.path.splitext(orig_filename)[1]
+        if len(candidate) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", candidate or ""):
+            ext = candidate.lower()
     elif mime:
         ext = mimetypes.guess_extension(mime) or ""
     fname = entry_id + (ext or ".bin")
@@ -288,18 +309,111 @@ def _add_binary(raw, orig_filename=None, mime=None):
 
 
 # ---------- Request data extraction ----------
-def _get_posted_text():
-    """Accept JSON {text:...}, form 'text=...' or a raw body (text/plain)."""
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        return data.get("text", "")
-    if request.form and "text" in request.form:
-        return request.form.get("text", "")
-    raw = request.get_data(cache=False)
+_TEXT_MIMES = {"application/x-www-form-urlencoded"}
+_GENERIC_MIMES = {""}
+_TEXT_FIELDS = ("text", "value", "content", "clipboard", "string")
+
+
+def _json_as_text(data):
+    """Preserve JSON strings and sensibly convert other JSON clipboard values."""
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        for key in _TEXT_FIELDS:
+            if key in data:
+                value = data[key]
+                return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False)
+
+
+def _form_text():
+    for key in _TEXT_FIELDS:
+        if key in request.form:
+            return request.form.get(key, "")
+    if len(request.form) == 1:
+        return next(iter(request.form.values()))
+    return None
+
+
+def _decode_text_bytes(raw, allow_legacy=False):
+    """Decode text from iOS and browsers without altering line endings or Unicode."""
+    charset = request.mimetype_params.get("charset")
+    candidates = []
+    if charset:
+        candidates.append(charset)
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        candidates.append("utf-16")
+    candidates.extend(("utf-8-sig", "utf-8"))
+    if allow_legacy:
+        candidates.append("latin-1")
+    for encoding in candidates:
+        try:
+            return raw.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return None
+
+
+def _looks_like_text(raw):
+    text = _decode_text_bytes(raw)
+    if text is None:
+        return False
+    return all(ch.isprintable() or ch in "\r\n\t" for ch in text)
+
+
+def _decode_base64(value):
+    """Accept standard, URL-safe and data-URL Base64, including missing padding."""
+    if not isinstance(value, str):
+        return None, None
+    encoded = value.strip()
+    data_mime = None
+    if encoded.lower().startswith("data:") and "," in encoded:
+        header, encoded = encoded.split(",", 1)
+        if ";base64" not in header.lower():
+            return None, None
+        data_mime = _clean_mime(header[5:].split(";", 1)[0])
+    encoded = re.sub(r"\s+", "", encoded)
+    encoded += "=" * (-len(encoded) % 4)
     try:
-        return raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return raw.decode("latin-1", errors="replace")
+        return base64.b64decode(encoded, altchars=b"-_", validate=True), data_mime
+    except (ValueError, base64.binascii.Error):
+        return None, None
+
+
+def _request_filename():
+    """Read the filename variants commonly emitted by iOS Shortcuts and HTTP clients."""
+    for header in ("X-Filename", "X-File-Name", "X-Clipboard-Filename"):
+        value = request.headers.get(header)
+        if value:
+            return _clean_filename(value)
+
+    disposition = request.headers.get("Content-Disposition", "")
+    match = re.search(r"filename\*\s*=\s*(?:\"([^\"]*)\"|([^;]*))", disposition, re.I)
+    if match:
+        value = (match.group(1) or match.group(2) or "").strip()
+        charset, separator, encoded = value.partition("''")
+        if separator:
+            try:
+                return _clean_filename(unquote(encoded, encoding=charset or "utf-8", errors="replace"))
+            except LookupError:
+                return _clean_filename(unquote(encoded, encoding="utf-8", errors="replace"))
+    _kind, options = parse_options_header(disposition)
+    if options.get("filename"):
+        return _clean_filename(options["filename"])
+
+    _kind, options = parse_options_header(request.headers.get("Content-Type", ""))
+    return _clean_filename(options.get("name"))
+
+
+def _get_posted_text():
+    """Accept JSON, common form fields or raw UTF text."""
+    if request.is_json:
+        return _json_as_text(request.get_json(silent=True))
+    form_value = _form_text()
+    if form_value is not None:
+        return form_value
+    raw = request.get_data(cache=False)
+    return _decode_text_bytes(raw, allow_legacy=True) or ""
 
 
 def _extract_upload():
@@ -307,30 +421,45 @@ def _extract_upload():
     Extract (bytes, filename, mime) from:
       - multipart/form-data (any file field)
       - JSON {filename, data(base64), mime}
-      - raw binary body (image Content-Type, optional X-Filename header)
+      - raw binary body (any Content-Type and common filename headers)
     """
     if request.files:
         f = next(iter(request.files.values()))
-        return f.read(), f.filename, (f.mimetype or None)
+        return f.read(), _clean_filename(f.filename), _clean_mime(f.mimetype)
 
     if request.is_json:
-        data = request.get_json(silent=True) or {}
-        b64 = (data.get("data") or "").replace("\n", "").replace("\r", "")
-        if not b64:
+        filename = _request_filename()
+        if filename:
+            return request.get_data(cache=True), filename, _clean_mime(request.content_type)
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or "data" not in data:
             return None, None, None
-        try:
-            raw = base64.b64decode(b64, validate=True)
-        except (ValueError, base64.binascii.Error):
+        raw, data_mime = _decode_base64(data.get("data"))
+        if raw is None:
             return None, None, None
-        return raw, data.get("filename"), data.get("mime")
+        return raw, _clean_filename(data.get("filename")), _clean_mime(data.get("mime")) or data_mime
 
     raw = request.get_data(cache=False)
-    if raw:
-        mime = request.headers.get("Content-Type")
-        if mime and ";" in mime:
-            mime = mime.split(";")[0].strip()
-        return raw, request.headers.get("X-Filename"), mime
+    filename = _request_filename()
+    if raw or filename is not None:
+        return raw, filename, _clean_mime(request.content_type)
     return None, None, None
+
+
+def _raw_item_response(entry):
+    """Return an item in the form most useful to iOS Shortcuts and desktop clients."""
+    if entry["type"] == "text":
+        response = Response(_read_text(entry), content_type="text/plain; charset=utf-8")
+    else:
+        response = send_file(
+            os.path.join(_items_dir(), entry["file"]),
+            mimetype=entry["mime"] or "application/octet-stream",
+            download_name=entry["filename"],
+        )
+        response.headers["X-Clipboard-Filename"] = quote(entry["filename"] or "", safe="")
+    response.headers["X-Clipboard-Id"] = entry["id"]
+    response.headers["X-Clipboard-Type"] = entry["type"]
+    return response
 
 
 # ---------- Authentication & account selection ----------
@@ -471,7 +600,7 @@ def clipboard_text():
 def clipboard_text_raw():
     """Plain text (text/plain): handy for pasting into Shortcuts."""
     e = _latest_of(("text",))
-    return Response(_read_text(e) if e else "", mimetype="text/plain")
+    return _raw_item_response(e) if e else Response("", content_type="text/plain; charset=utf-8")
 
 
 # ---------- IMAGES ----------
@@ -504,23 +633,18 @@ def image_latest_raw():
     e = _latest_of(("image",))
     if not e:
         return jsonify({"error": "no images"}), 404
-    return send_file(os.path.join(_items_dir(), e["file"]),
-                     mimetype=e["mime"], download_name=e["filename"])
+    return _raw_item_response(e)
 
 
-# ---------- GENERIC FILES (backwards compatibility) ----------
+# ---------- GENERIC FILES ----------
 @app.route("/clipboard/file", methods=["POST"])
 def push_file():
-    content = request.get_json(silent=True) or {}
-    filename = content.get("filename")
-    b64 = (content.get("data") or "").replace("\n", "").replace("\r", "")
-    if not filename or not b64:
-        return jsonify({"error": "filename or data missing"}), 400
-    try:
-        raw = base64.b64decode(b64, validate=True)
-    except (ValueError, base64.binascii.Error):
-        return jsonify({"error": "invalid base64"}), 400
-    entry = _add_binary(raw, filename, mimetypes.guess_type(filename)[0])
+    """Accept a file as JSON Base64, multipart form data, or a raw HTTP body."""
+    raw, filename, mime = _extract_upload()
+    if raw is None:
+        return jsonify({"error": "file data missing or invalid"}), 400
+    filename = filename or ("clipboard" + (mimetypes.guess_extension(mime or "") or ".bin"))
+    entry = _add_binary(raw, filename, mime)
     return jsonify({"status": "ok", "saved": entry["filename"], "id": entry["id"]})
 
 
@@ -531,7 +655,13 @@ def file_latest():
         return jsonify({"error": "no files"}), 404
     with open(os.path.join(_items_dir(), e["file"]), "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
-    return jsonify({"filename": e["filename"], "data": b64})
+    return jsonify({
+        "filename": e["filename"],
+        "data": b64,
+        "mime": e["mime"],
+        "id": e["id"],
+        "type": e["type"],
+    })
 
 
 # ---------- UNIVERSAL / HISTORY ----------
@@ -549,12 +679,8 @@ def latest_raw():
     """Latest item (any type) as raw content: text or binary file."""
     index = _load_index()
     if not index:
-        return Response("", mimetype="text/plain")
-    e = index[0]
-    if e["type"] == "text":
-        return Response(_read_text(e), mimetype="text/plain")
-    return send_file(os.path.join(_items_dir(), e["file"]),
-                     mimetype=e["mime"], download_name=e["filename"])
+        return Response("", content_type="text/plain; charset=utf-8")
+    return _raw_item_response(index[0])
 
 
 @app.route("/clipboard", methods=["POST"])
@@ -562,13 +688,19 @@ def push_any():
     """Single endpoint: store whatever arrives (text or binary) with no distinction.
     Made for a single iPhone Shortcut that sends the clipboard whatever its type."""
     if request.is_json:
-        d = request.get_json(silent=True) or {}
-        if d.get("data"):
+        filename = _request_filename()
+        if filename:
+            e = _add_binary(request.get_data(cache=True), filename, _clean_mime(request.content_type))
+            return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+        d = request.get_json(silent=True)
+        if isinstance(d, dict) and "data" in d:
             raw, fn, mime = _extract_upload()
-            if raw is not None:
-                e = _add_binary(raw, fn or "clipboard", mime)
-                return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
-        e = _add_text(d.get("text", ""))
+            if raw is None:
+                return jsonify({"error": "file data missing or invalid"}), 400
+            fn = fn or ("clipboard" + (mimetypes.guess_extension(mime or "") or ".bin"))
+            e = _add_binary(raw, fn, mime)
+            return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+        e = _add_text(_json_as_text(d))
         return jsonify({"status": "ok", "id": e["id"], "type": "text"})
 
     if request.files:
@@ -576,22 +708,25 @@ def push_any():
         e = _add_binary(raw, fn or "clipboard", mime)
         return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
 
-    if request.form and "text" in request.form:
-        e = _add_text(request.form.get("text", ""))
+    form_value = _form_text()
+    if form_value is not None:
+        e = _add_text(form_value)
         return jsonify({"status": "ok", "id": e["id"], "type": "text"})
 
     raw = request.get_data(cache=False)
-    if not raw:
-        return jsonify({"error": "no data"}), 400
-    ctype = (request.content_type or "").split(";")[0].strip().lower()
-    if ctype.startswith("text/") or ctype in ("", "application/x-www-form-urlencoded"):
-        try:
-            e = _add_text(raw.decode("utf-8"))
+    ctype = _clean_mime(request.content_type) or ""
+    filename = _request_filename()
+    explicit_text = ctype.startswith("text/") or ctype in _TEXT_MIMES
+    generic_text = filename is None and ctype in _GENERIC_MIMES and raw and _looks_like_text(raw)
+    if filename is None and (explicit_text or generic_text):
+        text = _decode_text_bytes(raw, allow_legacy=explicit_text)
+        if text is not None:
+            e = _add_text(text)
             return jsonify({"status": "ok", "id": e["id"], "type": "text"})
-        except UnicodeDecodeError:
-            pass
-    fn = request.headers.get("X-Filename") or ("clipboard" + (mimetypes.guess_extension(ctype) or ".bin"))
-    e = _add_binary(raw, fn, ctype or None)
+    if not raw and filename is None:
+        return jsonify({"error": "no data"}), 400
+    filename = filename or ("clipboard" + (mimetypes.guess_extension(ctype) or ".bin"))
+    e = _add_binary(raw, filename, ctype or None)
     return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
 
 
@@ -639,10 +774,7 @@ def item_raw(item_id):
     e = next((x for x in _load_index() if x["id"] == item_id), None)
     if not e:
         return jsonify({"error": "not found"}), 404
-    if e["type"] == "text":
-        return Response(_read_text(e), mimetype="text/plain")
-    return send_file(os.path.join(_items_dir(), e["file"]),
-                     mimetype=e["mime"], download_name=e["filename"])
+    return _raw_item_response(e)
 
 
 # ---------- Diagnostics ----------
