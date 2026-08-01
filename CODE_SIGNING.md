@@ -1,7 +1,7 @@
 # Code signing policy
 
 Clipboard Bridge publishes its source code and release files from the
-[mattbox03/Clipboard-Bridge](https://github.com/mattbox03/Clipboard-Bridge)
+[Mattboxx/Clipboard-Bridge](https://github.com/Mattboxx/Clipboard-Bridge)
 repository.
 
 The project intends to use the following service for trusted Windows
@@ -11,8 +11,8 @@ Authenticode signatures:
 
 ## Current release roles
 
-- Committer and reviewer: [mattbox03](https://github.com/mattbox03)
-- Release and signing approver: [mattbox03](https://github.com/mattbox03)
+- Committer and reviewer: [Mattboxx](https://github.com/Mattboxx)
+- Release and signing approver: [Mattboxx](https://github.com/Mattboxx)
 
 Only release artifacts built from this repository may be submitted for signing.
 The portable Windows executable is signed before it is included in the
@@ -39,4 +39,4 @@ service's privacy policy.
 ## Reporting security issues
 
 Security problems can be reported privately through
-[GitHub Security Advisories](https://github.com/mattbox03/Clipboard-Bridge/security/advisories/new).
+[GitHub Security Advisories](https://github.com/Mattboxx/Clipboard-Bridge/security/advisories/new).

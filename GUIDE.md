@@ -192,10 +192,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.4 release](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4):
+[Clipboard Bridge 2.0.4 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.4):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:

@@ -7,7 +7,7 @@ sidecar. The image supports `linux/amd64` and `linux/arm64`.
 Current stable server image:
 
 ```text
-ghcr.io/mattbox03/clipboard-bridge-server:1.0.2
+ghcr.io/mattboxx/clipboard-bridge-server:1.0.2
 ```
 
 ## Docker Compose
@@ -31,14 +31,14 @@ Production and store installations should pin an exact `X.Y.Z` tag.
 ## One-click stores
 
 The ready-to-use catalog is published in
-**[Clipboard-Bridge-AppStore](https://github.com/mattbox03/Clipboard-Bridge-AppStore)**.
+**[Clipboard-Bridge-AppStore](https://github.com/Mattboxx/Clipboard-Bridge-AppStore)**.
 It provides detailed instructions and prepared files for ZimaOS, Portainer,
 Umbrel, Runtipi, Docker Compose, Docker Desktop and Dockge.
 
-- [English catalog guide](https://github.com/mattbox03/Clipboard-Bridge-AppStore#readme)
-- [Italian catalog guide](https://github.com/mattbox03/Clipboard-Bridge-AppStore/blob/main/README.it.md)
-- [Portainer template](https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json)
-- [Permanent ZimaOS source](https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip)
+- [English catalog guide](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme)
+- [Italian catalog guide](https://github.com/Mattboxx/Clipboard-Bridge-AppStore/blob/main/README.it.md)
+- [Portainer template](https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge-AppStore/main/portainer/templates.json)
+- [Permanent ZimaOS source](https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip)
 
 ## First publication
 
@@ -53,7 +53,7 @@ Umbrel, Runtipi, Docker Compose, Docker Desktop and Dockge.
 The ZimaOS source URL is permanent:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
 Do not put a release tag in the source URL. New catalog releases are published

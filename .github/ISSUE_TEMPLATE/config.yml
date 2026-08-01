@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Private security report
-    url: https://github.com/mattbox03/Clipboard-Bridge/security/advisories/new
+    url: https://github.com/Mattboxx/Clipboard-Bridge/security/advisories/new
     about: Report vulnerabilities without exposing sensitive details.
   - name: Setup guide
-    url: https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md
+    url: https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md
     about: Check the installation and troubleshooting steps first.

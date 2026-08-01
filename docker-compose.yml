@@ -2,7 +2,7 @@ name: clipboard-bridge
 
 services:
   clipboard-bridge:
-    image: ${APP_IMAGE:-ghcr.io/mattbox03/clipboard-bridge-server:latest}
+    image: ${APP_IMAGE:-ghcr.io/mattboxx/clipboard-bridge-server:latest}
     container_name: clipboard-bridge
     hostname: clipboard-bridge
     restart: unless-stopped

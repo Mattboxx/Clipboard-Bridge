@@ -4,9 +4,9 @@
 
 [English](README.md) | **Italiano**
 
-[Sito web](https://mattbox03.github.io/Clipboard-Bridge/) |
-[Download](https://github.com/mattbox03/Clipboard-Bridge/releases/tag/2.0.4) |
-[App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore) |
+[Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
+[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.4) |
+[App Store del server](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Guida completa](GUIDE.md)
 
 ![Clipboard Bridge collega Windows, Android e iPhone](docs/assets/hero-showcase.png)
@@ -16,7 +16,7 @@
 [![iOS](https://img.shields.io/badge/iPhone-Comandi%20rapidi-111827)](#iphone-e-ipad)
 [![Docker](https://img.shields.io/badge/server-Docker%20%2B%20Python-0ea5e9)](#server-indipendente)
 [![Licenza](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)
-[![Verifica](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/mattbox03/Clipboard-Bridge/actions/workflows/validate.yml)
+[![Verifica](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 
 Copia un testo su Windows e ricevilo su Android. Condividi un PDF da Android e scaricalo
 su iPhone. Invia una foto da iOS e ricevila automaticamente sul PC.
@@ -60,13 +60,13 @@ l'ordine di arrivo.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.8](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
-| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
-| **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
-| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
-| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
-| **Server Python** | [clipboard_bridge-Server.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
-| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
+| **Android 10+** | [APK Android 1.0.0-beta.8](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
+| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
+| **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
+| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
+| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
+| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
+| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
 
 L'app Android è attualmente una beta pubblica. La release contiene soltanto i download
 pronti all'uso e i due script Python principali. Gli sviluppatori possono clonare il
@@ -157,7 +157,7 @@ Il client Android nativo supporta Android 10 e versioni successive.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk).
+1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -286,7 +286,7 @@ iOS usa due Comandi rapidi universali. Gli stessi comandi gestiscono testo, foto
 
 ### Inviare la clipboard attuale
 
-Installa [iPhone Load Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
+Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
 e imposta l'URL della richiesta:
 
 ```text
@@ -295,7 +295,7 @@ http://IP_SERVER:5088/clipboard
 
 ### Ricevere l'ultimo elemento
 
-Installa [iPhone Download Clipboard](https://github.com/mattbox03/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
+Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
 e imposta:
 
 ```text
@@ -332,7 +332,7 @@ La [guida completa](GUIDE.md) descrive nel dettaglio azioni, foto e file.
 ### Docker Compose
 
 ```bash
-git clone https://github.com/mattbox03/Clipboard-Bridge.git
+git clone https://github.com/Mattboxx/Clipboard-Bridge.git
 cd Clipboard-Bridge
 docker compose up -d --build
 ```
@@ -348,13 +348,13 @@ python clipboard_bridge-Server.py
 
 ### App Store
 
-Il repository separato [Clipboard Bridge App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore)
+Il repository separato [Clipboard Bridge App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore)
 contiene le istruzioni per ZimaOS, Portainer, Umbrel, Runtipi, Dockge e Docker Compose.
 
 La sorgente permanente per ZimaOS è:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
 ## Configurazione del server

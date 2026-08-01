@@ -11,7 +11,7 @@ Do not open a public issue for a vulnerability or include credentials,
 clipboard contents, private addresses or logs containing sensitive data.
 
 Use the repository's
-[private vulnerability reporting form](https://github.com/mattbox03/Clipboard-Bridge/security/advisories/new).
+[private vulnerability reporting form](https://github.com/Mattboxx/Clipboard-Bridge/security/advisories/new).
 Include the affected version, operating system, deployment method, reproduction
 steps and expected impact. Remove real tokens and passwords from screenshots and
 logs.
