@@ -330,8 +330,6 @@ La [guida completa](GUIDE.md) descrive nel dettaglio azioni, foto e file.
 
 ## Server indipendente
 
-![Dashboard web del server Clipboard Bridge con cronologia dimostrativa anonima](docs/assets/server-dashboard.png)
-
 ### Docker Compose
 
 ```bash

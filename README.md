@@ -329,8 +329,6 @@ behavior.
 
 ## Standalone server
 
-![Clipboard Bridge standalone server web dashboard with anonymous demo history](docs/assets/server-dashboard.png)
-
 ### Docker Compose
 
 ```bash
