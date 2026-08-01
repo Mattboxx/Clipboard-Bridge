@@ -79,15 +79,20 @@ documentation, tests, Docker files and complete source code.
 ## How it works
 
 ```mermaid
-flowchart LR
-    W["Windows app"] <--> S["Clipboard Bridge server"]
-    A["Android app"] <--> S
-    I["iPhone Shortcuts"] <--> S
-    S --> H["Latest item and ordered history"]
+flowchart TB
+    subgraph M1["Mode 1 - no separate server"]
+        direction LR
+        P1["Android app + iPhone Shortcuts"] <--> W1["Windows app - Server mode"]
+    end
+    subgraph M2["Mode 2 - optional always-on server"]
+        direction LR
+        P2["Windows client + Android app + iPhone Shortcuts"] <--> S2["Docker or Python server"]
+    end
 ```
 
-The server has one ordered history for each clipboard space. **Text, images and files
-have exactly the same priority:** the latest request is always the latest item.
+Choose one mode. In both cases every connection is bidirectional and the active server
+keeps one ordered history for each clipboard space. **Text, images and files have
+exactly the same priority:** the latest request is always the latest item.
 
 Every device must use the same:
 
