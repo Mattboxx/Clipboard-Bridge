@@ -9,6 +9,8 @@
 [App Store del server](https://github.com/mattbox03/Clipboard-Bridge-AppStore) |
 [Guida completa](GUIDE.md)
 
+![Clipboard Bridge collega Windows, Android e iPhone](docs/assets/hero-showcase.png)
+
 [![Windows](https://img.shields.io/badge/Windows-client%20%2B%20server-2563eb)](#windows)
 [![Android](https://img.shields.io/badge/Android-app%20nativa-16805b)](#android)
 [![iOS](https://img.shields.io/badge/iPhone-Comandi%20rapidi-111827)](#iphone-e-ipad)
@@ -76,12 +78,7 @@ repository per documentazione, test, file Docker e sorgenti completi.
 
 ## Come funziona
 
-```text
-App Windows ----\
-App Android -----+--> Server Clipboard Bridge --> ultimo elemento + cronologia
-Comandi iOS -----+
-Browser web -----/
-```
+![Un solo flusso di clipboard condivisa per Windows, Android e iPhone](docs/assets/platform-flow.png)
 
 Il server mantiene una cronologia ordinata per ogni spazio clipboard. **Testo, immagini
 e file hanno la stessa priorità:** l'ultima richiesta ricevuta è sempre l'elemento più
@@ -115,7 +112,7 @@ Clipboard Bridge supporta due configurazioni distinte.
 | Client Windows | La stessa app | Uno o più client Windows |
 | Ideale per | Configurazione veloce e collegamento telefono-PC | Più utenti e servizio sempre acceso |
 
-![Modalità Server Windows e server indipendente](docs/modes.png)
+![Modalità Server Windows e server indipendente](docs/assets/two-modes.png)
 
 ### Configurazione più rapida: Windows come server
 
@@ -139,6 +136,8 @@ Non servono Docker o un server web separato.
 ## Android
 
 Il client Android nativo supporta Android 10 e versioni successive.
+
+<p align="center"><img src="docs/assets/android-app.png" alt="App nativa Clipboard Bridge per Android con invio, ricezione e cronologia server" width="720"></p>
 
 ### Funzionalità
 
@@ -237,6 +236,17 @@ Consulta [android/README.md](android/README.md) per compilazione e dettagli tecn
 
 Il client Windows funziona dall'area di notifica.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/windows-connection.png" alt="Impostazioni di connessione Windows con stato connesso"></td>
+    <td width="50%"><img src="docs/assets/windows-automation.png" alt="Impostazioni Windows per automazione e notifiche"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Connessione e autenticazione opzionale</strong></td>
+    <td align="center"><strong>Sincronizzazione e notifiche configurabili</strong></td>
+  </tr>
+</table>
+
 ### Funzionalità principali
 
 - Modalità Client per un server esterno.
@@ -271,6 +281,8 @@ server gli elementi copiati in Windows.
 ## iPhone e iPad
 
 iOS usa due Comandi rapidi universali. Gli stessi comandi gestiscono testo, foto e file.
+
+![Due Comandi rapidi iPhone per inviare e ricevere ogni tipo di contenuto](docs/assets/iphone-shortcuts.png)
 
 ### Inviare la clipboard attuale
 
@@ -314,6 +326,8 @@ http://IP_SERVER:5088/clipboard/latest/raw?token=IL_TUO_TOKEN
 La [guida completa](GUIDE.md) descrive nel dettaglio azioni, foto e file.
 
 ## Server indipendente
+
+![Dashboard web del server Clipboard Bridge con cronologia dimostrativa anonima](docs/assets/server-dashboard.png)
 
 ### Docker Compose
 

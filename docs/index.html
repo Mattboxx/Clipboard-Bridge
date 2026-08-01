@@ -13,8 +13,9 @@
   <meta property="og:title" content="Clipboard Bridge - Windows, Android and iPhone Clipboard Sync">
   <meta property="og:description" content="Transfer text, photos and files between Windows, Android and iPhone. Local, open source and self-hosted.">
   <meta property="og:url" content="https://mattbox03.github.io/Clipboard-Bridge/">
-  <meta property="og:image" content="https://mattbox03.github.io/Clipboard-Bridge/modes.png">
+  <meta property="og:image" content="https://mattbox03.github.io/Clipboard-Bridge/assets/hero-showcase.png">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://mattbox03.github.io/Clipboard-Bridge/assets/hero-showcase.png">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -68,13 +69,13 @@
     .nav-links a{font-size:14px;font-weight:700;text-decoration:none;color:#34434f}
     .nav-links a:last-child{padding:8px 13px;border:1px solid var(--line);border-radius:6px}
     .nav-links a:hover{color:var(--blue)}
-    .hero{min-height:620px;display:flex;align-items:center;position:relative;isolation:isolate;background:#172c3c url("modes.png") center/cover no-repeat;color:#fff;overflow:hidden}
-    .hero:before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,rgba(10,27,42,.96) 0%,rgba(10,27,42,.88) 48%,rgba(10,27,42,.48) 100%)}
+    .hero{min-height:620px;display:flex;align-items:center;position:relative;isolation:isolate;background:#0b1623 url("assets/hero-background.png") center/cover no-repeat;color:#fff;overflow:hidden}
+    .hero:before{content:"";position:absolute;z-index:-1;inset:0 auto 0 0;width:58%;background:rgba(7,18,29,.92)}
     .hero-inner{width:min(1120px,100%);margin:auto;padding:76px 24px 58px}
     .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;color:#b8d6ff}
     .eyebrow:before{content:"";width:28px;height:3px;background:#53d3a6}
-    h1{max-width:780px;font-size:clamp(42px,6vw,70px);line-height:1.03;margin:18px 0 22px;letter-spacing:0}
-    .lead{max-width:700px;font-size:20px;color:#e6eef5;margin:0}
+    h1{max-width:650px;font-size:clamp(42px,6vw,70px);line-height:1.03;margin:18px 0 22px;letter-spacing:0}
+    .lead{max-width:610px;font-size:20px;color:#e6eef5;margin:0}
     .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
     .button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 19px;border:1px solid currentColor;border-radius:6px;color:#fff;text-decoration:none;font-weight:750;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
     .button:hover{transform:translateY(-2px)}
@@ -92,7 +93,7 @@
     .item:hover{transform:translateY(-3px);border-color:#b8c8d2;box-shadow:0 14px 34px rgba(21,33,43,.09)}
     .item h3{margin:0 0 9px;font-size:19px;letter-spacing:0}
     .item p{margin:0;color:var(--muted)}
-    #download{background:linear-gradient(180deg,#f7fafb 0%,#fff 100%)}
+    #download{background:#f7fafb}
     #download .grid{grid-template-columns:repeat(3,1fr)}
     #download .item:first-child,#download .item:nth-child(2){border-top:4px solid var(--blue)}
     #download .item:nth-child(3),#download .item:nth-child(4){border-top:4px solid var(--green)}
@@ -110,10 +111,15 @@
     .step p{margin:0;color:var(--muted)}
     .trust-row{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:22px;color:var(--muted);font-size:14px}
     .trust-row strong{color:var(--ink)}
-    .showcase{display:grid;grid-template-columns:1.4fr .8fr;gap:24px;align-items:center}
-    .showcase-copy{max-width:430px}
-    .screens{display:grid;grid-template-columns:1fr .72fr;gap:16px;align-items:center}
-    .screen{display:block;width:100%;height:auto;max-height:430px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;box-shadow:var(--shadow)}
+    .showcase{display:block}
+    .showcase-copy{max-width:760px}
+    .screens{display:grid;grid-template-columns:1.45fr .55fr;gap:22px;align-items:center;margin-top:36px}
+    .screen{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;box-shadow:var(--shadow)}
+    .visual-explainer{display:block;width:100%;height:auto;margin-top:38px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 12px 34px rgba(21,33,43,.08)}
+    .device-previews{display:grid;grid-template-columns:.82fr 1.18fr;gap:28px;align-items:center;margin-top:34px}
+    .device-preview{margin:0;min-width:0}
+    .device-preview img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:8px;box-shadow:var(--shadow)}
+    .device-preview figcaption{margin-top:12px;color:var(--muted);font-size:14px;text-align:center}
     #shortcuts{background:var(--soft-blue)}
     #shortcuts .section-copy:last-child{padding:18px 20px;background:#fff;border-left:4px solid var(--coral);border-radius:4px}
     details{border-top:1px solid var(--line);padding:19px 0}
@@ -123,8 +129,8 @@
     footer{padding:38px 24px;border-top:1px solid var(--line);color:var(--muted);background:#f8fafb}
     footer .inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
     @media(max-width:960px){#download .grid{grid-template-columns:1fr 1fr}}
-    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:65% center}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}}
-    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:680px}.hero:before{background:rgba(10,27,42,.94)}.hero-inner{padding:38px 20px 26px}.eyebrow{font-size:11px}h1{font-size:36px;line-height:1.04;margin:12px 0 16px}.lead{font-size:16px}.actions{margin-top:20px}.button{width:100%;min-height:44px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:28px;padding-top:17px}.hero-facts span{font-size:12px}.grid,.modes,#download .grid{grid-template-columns:1fr}.screens{grid-template-columns:1fr 1fr;gap:10px}main section{padding:58px 20px}.item,.mode{padding:22px}}
+    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:70% center}.hero:before{width:100%;background:rgba(7,18,29,.88)}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}.device-previews{grid-template-columns:1fr 1fr;gap:16px}}
+    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:680px;background-position:72% center}.hero:before{background:rgba(7,18,29,.93)}.hero-inner{padding:38px 20px 26px}.eyebrow{font-size:11px}h1{font-size:36px;line-height:1.04;margin:12px 0 16px}.lead{font-size:16px}.actions{margin-top:20px}.button{width:100%;min-height:44px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:28px;padding-top:17px}.hero-facts span{font-size:12px}.grid,.modes,#download .grid,.device-previews,.screens{grid-template-columns:1fr}.screens{gap:18px}main section{padding:58px 20px}.item,.mode{padding:22px}.device-preview img{max-height:560px}}
   </style>
 </head>
 <body>
@@ -162,7 +168,7 @@
       <div class="inner">
         <span class="section-kicker">Get started</span>
         <h2>Download Clipboard Bridge 2.0.4</h2>
-        <p class="section-copy">Download the client for each device. The Android APK, Windows builds and two ready-made iPhone Shortcuts are direct downloads. The complete release also includes the Python server and Docker/Compose files.</p>
+        <p class="section-copy">Download the client for each device. The Android APK, Windows builds and two ready-made iPhone Shortcuts are direct downloads. The release includes the two main Python scripts; Docker files and complete source remain in the repository.</p>
         <div class="grid">
           <article class="item">
             <h3>Android app</h3>
@@ -227,6 +233,7 @@
         <div class="actions">
           <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Open the complete setup guide</a>
         </div>
+        <img class="visual-explainer" src="assets/platform-flow.png" alt="Windows, Android and iPhone connected through one ordered Clipboard Bridge history">
       </div>
     </section>
 
@@ -256,20 +263,39 @@
           <article class="mode server"><h3>Windows Server mode</h3><p>The Windows application itself becomes the local clipboard server. Your iPhone connects directly to the PC, with no NAS, Docker container or separate web server.</p></article>
           <article class="mode"><h3>Client mode with private server</h3><p>Windows and iPhone connect to an always-on Flask server. Deploy it with Docker Compose or through ZimaOS, Portainer, Umbrel, Runtipi or Dockge.</p></article>
         </div>
+        <img class="visual-explainer" src="assets/two-modes.png" alt="Comparison between Windows Server mode and Client mode with a private server">
       </div>
     </section>
 
     <section id="app-preview">
       <div class="inner showcase">
         <div class="showcase-copy">
-          <span class="section-kicker">Built for the Windows tray</span>
-          <h2>Useful controls, without a heavy desktop window</h2>
-          <p class="section-copy">Switch between Client and Server mode, configure the connection and keep the common send, receive and history actions close at hand.</p>
+          <span class="section-kicker">Windows and web interface</span>
+          <h2>Clear status, compact settings and a live history</h2>
+          <p class="section-copy">Windows keeps connection, automation and authentication in one settings panel. The standalone server adds a browser dashboard for text, uploads and ordered history. All screens shown here use anonymous demo content.</p>
           <a class="button" style="color:#1668dc;border-color:#1668dc" href="https://github.com/mattbox03/Clipboard-Bridge/blob/main/GUIDE.md">Explore the setup guide</a>
         </div>
         <div class="screens">
-          <img class="screen" src="https://github.com/user-attachments/assets/7d525e31-305c-4c86-bfa7-081aca3fda96" alt="Clipboard Bridge Windows tray menu">
-          <img class="screen" src="https://github.com/user-attachments/assets/9e624278-e712-44a1-9c88-ec5a2e0e4712" alt="Clipboard Bridge Windows settings">
+          <img class="screen" src="assets/server-dashboard.png" alt="Clipboard Bridge standalone server web dashboard with anonymous demo history">
+          <img class="screen" src="assets/windows-connection.png" alt="Clipboard Bridge Windows connection settings using local demo values">
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="platform-preview">
+      <div class="inner">
+        <span class="section-kicker">Designed for each device</span>
+        <h2>Native Android controls and simple iPhone Shortcuts</h2>
+        <p class="section-copy">Android provides a complete app with live server history. iPhone and iPad use two prepared Shortcuts for every content type, available from the Share Sheet or Control Center.</p>
+        <div class="device-previews">
+          <figure class="device-preview">
+            <img src="assets/android-app.png" alt="Native Android app preview with send, receive and server history">
+            <figcaption>Android: native actions, automatic receiving and live server history.</figcaption>
+          </figure>
+          <figure class="device-preview">
+            <img src="assets/iphone-shortcuts.png" alt="iPhone Load Clipboard and Download Clipboard Shortcuts">
+            <figcaption>iPhone and iPad: two universal Shortcuts, also available in Control Center.</figcaption>
+          </figure>
         </div>
       </div>
     </section>

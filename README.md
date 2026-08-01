@@ -9,6 +9,8 @@
 [Server App Store](https://github.com/mattbox03/Clipboard-Bridge-AppStore) |
 [Setup guide](GUIDE.md)
 
+![Clipboard Bridge connecting Windows, Android and iPhone](docs/assets/hero-showcase.png)
+
 [![Windows](https://img.shields.io/badge/Windows-client%20%2B%20server-2563eb)](#windows)
 [![Android](https://img.shields.io/badge/Android-native%20app-16805b)](#android)
 [![iOS](https://img.shields.io/badge/iPhone-Shortcuts-111827)](#iphone-and-ipad)
@@ -76,12 +78,7 @@ documentation, tests, Docker files and complete source code.
 
 ## How it works
 
-```text
-Windows app ----\
-Android app -----+--> Clipboard Bridge server --> latest item + ordered history
-iOS Shortcuts ---+
-Web browser -----/
-```
+![One shared clipboard flow for Windows, Android and iPhone](docs/assets/platform-flow.png)
 
 The server has one ordered history for each clipboard space. **Text, images and files
 have exactly the same priority:** the latest request is always the latest item.
@@ -114,7 +111,7 @@ Clipboard Bridge supports two distinct setups.
 | Windows client | The same app | One or more Windows clients |
 | Best for | Fast setup and direct phone-to-PC use | Multiple users and an always-on service |
 
-![Windows Server mode and standalone server mode](docs/modes.png)
+![Windows Server mode and standalone server mode](docs/assets/two-modes.png)
 
 ### Fastest setup: use Windows as the server
 
@@ -138,6 +135,8 @@ No Docker container or separate web server is required.
 ## Android
 
 The native Android client supports Android 10 and later.
+
+<p align="center"><img src="docs/assets/android-app.png" alt="Clipboard Bridge native Android app with send, receive and live server history" width="720"></p>
 
 ### Features
 
@@ -235,6 +234,17 @@ See [android/README.md](android/README.md) for build instructions and technical 
 
 The Windows client runs from the notification area.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/windows-connection.png" alt="Windows connection settings with connected status"></td>
+    <td width="50%"><img src="docs/assets/windows-automation.png" alt="Windows automation and notification settings"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Connection and optional authentication</strong></td>
+    <td align="center"><strong>Automatic sync and notification controls</strong></td>
+  </tr>
+</table>
+
 ### Main features
 
 - Client mode for an external server.
@@ -269,6 +279,8 @@ to the server.
 ## iPhone and iPad
 
 iOS uses two universal Shortcuts. The same Shortcut handles text, photos and files.
+
+![Two iPhone Shortcuts for sending and receiving every content type](docs/assets/iphone-shortcuts.png)
 
 ### Send the current clipboard
 
@@ -313,6 +325,8 @@ The [complete setup guide](GUIDE.md) includes detailed Shortcut actions and file
 behavior.
 
 ## Standalone server
+
+![Clipboard Bridge standalone server web dashboard with anonymous demo history](docs/assets/server-dashboard.png)
 
 ### Docker Compose
 
