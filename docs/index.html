@@ -69,13 +69,12 @@
     .nav-links a{font-size:14px;font-weight:700;text-decoration:none;color:#34434f}
     .nav-links a:last-child{padding:8px 13px;border:1px solid var(--line);border-radius:6px}
     .nav-links a:hover{color:var(--blue)}
-    .hero{min-height:620px;display:flex;align-items:center;position:relative;isolation:isolate;background:#0b1623 url("assets/hero-background.png") center/cover no-repeat;color:#fff;overflow:hidden}
-    .hero:before{content:"";position:absolute;z-index:-1;inset:0 auto 0 0;width:58%;background:rgba(7,18,29,.92)}
+    .hero{min-height:620px;display:flex;align-items:center;background:#0b1623 url("assets/hero-background.png") center/cover no-repeat;color:#fff;overflow:hidden}
     .hero-inner{width:min(1120px,100%);margin:auto;padding:76px 24px 58px}
     .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;color:#b8d6ff}
     .eyebrow:before{content:"";width:28px;height:3px;background:#53d3a6}
-    h1{max-width:650px;font-size:clamp(42px,6vw,70px);line-height:1.03;margin:18px 0 22px;letter-spacing:0}
-    .lead{max-width:610px;font-size:20px;color:#e6eef5;margin:0}
+    h1{max-width:500px;font-size:clamp(42px,5vw,60px);line-height:1.03;margin:18px 0 22px;letter-spacing:0}
+    .lead{max-width:500px;font-size:19px;color:#e6eef5;margin:0}
     .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
     .button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 19px;border:1px solid currentColor;border-radius:6px;color:#fff;text-decoration:none;font-weight:750;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
     .button:hover{transform:translateY(-2px)}
@@ -116,10 +115,17 @@
     .screens{display:grid;grid-template-columns:1.45fr .55fr;gap:22px;align-items:center;margin-top:36px}
     .screen{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;box-shadow:var(--shadow)}
     .visual-explainer{display:block;width:100%;height:auto;margin-top:38px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 12px 34px rgba(21,33,43,.08)}
-    .device-previews{display:grid;grid-template-columns:.82fr 1.18fr;gap:28px;align-items:center;margin-top:34px}
-    .device-preview{margin:0;min-width:0}
-    .device-preview img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:8px;box-shadow:var(--shadow)}
-    .device-preview figcaption{margin-top:12px;color:var(--muted);font-size:14px;text-align:center}
+    .flow-line{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:22px;margin-top:38px;padding:26px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .flow-devices{display:flex;flex-wrap:wrap;gap:10px}
+    .flow-devices span,.flow-result{padding:8px 12px;border:1px solid var(--line);border-radius:5px;background:#fff;font-weight:750}
+    .flow-server{color:var(--green);font-size:18px;font-weight:800;text-align:center}
+    .flow-result{text-align:center}
+    .platform-columns{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:36px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .platform-column{padding:30px 38px 30px 0}
+    .platform-column+ .platform-column{padding-left:38px;border-left:1px solid var(--line)}
+    .platform-label{display:block;margin-bottom:8px;color:var(--green);font-size:13px;font-weight:800;text-transform:uppercase}
+    .platform-column h3{margin:0 0 10px;font-size:24px}
+    .platform-column p{color:var(--muted);margin:0 0 16px}
     #shortcuts{background:var(--soft-blue)}
     #shortcuts .section-copy:last-child{padding:18px 20px;background:#fff;border-left:4px solid var(--coral);border-radius:4px}
     details{border-top:1px solid var(--line);padding:19px 0}
@@ -128,9 +134,10 @@
     details p{color:var(--muted);max-width:820px;margin-bottom:4px}
     footer{padding:38px 24px;border-top:1px solid var(--line);color:var(--muted);background:#f8fafb}
     footer .inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    @media(max-width:1180px){.hero{background-image:none}.hero-inner{max-width:900px}h1,.lead{max-width:680px}}
     @media(max-width:960px){#download .grid{grid-template-columns:1fr 1fr}}
-    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px;background-position:70% center}.hero:before{width:100%;background:rgba(7,18,29,.88)}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}.device-previews{grid-template-columns:1fr 1fr;gap:16px}}
-    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:680px;background-position:72% center}.hero:before{background:rgba(7,18,29,.93)}.hero-inner{padding:38px 20px 26px}.eyebrow{font-size:11px}h1{font-size:36px;line-height:1.04;margin:12px 0 16px}.lead{font-size:16px}.actions{margin-top:20px}.button{width:100%;min-height:44px}.hero-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:28px;padding-top:17px}.hero-facts span{font-size:12px}.grid,.modes,#download .grid,.device-previews,.screens{grid-template-columns:1fr}.screens{gap:18px}main section{padding:58px 20px}.item,.mode{padding:22px}.device-preview img{max-height:560px}}
+    @media(max-width:820px){.nav-links a:not(:last-child){display:none}.hero{min-height:600px}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.showcase{grid-template-columns:1fr}.showcase-copy{max-width:680px}.flow-line{grid-template-columns:1fr}.flow-server{text-align:left}.platform-columns{grid-template-columns:1fr}.platform-column{padding:28px 0}.platform-column+ .platform-column{padding-left:0;border-left:0;border-top:1px solid var(--line)}}
+    @media(max-width:600px){nav{height:62px;padding:0 18px}.brand img{width:30px;height:30px}.hero{min-height:610px}.hero-inner{padding:38px 20px 26px}.eyebrow{font-size:11px}h1{font-size:36px;line-height:1.04;margin:12px 0 16px}.lead{font-size:16px}.actions{margin-top:20px}.button{width:100%;min-height:44px}.hero-facts{display:grid;grid-template-columns:1fr;gap:8px;margin-top:28px;padding-top:17px}.hero-facts span{font-size:12px}.grid,.modes,#download .grid,.screens{grid-template-columns:1fr}.screens{gap:18px}main section{padding:58px 20px}.item,.mode{padding:22px}}
   </style>
 </head>
 <body>
@@ -148,17 +155,17 @@
 
   <header class="hero">
     <div class="hero-inner">
-      <div class="eyebrow">Local and self-hosted clipboard sharing</div>
-      <h1>One clipboard for Windows, Android and iPhone</h1>
-      <p class="lead">Transfer text, photos and files over your private network with the native Android app and two iOS Shortcuts. Run the server directly from Windows or use your own always-on Docker host.</p>
+      <div class="eyebrow">Open source &middot; Local &middot; Self-hosted</div>
+      <h1>Clipboard sharing across every device</h1>
+      <p class="lead">Send and receive text, photos and files between Windows, Android and iPhone through your own network. Use Windows as the server or run Docker or Python.</p>
       <div class="actions">
-        <a class="button primary" href="#download">Choose your download</a>
-        <a class="button" href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md">Setup guide</a>
+        <a class="button primary" href="#download">Download</a>
+        <a class="button" href="#start">See how it works</a>
       </div>
       <div class="hero-facts">
-        <span><strong>2 modes</strong> with or without a separate server</span>
-        <span><strong>Any item</strong> text, photos and files</span>
-        <span><strong>Private</strong> local and self-hosted</span>
+        <span><strong>Text, photos and files</strong></span>
+        <span><strong>No cloud account</strong></span>
+        <span><strong>Two server modes</strong></span>
       </div>
     </div>
   </header>
@@ -233,7 +240,11 @@
         <div class="actions">
           <a class="button primary" style="background:#1769e0;color:#fff;border-color:#1769e0" href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md">Open the complete setup guide</a>
         </div>
-        <img class="visual-explainer" src="assets/platform-flow.png" alt="Windows, Android and iPhone connected through one ordered Clipboard Bridge history">
+        <div class="flow-line" aria-label="All devices exchange the latest clipboard item through Clipboard Bridge">
+          <div class="flow-devices"><span>Windows</span><span>Android</span><span>iPhone</span></div>
+          <div class="flow-server">&harr; Clipboard Bridge &harr;</div>
+          <div class="flow-result">Latest item and ordered history</div>
+        </div>
       </div>
     </section>
 
@@ -282,20 +293,24 @@
       </div>
     </section>
 
-    <section class="band" id="platform-preview">
+    <section class="band" id="platforms">
       <div class="inner">
-        <span class="section-kicker">Designed for each device</span>
-        <h2>Native Android controls and simple iPhone Shortcuts</h2>
-        <p class="section-copy">Android provides a complete app with live server history. iPhone and iPad use two prepared Shortcuts for every content type, available from the Share Sheet or Control Center.</p>
-        <div class="device-previews">
-          <figure class="device-preview">
-            <img src="assets/android-app.png" alt="Native Android app preview with send, receive and server history">
-            <figcaption>Android: native actions, automatic receiving and live server history.</figcaption>
-          </figure>
-          <figure class="device-preview">
-            <img src="assets/iphone-shortcuts.png" alt="iPhone Load Clipboard and Download Clipboard Shortcuts">
-            <figcaption>iPhone and iPad: two universal Shortcuts, also available in Control Center.</figcaption>
-          </figure>
+        <span class="section-kicker">Phone controls</span>
+        <h2>Use the controls native to each device</h2>
+        <p class="section-copy">Android uses the Clipboard Bridge app. iPhone and iPad use two prepared Shortcuts. Both connect to the same server and always exchange the most recent item, regardless of its type.</p>
+        <div class="platform-columns">
+          <article class="platform-column">
+            <span class="platform-label">Android 10+</span>
+            <h3>Native Android app</h3>
+            <p>Send the clipboard, receive the latest item, share files from other apps, browse server history and enable incoming notifications.</p>
+            <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk">Download the Android APK</a>
+          </article>
+          <article class="platform-column">
+            <span class="platform-label">iPhone and iPad</span>
+            <h3>Two universal Shortcuts</h3>
+            <p>Load Clipboard sends the current item. Download Clipboard receives the latest one. Run them from Shortcuts, the Share Sheet or Control Center.</p>
+            <a href="#shortcuts">Configure the iPhone Shortcuts</a>
+          </article>
         </div>
       </div>
     </section>

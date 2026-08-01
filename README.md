@@ -78,7 +78,13 @@ documentation, tests, Docker files and complete source code.
 
 ## How it works
 
-![One shared clipboard flow for Windows, Android and iPhone](docs/assets/platform-flow.png)
+```mermaid
+flowchart LR
+    W["Windows app"] <--> S["Clipboard Bridge server"]
+    A["Android app"] <--> S
+    I["iPhone Shortcuts"] <--> S
+    S --> H["Latest item and ordered history"]
+```
 
 The server has one ordered history for each clipboard space. **Text, images and files
 have exactly the same priority:** the latest request is always the latest item.
@@ -134,9 +140,8 @@ No Docker container or separate web server is required.
 
 ## Android
 
-The native Android client supports Android 10 and later.
-
-<p align="center"><img src="docs/assets/android-app.png" alt="Clipboard Bridge native Android app with send, receive and live server history" width="720"></p>
+The native Android client supports Android 10 and later and reads its history directly
+from the selected Clipboard Bridge server.
 
 ### Features
 
@@ -279,8 +284,6 @@ to the server.
 ## iPhone and iPad
 
 iOS uses two universal Shortcuts. The same Shortcut handles text, photos and files.
-
-![Two iPhone Shortcuts for sending and receiving every content type](docs/assets/iphone-shortcuts.png)
 
 ### Send the current clipboard
 

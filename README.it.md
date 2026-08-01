@@ -78,7 +78,13 @@ repository per documentazione, test, file Docker e sorgenti completi.
 
 ## Come funziona
 
-![Un solo flusso di clipboard condivisa per Windows, Android e iPhone](docs/assets/platform-flow.png)
+```mermaid
+flowchart LR
+    W["App Windows"] <--> S["Server Clipboard Bridge"]
+    A["App Android"] <--> S
+    I["Comandi rapidi iPhone"] <--> S
+    S --> H["Ultimo elemento e cronologia ordinata"]
+```
 
 Il server mantiene una cronologia ordinata per ogni spazio clipboard. **Testo, immagini
 e file hanno la stessa priorità:** l'ultima richiesta ricevuta è sempre l'elemento più
@@ -135,9 +141,8 @@ Non servono Docker o un server web separato.
 
 ## Android
 
-Il client Android nativo supporta Android 10 e versioni successive.
-
-<p align="center"><img src="docs/assets/android-app.png" alt="App nativa Clipboard Bridge per Android con invio, ricezione e cronologia server" width="720"></p>
+Il client Android nativo supporta Android 10 e versioni successive e legge la cronologia
+direttamente dal server Clipboard Bridge selezionato.
 
 ### Funzionalità
 
@@ -281,8 +286,6 @@ server gli elementi copiati in Windows.
 ## iPhone e iPad
 
 iOS usa due Comandi rapidi universali. Gli stessi comandi gestiscono testo, foto e file.
-
-![Due Comandi rapidi iPhone per inviare e ricevere ogni tipo di contenuto](docs/assets/iphone-shortcuts.png)
 
 ### Inviare la clipboard attuale
 
