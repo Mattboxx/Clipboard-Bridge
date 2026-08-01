@@ -78,17 +78,7 @@ repository per documentazione, test, file Docker e sorgenti completi.
 
 ## Come funziona
 
-```mermaid
-flowchart TB
-    subgraph M1["Modalità 1 - nessun server separato"]
-        direction LR
-        P1["App Android + Comandi rapidi iPhone"] <--> W1["App Windows - modalità Server"]
-    end
-    subgraph M2["Modalità 2 - server sempre attivo opzionale"]
-        direction LR
-        P2["Client Windows + app Android + Comandi rapidi iPhone"] <--> S2["Server Docker o Python"]
-    end
-```
+![Due modalità di connessione alternative e bidirezionali per Clipboard Bridge](docs/assets/two-modes.png)
 
 Scegli una modalità. In entrambi i casi ogni collegamento è bidirezionale e il server
 attivo mantiene una cronologia ordinata per ogni spazio clipboard. **Testo, immagini e
@@ -122,8 +112,6 @@ Clipboard Bridge supporta due configurazioni distinte.
 | Comandi rapidi iPhone | Sì | Sì |
 | Client Windows | La stessa app | Uno o più client Windows |
 | Ideale per | Configurazione veloce e collegamento telefono-PC | Più utenti e servizio sempre acceso |
-
-![Modalità Server Windows e server indipendente](docs/assets/two-modes.png)
 
 ### Configurazione più rapida: Windows come server
 

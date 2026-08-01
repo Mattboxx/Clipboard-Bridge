@@ -78,17 +78,7 @@ documentation, tests, Docker files and complete source code.
 
 ## How it works
 
-```mermaid
-flowchart TB
-    subgraph M1["Mode 1 - no separate server"]
-        direction LR
-        P1["Android app + iPhone Shortcuts"] <--> W1["Windows app - Server mode"]
-    end
-    subgraph M2["Mode 2 - optional always-on server"]
-        direction LR
-        P2["Windows client + Android app + iPhone Shortcuts"] <--> S2["Docker or Python server"]
-    end
-```
+![Two alternative and bidirectional Clipboard Bridge connection modes](docs/assets/two-modes.png)
 
 Choose one mode. In both cases every connection is bidirectional and the active server
 keeps one ordered history for each clipboard space. **Text, images and files have
@@ -121,8 +111,6 @@ Clipboard Bridge supports two distinct setups.
 | iPhone Shortcuts | Yes | Yes |
 | Windows client | The same app | One or more Windows clients |
 | Best for | Fast setup and direct phone-to-PC use | Multiple users and an always-on service |
-
-![Windows Server mode and standalone server mode](docs/assets/two-modes.png)
 
 ### Fastest setup: use Windows as the server
 
