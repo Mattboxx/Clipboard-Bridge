@@ -3,14 +3,14 @@
 **English** | [Italiano](README.it.md)
 
 This repository contains the one-click installation catalog for
-[Clipboard Bridge](https://github.com/mattbox03/Clipboard-Bridge).
+[Clipboard Bridge](https://github.com/Mattboxx/Clipboard-Bridge).
 
 ## ZimaOS: add the store
 
 Use this permanent URL:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
 The URL has no release number. It always downloads the current `main` branch,
@@ -38,7 +38,7 @@ http://192.168.1.50:5088
 Do not add the normal GitHub repository page as a source. It is HTML, not a ZIP:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore
 ```
 
 ## First configuration
@@ -61,7 +61,7 @@ accounts-file method documented in the main project.
 ## Windows and iPhone
 
 Download or build the Windows client from the
-[main project](https://github.com/mattbox03/Clipboard-Bridge). In client mode,
+[main project](https://github.com/Mattboxx/Clipboard-Bridge). In client mode,
 set:
 
 - server address: the ZimaOS local IP;
@@ -146,7 +146,7 @@ A working server returns a JSON status response.
 This method works on any machine with Docker Compose.
 
 ```bash
-git clone https://github.com/mattbox03/Clipboard-Bridge-AppStore.git
+git clone https://github.com/Mattboxx/Clipboard-Bridge-AppStore.git
 cd Clipboard-Bridge-AppStore
 docker compose up -d
 ```
@@ -187,7 +187,7 @@ docker compose up -d
 Use the ready-made App Template:
 
 ```text
-https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json
+https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge-AppStore/main/portainer/templates.json
 ```
 
 ### Step by step
@@ -214,7 +214,7 @@ redeploy it without deleting the persistent data directory.
 Use this repository as the Community App Store:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore
 ```
 
 ### Step by step
@@ -249,7 +249,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Open **App Store** in Runtipi.
 2. Select **Add custom app**.
 3. Use `clipboard-bridge` as the app ID and `Clipboard Bridge` as its name.
-4. Set the image to `ghcr.io/mattbox03/clipboard-bridge-server:1.0.2`.
+4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.2`.
 5. Set container port `5088` and expose it through Runtipi.
 6. Add a persistent volume from `/data` in the container to the app data
    directory proposed by Runtipi.
@@ -267,8 +267,8 @@ removing its application data.
 
 | Platform | Source to add |
 |---|---|
-| ZimaOS | `https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip` |
-| Portainer | `https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json` |
-| Umbrel | `https://github.com/mattbox03/Clipboard-Bridge-AppStore` |
+| ZimaOS | `https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip` |
+| Portainer | `https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge-AppStore/main/portainer/templates.json` |
+| Umbrel | `https://github.com/Mattboxx/Clipboard-Bridge-AppStore` |
 | Runtipi | **Add custom app**, using `adapters/runtipi/apps/clipboard-bridge/` |
 | Docker/Dockge | `compose.yaml` from this repository |

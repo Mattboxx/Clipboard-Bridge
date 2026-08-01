@@ -3,14 +3,14 @@
 [English](README.md) | **Italiano**
 
 Questa repository contiene il catalogo per installare
-[Clipboard Bridge](https://github.com/mattbox03/Clipboard-Bridge) con un clic.
+[Clipboard Bridge](https://github.com/Mattboxx/Clipboard-Bridge) con un clic.
 
 ## ZimaOS: aggiungere lo store
 
 Usa sempre questo indirizzo:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip
 ```
 
 L’indirizzo non contiene numeri di versione: scarica sempre il branch `main` e
@@ -131,7 +131,7 @@ http://IP-ZIMA:5088/health
 Questa procedura funziona su qualsiasi macchina con Docker Compose:
 
 ```bash
-git clone https://github.com/mattbox03/Clipboard-Bridge-AppStore.git
+git clone https://github.com/Mattboxx/Clipboard-Bridge-AppStore.git
 cd Clipboard-Bridge-AppStore
 docker compose up -d
 ```
@@ -172,7 +172,7 @@ docker compose up -d
 Usa questo App Template:
 
 ```text
-https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json
+https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge-AppStore/main/portainer/templates.json
 ```
 
 1. Apri **Portainer**.
@@ -195,7 +195,7 @@ ridistribuiscilo senza cancellare la cartella dati.
 Aggiungi come Community App Store:
 
 ```text
-https://github.com/mattbox03/Clipboard-Bridge-AppStore
+https://github.com/Mattboxx/Clipboard-Bridge-AppStore
 ```
 
 1. Apri l’App Store di Umbrel.
@@ -222,7 +222,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Apri **App Store** in Runtipi.
 2. Seleziona **Add custom app**.
 3. Usa `clipboard-bridge` come ID e `Clipboard Bridge` come nome.
-4. Inserisci l’immagine `ghcr.io/mattbox03/clipboard-bridge-server:1.0.2`.
+4. Inserisci l’immagine `ghcr.io/mattboxx/clipboard-bridge-server:1.0.2`.
 5. Imposta la porta del container su `5088` e rendila esponibile.
 6. Aggiungi un volume persistente dalla directory applicativa proposta da
    Runtipi a `/data` nel container.
@@ -240,8 +240,8 @@ dati applicativi.
 
 | Piattaforma | Sorgente |
 |---|---|
-| ZimaOS | `https://github.com/mattbox03/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip` |
-| Portainer | `https://raw.githubusercontent.com/mattbox03/Clipboard-Bridge-AppStore/main/portainer/templates.json` |
-| Umbrel | `https://github.com/mattbox03/Clipboard-Bridge-AppStore` |
+| ZimaOS | `https://github.com/Mattboxx/Clipboard-Bridge-AppStore/archive/refs/heads/main.zip` |
+| Portainer | `https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge-AppStore/main/portainer/templates.json` |
+| Umbrel | `https://github.com/Mattboxx/Clipboard-Bridge-AppStore` |
 | Runtipi | **Add custom app**, usando `adapters/runtipi/apps/clipboard-bridge/` |
 | Docker/Dockge | file `compose.yaml` della repository |
