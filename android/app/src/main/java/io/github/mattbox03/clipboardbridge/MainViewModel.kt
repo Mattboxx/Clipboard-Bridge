@@ -84,6 +84,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.sendUri(uri).mapSuccess(UiCopy.current().sent)
     }
 
+    fun sendUris(uris: List<Uri>) = runOperation {
+        repository.sendUris(uris).mapSuccess(UiCopy.current().sent)
+    }
+
     fun sendSharedIntent(intent: Intent) = runOperation {
         repository.sendSharedIntent(intent).mapSuccess(UiCopy.current().sent)
     }

@@ -22,17 +22,26 @@ class ClipboardController(private val context: Context) {
 
     fun readCurrent(): OperationResult<OutgoingClipboard> = runCatching {
         val clip = clipboard.primaryClip ?: error("The Android clipboard is empty.")
-        val item = clip.getItemAt(0)
-        item.uri?.let { uri ->
-            val mime = context.contentResolver.getType(uri)
-                ?: clip.description.getMimeType(0)
-                ?: "application/octet-stream"
-            return@runCatching OutgoingClipboard.Content(
-                uri,
-                context.contentResolver.displayName(uri),
-                mime,
-            )
+        val contents = buildList {
+            for (index in 0 until clip.itemCount) {
+                val uri = clip.getItemAt(index).uri ?: continue
+                val mime = context.contentResolver.getType(uri)
+                    ?: if (clip.description.mimeTypeCount > 0) {
+                        clip.description.getMimeType(index.coerceAtMost(clip.description.mimeTypeCount - 1))
+                    } else null
+                    ?: "application/octet-stream"
+                add(
+                    OutgoingClipboard.Content(
+                        uri,
+                        context.contentResolver.displayName(uri),
+                        mime,
+                    ),
+                )
+            }
         }
+        if (contents.size > 1) return@runCatching OutgoingClipboard.ContentGroup(contents)
+        if (contents.size == 1) return@runCatching contents.first()
+        val item = clip.getItemAt(0)
         val text = item.coerceToText(context)?.toString()
             ?: error("This clipboard item cannot be read by Android.")
         OutgoingClipboard.Text(text)
@@ -54,6 +63,23 @@ class ClipboardController(private val context: Context) {
                 val clip = ClipData.newUri(context.contentResolver, received.filename, uri)
                 clipboard.setPrimaryClip(clip)
                 AppliedItem(received.id, "file", uri, received.mime, received.filename)
+            }
+
+            is ReceivedClipboard.FileGroup -> {
+                val saved = received.items.map { item -> item to saveToDownloads(item) }
+                val first = saved.first()
+                val clip = ClipData.newUri(context.contentResolver, first.first.filename, first.second)
+                saved.drop(1).forEach { (item, uri) ->
+                    clip.addItem(context.contentResolver, ClipData.Item(uri))
+                }
+                clipboard.setPrimaryClip(clip)
+                AppliedItem(
+                    received.id,
+                    "bundle",
+                    first.second,
+                    first.first.mime,
+                    "${saved.size} files",
+                )
             }
         }
     }.fold(

@@ -136,9 +136,9 @@ private fun MainScreen(
     val snackbar = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<HistoryItem?>(null) }
     val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        uri?.let(viewModel::sendUri)
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        if (uris.isNotEmpty()) viewModel.sendUris(uris)
     }
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -467,6 +467,11 @@ private fun HistoryRow(
         "image" -> copy.image
         else -> copy.file
     }
+    val detail = if (item.type == "bundle") {
+        "${item.fileCount} ${copy.files} · ${item.timestamp.orEmpty()}"
+    } else {
+        item.timestamp.orEmpty()
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -492,7 +497,7 @@ private fun HistoryRow(
         ) {
             Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                item.timestamp.orEmpty(),
+                detail,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

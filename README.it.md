@@ -5,7 +5,7 @@
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.4) |
+[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.5) |
 [App Store del server](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Guida completa](GUIDE.md)
 
@@ -43,6 +43,10 @@ eseguire il server Python/Docker su NAS, Raspberry Pi, home server o host Docker
 - Fotografie e immagini presenti nella clipboard.
 - PDF, archivi, documenti Office, audio, video e file con estensioni personalizzate.
 - Uno o più file selezionati dal menu Condividi di Android.
+- Più file copiati o selezionati insieme rimangono un **unico elemento di cronologia**
+  sul server, su Windows e su Android. Ricevendo quell'elemento viene ripristinato tutto
+  il gruppo; eliminandolo si elimina il gruppo con una sola operazione. I client generici
+  e i Comandi rapidi iPhone ricevono lo stesso gruppo come archivio ZIP.
 
 Clipboard Bridge non assegna priorità maggiore a file o immagini: conta soltanto
 l'ordine di arrivo.
@@ -60,13 +64,13 @@ l'ordine di arrivo.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.8](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
-| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.4](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.4.exe) | Installazione per l'utente corrente, senza account amministratore |
-| **Portable Windows** | [Clipboard Bridge 2.0.4 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Portable.Windows.x64.V2.0.4.exe) | Un solo eseguibile, nessuna installazione |
-| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
-| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
-| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
-| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
+| **Android 10+** | [APK Android 1.0.0-beta.9](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
+| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.5](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.5.exe) | Installazione per l'utente corrente, senza account amministratore |
+| **Portable Windows** | [Clipboard Bridge 2.0.5 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Portable.Windows.x64.V2.0.5.exe) | Un solo eseguibile, nessuna installazione |
+| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
+| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
+| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
+| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
 
 L'app Android è attualmente una beta pubblica. La release contiene soltanto i download
 pronti all'uso e i due script Python principali. Gli sviluppatori possono clonare il
@@ -155,7 +159,7 @@ direttamente dal server Clipboard Bridge selezionato.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/Clipboard.Bridge.Android.universal.V1.0.0-beta.8.apk).
+1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -196,6 +200,9 @@ usando lo stesso spazio condiviso oppure lo stesso account.
 - **Invia clipboard:** carica la clipboard Android attuale.
 - **Ricevi ultimo:** scarica l'elemento più recente e lo inserisce nella clipboard.
 - **Invia file:** apre il selettore file di Android.
+- **Invia file:** permette di scegliere uno o più file; una selezione multipla appare
+  come una sola riga nella cronologia server e viene ripristinata come gruppo nella
+  clipboard Android.
 - **Elemento della cronologia:** scarica esattamente quell'elemento del server.
 - **Pulsante cestino:** elimina soltanto quella voce dalla cronologia dell'account o
   dello spazio condiviso selezionato, dopo una richiesta di conferma.
@@ -278,25 +285,37 @@ server gli elementi copiati in Windows.
 
 ## iPhone e iPad
 
-iOS usa due Comandi rapidi universali. Gli stessi comandi gestiscono testo, foto e file.
+iOS usa due Comandi rapidi universali. La stessa coppia gestisce testo, foto, file singoli
+e file multipli senza chiedere quale tipo di contenuto si sta trasferendo.
 
 ### Inviare la clipboard attuale
 
-Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
+Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut)
 e imposta l'URL della richiesta:
 
 ```text
 http://IP_SERVER:5088/clipboard
 ```
 
+Per la condivisione automatica di più file, configura **Load Clipboard** come descritto
+nella [guida completa](GUIDE.md#51-send-clipboard--server). Quando il menu Condividi o
+la clipboard contiene più file, il Comando rapido crea uno ZIP temporaneo e lo invia a
+`/clipboard/bundle`. Clipboard Bridge apre in sicurezza questo archivio di trasporto e
+registra i file come un unico gruppo. Uno ZIP condiviso volontariamente come singolo file
+tramite `/clipboard` rimane invece un normale file ZIP.
+
 ### Ricevere l'ultimo elemento
 
-Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
+Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut)
 e imposta:
 
 ```text
 http://IP_SERVER:5088/clipboard/latest/raw
 ```
+
+Il Comando rapido di ricezione aggiornato controlla prima `/clipboard/latest/meta`. Se
+l'ultimo elemento è un gruppo, estrae lo ZIP di trasporto e copia insieme tutti i file;
+negli altri casi segue il normale percorso per testo, foto o file. La scelta è automatica.
 
 Aggiungi entrambi i Comandi rapidi al Centro di Controllo:
 

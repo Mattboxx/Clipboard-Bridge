@@ -66,3 +66,21 @@ jobs:
 
       - name: Test Windows client
         run: python -m pytest -q tests/test_windows_client.py
+
+  android-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Test and build Android client
+        run: ./gradlew testDebugUnitTest assembleDebug

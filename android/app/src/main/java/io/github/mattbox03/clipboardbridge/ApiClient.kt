@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -69,6 +70,22 @@ class ApiClient(
                             mime = item.stringOrNull("mime"),
                             timestamp = item.stringOrNull("timestamp"),
                             preview = item.stringOrNull("preview"),
+                            fileCount = item.optInt("file_count", 0),
+                            files = item.optJSONArray("files")?.let { files ->
+                                buildList {
+                                    for (fileIndex in 0 until files.length()) {
+                                        val file = files.getJSONObject(fileIndex)
+                                        add(
+                                            BundleFile(
+                                                index = file.optInt("index", fileIndex),
+                                                filename = file.stringOrNull("filename") ?: "file-${fileIndex + 1}",
+                                                mime = file.stringOrNull("mime") ?: "application/octet-stream",
+                                                size = file.optLong("size", 0),
+                                            ),
+                                        )
+                                    }
+                                }
+                            } ?: emptyList(),
                         ),
                     )
                 }
@@ -90,17 +107,55 @@ class ApiClient(
         filename: String = resolver.displayName(uri),
         mime: String = resolver.getType(uri) ?: "application/octet-stream",
     ): OperationResult<String> {
+        val body = uriRequestBody(resolver, uri, mime)
+        return upload(body, filename)
+    }
+
+    fun uploadUris(
+        resolver: ContentResolver,
+        items: List<OutgoingClipboard.Content>,
+    ): OperationResult<String> {
+        if (items.size == 1) {
+            val item = items.first()
+            return uploadUri(resolver, item.uri, item.filename, item.mime)
+        }
+        return runCatching {
+            require(items.isNotEmpty()) { "No files were selected." }
+            val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            items.forEach { item ->
+                multipart.addFormDataPart(
+                    "files",
+                    item.filename,
+                    uriRequestBody(resolver, item.uri, item.mime),
+                )
+            }
+            client.newCall(request("/clipboard").post(multipart.build()).build()).execute().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful) error(httpError(response.code, payload))
+                JSONObject(payload).optString("id").also { id ->
+                    if (id.isNotBlank()) config.setLastSeenId(id)
+                }
+            }
+        }.fold(
+            onSuccess = { OperationResult.Success(it) },
+            onFailure = { OperationResult.Error(it.userMessage()) },
+        )
+    }
+
+    private fun uriRequestBody(
+        resolver: ContentResolver,
+        uri: Uri,
+        mime: String,
+    ): RequestBody {
         val length = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
-        val body = object : RequestBody() {
+        return object : RequestBody() {
             override fun contentType() = mime.toMediaTypeOrNull()
             override fun contentLength() = length
             override fun writeTo(sink: BufferedSink) {
-                resolver.openInputStream(uri)?.use { input ->
-                    sink.writeAll(input.source())
-                } ?: error("The selected file cannot be opened.")
+                resolver.openInputStream(uri)?.use { input -> sink.writeAll(input.source()) }
+                    ?: error("The selected file cannot be opened.")
             }
         }
-        return upload(body, filename)
     }
 
     private fun upload(body: RequestBody, filename: String?): OperationResult<String> = runCatching {
@@ -148,7 +203,9 @@ class ApiClient(
             val mime = response.body?.contentType()?.toString()
                 ?.substringBefore(';')
                 ?: "application/octet-stream"
-            if (type == "text" || mime.startsWith("text/")) {
+            if (type == "bundle") {
+                downloadBundle(id, cacheDir)
+            } else if (type == "text" || mime.startsWith("text/")) {
                 ReceivedClipboard.Text(id, response.body?.string().orEmpty())
             } else {
                 val encodedName = response.header("X-Clipboard-Filename").orEmpty()
@@ -168,6 +225,41 @@ class ApiClient(
         onSuccess = { OperationResult.Success(it) },
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
+
+    private fun downloadBundle(id: String, cacheDir: File): ReceivedClipboard.FileGroup {
+        require(id.isNotBlank()) { "The server did not identify the file group." }
+        val metadata = client.newCall(request("/clipboard/item/$id").get().build()).execute().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error(httpError(response.code, payload))
+            JSONObject(payload)
+        }
+        val files = metadata.optJSONArray("files") ?: error("The file group is empty.")
+        val directory = File(cacheDir, "received").apply { mkdirs() }
+        val downloaded = buildList {
+            for (index in 0 until files.length()) {
+                val member = files.getJSONObject(index)
+                val memberIndex = member.optInt("index", index)
+                val filename = sanitizeFilename(
+                    member.stringOrNull("filename") ?: "file-${index + 1}",
+                )
+                val mime = member.stringOrNull("mime") ?: "application/octet-stream"
+                val file = File(directory, "${System.nanoTime()}-$filename")
+                client.newCall(
+                    request("/clipboard/item/$id/file/$memberIndex/raw").get().build(),
+                ).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        error(httpError(response.code, response.body?.string().orEmpty()))
+                    }
+                    response.body?.byteStream()?.use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    } ?: error("The server returned an empty file.")
+                }
+                add(ReceivedClipboard.FileItem(id, file, filename, mime))
+            }
+        }
+        require(downloaded.isNotEmpty()) { "The file group is empty." }
+        return ReceivedClipboard.FileGroup(id, downloaded)
+    }
 
     private fun httpError(code: Int, responseBody: String = ""): String {
         val base = when (code) {

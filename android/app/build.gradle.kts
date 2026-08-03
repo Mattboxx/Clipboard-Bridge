@@ -21,8 +21,8 @@ android {
         applicationId = "io.github.mattbox03.clipboardbridge"
         minSdk = 29
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.0.0-beta.8"
+        versionCode = 9
+        versionName = "1.0.0-beta.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

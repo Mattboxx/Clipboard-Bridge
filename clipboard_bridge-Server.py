@@ -37,6 +37,7 @@ from werkzeug.http import parse_options_header
 from urllib.parse import quote, unquote
 import base64
 import hmac
+import io
 import os
 import json
 import re
@@ -44,12 +45,13 @@ import time
 import uuid
 import mimetypes
 import threading
+import zipfile
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.2"
+SERVER_VERSION = "1.0.3"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -188,19 +190,45 @@ def _save_index(index):
 def _trim(index):
     """Keep at most MAX_HISTORY items, deleting the files of the oldest ones."""
     while len(index) > MAX_HISTORY:
-        old = index.pop()
-        fname = old.get("file")
-        if fname:
-            try:
-                os.remove(os.path.join(_items_dir(), fname))
-            except OSError:
-                pass
+        _delete_entry_files(index.pop())
+
+
+def _stored_files(entry):
+    """Return every internal filename owned by an index entry."""
+    if entry.get("type") == "bundle":
+        return [item.get("file") for item in entry.get("files", []) if item.get("file")]
+    return [entry["file"]] if entry.get("file") else []
+
+
+def _delete_entry_files(entry):
+    for filename in _stored_files(entry):
+        try:
+            os.remove(os.path.join(_items_dir(), filename))
+        except OSError:
+            pass
+
+
+def _public_bundle_files(entry):
+    return [
+        {
+            "index": index,
+            "filename": item.get("filename"),
+            "mime": item.get("mime"),
+            "size": item.get("size", 0),
+            "type": item.get("type", "file"),
+        }
+        for index, item in enumerate(entry.get("files", []))
+    ]
 
 
 def _meta(entry):
     """Return only an item's metadata (without the content)."""
-    return {k: entry.get(k) for k in
-            ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
+    out = {k: entry.get(k) for k in
+           ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
+    if entry.get("type") == "bundle":
+        out["file_count"] = len(entry.get("files", []))
+        out["files"] = _public_bundle_files(entry)
+    return out
 
 
 def _read_text(entry):
@@ -216,6 +244,9 @@ def _entry_with_content(entry):
     out = _meta(entry)
     if entry["type"] == "text":
         out["text"] = _read_text(entry)
+    elif entry["type"] == "bundle":
+        # Bundle members have dedicated raw endpoints so JSON metadata stays small.
+        pass
     else:
         path = os.path.join(_items_dir(), entry["file"])
         with open(path, "rb") as f:
@@ -270,18 +301,22 @@ def _clean_mime(mime):
     return mime or None
 
 
+def _storage_extension(orig_filename, mime):
+    if orig_filename:
+        candidate = os.path.splitext(orig_filename)[1]
+        if len(candidate) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", candidate or ""):
+            return candidate.lower()
+    if mime:
+        return mimetypes.guess_extension(mime) or ""
+    return ""
+
+
 def _add_binary(raw, orig_filename=None, mime=None):
     orig_filename = _clean_filename(orig_filename)
     mime = _clean_mime(mime)
     entry_id = uuid.uuid4().hex[:12]
     # Extension: from the original filename, otherwise from the mime type
-    ext = ""
-    if orig_filename:
-        candidate = os.path.splitext(orig_filename)[1]
-        if len(candidate) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", candidate or ""):
-            ext = candidate.lower()
-    elif mime:
-        ext = mimetypes.guess_extension(mime) or ""
+    ext = _storage_extension(orig_filename, mime)
     fname = entry_id + (ext or ".bin")
     with open(os.path.join(_items_dir(), fname), "wb") as f:
         f.write(raw)
@@ -299,6 +334,62 @@ def _add_binary(raw, orig_filename=None, mime=None):
         "mime": mime,
         "size": len(raw),
         "preview": orig_filename or fname,
+    }
+    with _lock:
+        index = _load_index()
+        index.insert(0, entry)
+        _trim(index)
+        _save_index(index)
+    return entry
+
+
+def _add_bundle(uploaded_files):
+    """Store several uploaded files as one ordered clipboard-history entry."""
+    if len(uploaded_files) == 1:
+        return _add_binary(*uploaded_files[0])
+    if len(uploaded_files) < 2:
+        raise ValueError("a bundle needs at least two files")
+
+    entry_id = uuid.uuid4().hex[:12]
+    stored = []
+    try:
+        for index, (raw, orig_filename, mime) in enumerate(uploaded_files):
+            filename = _clean_filename(orig_filename) or f"file-{index + 1}.bin"
+            mime = _clean_mime(mime)
+            if not mime:
+                mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            internal = f"{entry_id}_{index + 1}{_storage_extension(filename, mime) or '.bin'}"
+            with open(os.path.join(_items_dir(), internal), "wb") as stream:
+                stream.write(raw)
+            stored.append({
+                "file": internal,
+                "filename": filename,
+                "mime": mime,
+                "size": len(raw),
+                "type": "image" if mime.startswith("image/") else "file",
+            })
+    except Exception:
+        for item in stored:
+            try:
+                os.remove(os.path.join(_items_dir(), item["file"]))
+            except OSError:
+                pass
+        raise
+
+    names = ", ".join(item["filename"] for item in stored[:3])
+    if len(stored) > 3:
+        names += f", +{len(stored) - 3} more"
+    entry = {
+        "id": entry_id,
+        "type": "bundle",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "ts": time.time(),
+        "file": None,
+        "files": stored,
+        "filename": None,
+        "mime": "application/zip",
+        "size": sum(item["size"] for item in stored),
+        "preview": names[:240],
     }
     with _lock:
         index = _load_index()
@@ -446,10 +537,108 @@ def _extract_upload():
     return None, None, None
 
 
+def _extract_multipart_uploads():
+    """Read every uploaded multipart file, preserving the browser/client order."""
+    uploaded = []
+    for field in request.files:
+        for storage in request.files.getlist(field):
+            uploaded.append((
+                storage.read(),
+                _clean_filename(storage.filename),
+                _clean_mime(storage.mimetype),
+            ))
+    return uploaded
+
+
+def _uploads_from_zip(raw):
+    """Read an iOS transport archive without extracting paths onto the filesystem."""
+    if not raw:
+        raise ValueError("empty archive")
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            members = [
+                info for info in archive.infolist()
+                if not info.is_dir()
+                and not info.filename.replace("\\", "/").startswith("__MACOSX/")
+                and not info.filename.replace("\\", "/").endswith("/.DS_Store")
+                and not info.filename.replace("\\", "/").endswith(".DS_Store")
+            ]
+            if not members:
+                raise ValueError("archive contains no files")
+            if len(members) > 500:
+                raise ValueError("archive contains too many files")
+            max_bytes = int(app.config["MAX_CONTENT_LENGTH"])
+            if sum(info.file_size for info in members) > max_bytes:
+                raise ValueError("expanded archive exceeds the upload limit")
+            uploads = []
+            expanded = 0
+            for info in members:
+                if info.flag_bits & 0x1:
+                    raise ValueError("encrypted archives are not supported")
+                filename = _clean_filename(info.filename) or "file.bin"
+                chunks = []
+                with archive.open(info) as source:
+                    while True:
+                        chunk = source.read(min(1024 * 1024, max_bytes - expanded + 1))
+                        if not chunk:
+                            break
+                        expanded += len(chunk)
+                        if expanded > max_bytes:
+                            raise ValueError("expanded archive exceeds the upload limit")
+                        chunks.append(chunk)
+                uploads.append((
+                    b"".join(chunks),
+                    filename,
+                    mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                ))
+            return uploads
+    except zipfile.BadZipFile as exc:
+        raise ValueError("invalid ZIP archive") from exc
+
+
+def _unique_zip_name(filename, used):
+    filename = _clean_filename(filename) or "file.bin"
+    stem, ext = os.path.splitext(filename)
+    candidate = filename
+    counter = 2
+    while candidate.casefold() in used:
+        candidate = f"{stem} ({counter}){ext}"
+        counter += 1
+    used.add(candidate.casefold())
+    return candidate
+
+
+def _bundle_zip(entry):
+    output = io.BytesIO()
+    used = set()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for item in entry.get("files", []):
+            archive.write(
+                os.path.join(_items_dir(), item["file"]),
+                _unique_zip_name(item.get("filename"), used),
+            )
+    output.seek(0)
+    return output
+
+
+def _bundle_filename(entry):
+    stamp = (entry.get("timestamp") or "").replace(":", "-")[:19]
+    return f"clipboard-files-{stamp or entry['id']}.zip"
+
+
 def _raw_item_response(entry):
     """Return an item in the form most useful to iOS Shortcuts and desktop clients."""
     if entry["type"] == "text":
         response = Response(_read_text(entry), content_type="text/plain; charset=utf-8")
+    elif entry["type"] == "bundle":
+        filename = _bundle_filename(entry)
+        response = send_file(
+            _bundle_zip(entry),
+            mimetype="application/zip",
+            download_name=filename,
+        )
+        response.headers["X-Clipboard-Filename"] = quote(filename, safe="")
+        response.headers["X-Clipboard-File-Count"] = str(len(entry.get("files", [])))
     else:
         response = send_file(
             os.path.join(_items_dir(), entry["file"]),
@@ -459,6 +648,23 @@ def _raw_item_response(entry):
         response.headers["X-Clipboard-Filename"] = quote(entry["filename"] or "", safe="")
     response.headers["X-Clipboard-Id"] = entry["id"]
     response.headers["X-Clipboard-Type"] = entry["type"]
+    return response
+
+
+def _bundle_member_response(entry, member_index):
+    files = entry.get("files", [])
+    if entry.get("type") != "bundle" or member_index < 0 or member_index >= len(files):
+        return jsonify({"error": "not found"}), 404
+    member = files[member_index]
+    response = send_file(
+        os.path.join(_items_dir(), member["file"]),
+        mimetype=member.get("mime") or "application/octet-stream",
+        download_name=member.get("filename") or "file.bin",
+    )
+    response.headers["X-Clipboard-Filename"] = quote(member.get("filename") or "file.bin", safe="")
+    response.headers["X-Clipboard-Id"] = entry["id"]
+    response.headers["X-Clipboard-Type"] = member.get("type", "file")
+    response.headers["X-Clipboard-Bundle-Index"] = str(member_index)
     return response
 
 
@@ -640,6 +846,18 @@ def image_latest_raw():
 @app.route("/clipboard/file", methods=["POST"])
 def push_file():
     """Accept a file as JSON Base64, multipart form data, or a raw HTTP body."""
+    if request.files:
+        uploads = _extract_multipart_uploads()
+        if not uploads:
+            return jsonify({"error": "file data missing or invalid"}), 400
+        entry = _add_bundle(uploads)
+        return jsonify({
+            "status": "ok",
+            "saved": entry.get("filename") or entry.get("preview"),
+            "id": entry["id"],
+            "type": entry["type"],
+            "file_count": len(entry.get("files", [])) or 1,
+        })
     raw, filename, mime = _extract_upload()
     if raw is None:
         return jsonify({"error": "file data missing or invalid"}), 400
@@ -650,9 +868,20 @@ def push_file():
 
 @app.route("/clipboard/file/latest", methods=["GET"])
 def file_latest():
-    e = _latest_of(("image", "file"))
+    e = _latest_of(("image", "file", "bundle"))
     if not e:
         return jsonify({"error": "no files"}), 404
+    if e["type"] == "bundle":
+        raw = _bundle_zip(e).getvalue()
+        return jsonify({
+            "filename": _bundle_filename(e),
+            "data": base64.b64encode(raw).decode(),
+            "mime": "application/zip",
+            "id": e["id"],
+            "type": "bundle",
+            "file_count": len(e.get("files", [])),
+            "files": _public_bundle_files(e),
+        })
     with open(os.path.join(_items_dir(), e["file"]), "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     return jsonify({
@@ -672,6 +901,13 @@ def latest_any():
     if not index:
         return jsonify({"type": "empty"})
     return jsonify(_entry_with_content(index[0]))
+
+
+@app.route("/clipboard/latest/meta", methods=["GET"])
+def latest_meta():
+    """Latest metadata only, used by iOS before choosing how to restore a group."""
+    index = _load_index()
+    return jsonify(_meta(index[0]) if index else {"type": "empty"})
 
 
 @app.route("/clipboard/latest/raw", methods=["GET"])
@@ -711,9 +947,16 @@ def push_any():
         return jsonify({"status": "ok", "id": e["id"], "type": "text"})
 
     if request.files:
-        raw, fn, mime = _extract_upload()
-        e = _add_binary(raw, fn or "clipboard", mime)
-        return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
+        uploads = _extract_multipart_uploads()
+        if not uploads:
+            return jsonify({"error": "no data"}), 400
+        e = _add_bundle(uploads)
+        return jsonify({
+            "status": "ok",
+            "id": e["id"],
+            "type": e["type"],
+            "file_count": len(e.get("files", [])) or 1,
+        })
 
     form_value = _form_text()
     if form_value is not None:
@@ -737,15 +980,29 @@ def push_any():
     return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
 
 
+@app.route("/clipboard/bundle", methods=["POST"])
+def push_bundle_archive():
+    """Accept the ZIP transport produced by the iPhone multi-file Shortcut."""
+    raw, _filename, _mime = _extract_upload()
+    try:
+        uploads = _uploads_from_zip(raw)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    entry = _add_bundle(uploads)
+    return jsonify({
+        "status": "ok",
+        "id": entry["id"],
+        "type": entry["type"],
+        "file_count": len(entry.get("files", [])) or 1,
+    })
+
+
 @app.route("/clipboard/history", methods=["GET", "DELETE"])
 def history():
     if request.method == "DELETE":
         with _lock:
             for e in _load_index():
-                try:
-                    os.remove(os.path.join(_items_dir(), e["file"]))
-                except OSError:
-                    pass
+                _delete_entry_files(e)
             _save_index([])
         return jsonify({"status": "cleared"})
 
@@ -768,10 +1025,7 @@ def item(item_id):
         with _lock:
             index = [x for x in _load_index() if x["id"] != item_id]
             _save_index(index)
-        try:
-            os.remove(os.path.join(_items_dir(), e["file"]))
-        except OSError:
-            pass
+        _delete_entry_files(e)
         return jsonify({"status": "deleted"})
     return jsonify(_entry_with_content(e))
 
@@ -782,6 +1036,14 @@ def item_raw(item_id):
     if not e:
         return jsonify({"error": "not found"}), 404
     return _raw_item_response(e)
+
+
+@app.route("/clipboard/item/<item_id>/file/<int:member_index>/raw", methods=["GET"])
+def item_bundle_file_raw(item_id, member_index):
+    e = next((x for x in _load_index() if x["id"] == item_id), None)
+    if not e:
+        return jsonify({"error": "not found"}), 404
+    return _bundle_member_response(e, member_index)
 
 
 # ---------- Diagnostics ----------
@@ -925,12 +1187,16 @@ WEB_STRINGS = {
         "upload": "Upload",
         "h_history": "History", "refresh": "Refresh", "clear": "Clear",
         "download": "Download", "delete": "Delete",
+        "files": "files",
         "empty": "Nothing yet. Save some text or upload a file above.",
         "no_preview": "(no preview)",
         "h_iphone": "iPhone (Shortcuts)",
         "iphone_intro": "Just two shortcuts (Get Contents of URL) — they always send or fetch the most recent item:",
         "ip_send": "Send &mdash; clipboard to server (body: File)",
         "ip_recv": "Receive &mdash; latest item to clipboard",
+        "ip_multi": "Automatic multiple-file Shortcut endpoints",
+        "ip_bundle": "Send temporary ZIP as one file group",
+        "ip_meta": "Check the latest item type before receiving",
         "token_note": "Token enabled: in the Shortcuts add the header",
         "auth_optional": "Token and accounts are optional. Values placed in these URLs are visible in plain text; HTTP does not encrypt them.",
         "login": "Log in", "logout": "Log out", "shared": "shared",
@@ -948,12 +1214,16 @@ WEB_STRINGS = {
         "upload": "Carica",
         "h_history": "Cronologia", "refresh": "Aggiorna", "clear": "Svuota",
         "download": "Scarica", "delete": "Elimina",
+        "files": "file",
         "empty": "Ancora niente. Salva del testo o carica un file qui sopra.",
         "no_preview": "(senza anteprima)",
         "h_iphone": "iPhone (Comandi rapidi)",
         "iphone_intro": "Bastano due comandi (Ottieni contenuto dell’URL): inviano o recuperano sempre l’ultimo elemento:",
         "ip_send": "Invia &mdash; appunti al server (corpo: File)",
         "ip_recv": "Ricevi &mdash; ultimo elemento negli appunti",
+        "ip_multi": "Endpoint per il Comando rapido multifile automatico",
+        "ip_bundle": "Invia lo ZIP temporaneo come unico gruppo",
+        "ip_meta": "Controlla il tipo dell'ultimo elemento prima di riceverlo",
         "token_note": "Token attivo: nelle Shortcut aggiungi l'intestazione",
         "auth_optional": "Token e account sono opzionali. I valori inseriti in questi URL sono visibili in chiaro; HTTP non li cifra.",
         "login": "Accedi", "logout": "Esci", "shared": "condiviso",
@@ -986,11 +1256,13 @@ def render_home():
     for it in items[:20]:
         tid, kind = it["id"], it["type"]
         prev = escape(it.get("preview") or S["no_preview"])
-        sub = f'{kind} &middot; {_human(it.get("size"))} &middot; {escape(it.get("timestamp") or "")}'
+        label = (f'{len(it.get("files", []))} {S["files"]}'
+                 if kind == "bundle" else kind)
+        sub = f'{label} &middot; {_human(it.get("size"))} &middot; {escape(it.get("timestamp") or "")}'
         if kind == "image":
             media = f'<img class="thumb" src="/clipboard/item/{tid}/raw{tq}" alt="">'
         else:
-            media = f'<span class="ico">{IC_FILE if kind == "file" else IC_TEXT}</span>'
+            media = f'<span class="ico">{IC_FILE if kind in ("file", "bundle") else IC_TEXT}</span>'
         rows += (f'<div class="item">{media}'
                  f'<div class="meta"><div class="prev">{prev}</div><div class="sub">{sub}</div></div>'
                  f'<div class="actions">'
@@ -1073,6 +1345,12 @@ def render_home():
 {_urlrow("POST", base + "/clipboard" + suffix, S["copy"])}
 <div style="font-size:13px"><b>{S["ip_recv"]}</b></div>
 {_urlrow("GET", base + "/clipboard/latest/raw" + suffix, S["copy"])}
+<details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;font-weight:600">{S["ip_multi"]}</summary>
+<div style="font-size:13px;margin-top:10px"><b>{S["ip_bundle"]}</b></div>
+{_urlrow("POST", base + "/clipboard/bundle" + suffix, S["copy"])}
+<div style="font-size:13px"><b>{S["ip_meta"]}</b></div>
+{_urlrow("GET", base + "/clipboard/latest/meta" + suffix, S["copy"])}
+</details>
 </div>
 
 <div class="foot">{S["foot"]}</div>
@@ -1095,9 +1373,13 @@ def ui_text():
 
 @app.route("/ui/upload", methods=["POST"])
 def ui_upload():
-    for f in request.files.getlist("file"):
-        if f and f.filename:
-            _add_binary(f.read(), f.filename, f.mimetype or None)
+    uploads = [
+        (f.read(), f.filename, f.mimetype or None)
+        for f in request.files.getlist("file")
+        if f and f.filename
+    ]
+    if uploads:
+        _add_bundle(uploads)
     return redirect(_home_url())
 
 

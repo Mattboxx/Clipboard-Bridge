@@ -3,6 +3,7 @@ import importlib.util
 import io
 import sys
 import uuid
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -76,6 +77,90 @@ def test_latest_item_follows_arrival_order_regardless_of_type(server):
     assert latest["id"] == newest_file["id"]
     assert latest["type"] == "file"
     assert client.get("/clipboard/latest/raw" + token).data == b"\x10\x20\x30"
+
+
+def test_multiple_files_are_one_history_bundle(server):
+    client = server.app.test_client()
+    token = "?token=shared-token"
+    response = client.post(
+        "/clipboard" + token,
+        data={
+            "files": [
+                (io.BytesIO(b"first document"), "notes.txt"),
+                (io.BytesIO(b"%PDF-second"), "report.pdf"),
+            ],
+        },
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    saved = response.get_json()
+    assert saved["type"] == "bundle"
+    assert saved["file_count"] == 2
+
+    history = client.get("/clipboard/history" + token).get_json()["items"]
+    assert len(history) == 1
+    assert history[0]["id"] == saved["id"]
+    assert history[0]["file_count"] == 2
+    assert [item["filename"] for item in history[0]["files"]] == ["notes.txt", "report.pdf"]
+
+    first = client.get(f"/clipboard/item/{saved['id']}/file/0/raw{token}")
+    second = client.get(f"/clipboard/item/{saved['id']}/file/1/raw{token}")
+    assert first.data == b"first document"
+    assert second.data == b"%PDF-second"
+
+    zipped = client.get("/clipboard/latest/raw" + token)
+    assert zipped.headers["X-Clipboard-Type"] == "bundle"
+    with zipfile.ZipFile(io.BytesIO(zipped.data)) as archive:
+        assert archive.namelist() == ["notes.txt", "report.pdf"]
+        assert archive.read("notes.txt") == b"first document"
+    first.close()
+    second.close()
+    zipped.close()
+
+    assert client.delete(f"/clipboard/item/{saved['id']}{token}").status_code == 200
+    assert list((Path(server.DATA_DIR) / "items").glob(f"{saved['id']}_*")) == []
+
+
+def test_ios_zip_transport_becomes_a_real_file_group(server):
+    client = server.app.test_client()
+    archive_data = io.BytesIO()
+    with zipfile.ZipFile(archive_data, "w") as archive:
+        archive.writestr("Photos/holiday.jpg", b"jpeg-data")
+        archive.writestr("../unsafe/report.pdf", b"pdf-data")
+        archive.writestr("__MACOSX/._holiday.jpg", b"metadata")
+
+    response = client.post(
+        "/clipboard/bundle?token=shared-token",
+        data=archive_data.getvalue(),
+        content_type="application/zip",
+        headers={"X-Clipboard-Filename": "Shortcut Input.zip"},
+    )
+    assert response.status_code == 200
+    saved = response.get_json()
+    assert saved["type"] == "bundle"
+    assert saved["file_count"] == 2
+
+    metadata = client.get("/clipboard/latest/meta?token=shared-token").get_json()
+    assert metadata["id"] == saved["id"]
+    assert metadata["type"] == "bundle"
+    assert [item["filename"] for item in metadata["files"]] == ["holiday.jpg", "report.pdf"]
+    assert "data" not in metadata
+    assert client.post(
+        "/clipboard/bundle?token=shared-token",
+        data=b"not a zip",
+        content_type="application/zip",
+    ).status_code == 400
+
+    oversized = io.BytesIO()
+    with zipfile.ZipFile(oversized, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("too-large.bin", b"0" * (1024 * 1024 + 1))
+    rejected = client.post(
+        "/clipboard/bundle?token=shared-token",
+        data=oversized.getvalue(),
+        content_type="application/zip",
+    )
+    assert rejected.status_code == 400
+    assert "upload limit" in rejected.get_json()["error"]
 
 
 def test_accounts_are_isolated_and_support_url_or_headers(server):
@@ -373,4 +458,4 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.2"
+    assert response.get_json()["version"] == "1.0.3"
