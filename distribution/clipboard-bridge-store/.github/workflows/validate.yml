@@ -42,4 +42,4 @@ jobs:
           print("ZimaOS metadata: OK")
           PY
       - name: Verify public multi-architecture image
-        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.2 >/dev/null
+        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.3 >/dev/null

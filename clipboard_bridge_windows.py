@@ -26,6 +26,7 @@ import ctypes
 import shutil
 import subprocess
 import time
+import zipfile
 from ctypes import wintypes
 from email.message import Message
 from email.parser import BytesParser
@@ -153,6 +154,7 @@ DEFAULT_CONFIG = {
     "server_ip": "127.0.0.1",  # external server address (client mode)
     "server_port": 5088,
     "host_port": 5088,         # port this PC listens on in server mode
+    "host_max_upload_mb": 256, # compressed and expanded limit for local server uploads
     "token": "",
     "username": "",            # server account name (empty = shared space)
     "password": "",            # server account password
@@ -237,6 +239,7 @@ STRINGS = {
         "image_arrived": "New image received and copied to the clipboard",
         "file_saved": "File saved: {name}",
         "file_arrived": "New file received: {name}\nClick to show it in the folder.",
+        "files_arrived": "{n} new files received.\nClick to open their folder.",
         "no_items": "Nothing on the server",
         "recv_err": "Receive error: {e}",
         "copied": "Copied to the clipboard",
@@ -333,6 +336,7 @@ STRINGS = {
         "image_arrived": "Nuova immagine ricevuta e copiata negli appunti",
         "file_saved": "File salvato: {name}",
         "file_arrived": "Nuovo file ricevuto: {name}\nClicca per mostrarlo nella cartella.",
+        "files_arrived": "{n} nuovi file ricevuti.\nClicca per aprire la cartella.",
         "no_items": "Nessun elemento sul server",
         "recv_err": "Errore ricezione: {e}",
         "copied": "Copiato negli appunti",
@@ -803,6 +807,34 @@ def push_file(path):
         return push_bytes(os.path.basename(path), f.read())
 
 
+def push_files(paths):
+    paths = [path for path in paths if os.path.isfile(path)]
+    if not paths:
+        raise ValueError("No readable files selected")
+    if len(paths) == 1:
+        return push_file(paths[0])
+    opened = []
+    try:
+        parts = []
+        for path in paths:
+            stream = open(path, "rb")
+            opened.append(stream)
+            mime = mimetypes.guess_type(path)[0] or "application/octet-stream"
+            parts.append(("files", (os.path.basename(path), stream, mime)))
+        r = requests.post(
+            f"{server_url()}/clipboard",
+            files=parts,
+            headers=auth_headers(),
+            params=auth_params(),
+            timeout=120,
+        )
+        r.raise_for_status()
+        return r.json().get("id")
+    finally:
+        for stream in opened:
+            stream.close()
+
+
 def push_image(img):
     return push_bytes("clipboard.png", image_to_png(img))
 
@@ -826,6 +858,35 @@ def fetch_item(item_id):
                      headers=auth_headers(), params=auth_params(), timeout=30)
     r.raise_for_status()
     return r.json()
+
+
+def fetch_bundle_member(item_id, member_index):
+    r = requests.get(
+        f"{server_url()}/clipboard/item/{item_id}/file/{member_index}/raw",
+        headers=auth_headers(),
+        params=auth_params(),
+        timeout=60,
+    )
+    r.raise_for_status()
+    filename = r.headers.get("X-Clipboard-Filename", "file.bin")
+    try:
+        from urllib.parse import unquote
+        filename = unquote(filename)
+    except Exception:
+        pass
+    return filename, r.content
+
+
+def save_remote_files(item):
+    if item.get("type") == "bundle":
+        paths = []
+        for member in item.get("files", []):
+            filename, raw = fetch_bundle_member(item["id"], member.get("index", 0))
+            paths.append(save_received(member.get("filename") or filename, raw))
+        return paths
+    if item.get("type") == "file" and item.get("data"):
+        return [save_received(item.get("filename", "file.bin"), base64.b64decode(item["data"]))]
+    return []
 
 
 def _sync_source_key():
@@ -874,7 +935,10 @@ def _mark_remote_file_seen(item_id):
 
 def _auto_receive_remote_files():
     items = fetch_history(200)
-    remote_files = [item for item in items if item.get("type") == "file" and item.get("id")]
+    remote_files = [
+        item for item in items
+        if item.get("type") in ("file", "bundle") and item.get("id")
+    ]
     current_ids = [item["id"] for item in remote_files]
     key = _sync_source_key()
 
@@ -893,18 +957,24 @@ def _auto_receive_remote_files():
     received_paths = []
     for item in new_items:
         full = fetch_item(item["id"])
-        if full.get("type") != "file" or not full.get("data"):
+        paths = save_remote_files(full)
+        if not paths:
             _mark_remote_file_seen(item["id"])
             continue
-        raw = base64.b64decode(full["data"])
-        dest = save_received(full.get("filename", "file.bin"), raw)
-        record_local_file(dest)
+        record_local_files(paths)
         _mark_remote_file_seen(item["id"])
-        received_paths.append(dest)
+        received_paths.extend(paths)
+        message = (
+            t("files_arrived", n=len(paths)) if len(paths) > 1
+            else t("file_arrived", name=os.path.basename(paths[0]))
+        )
         notify_received(
             "file",
-            t("file_arrived", name=os.path.basename(dest)),
-            action=lambda path=dest: reveal_received_file(path),
+            message,
+            action=(
+                (lambda: open_received_folder()) if len(paths) > 1
+                else (lambda path=paths[0]: reveal_received_file(path))
+            ),
         )
     if received_paths:
         set_clipboard_files(received_paths)
@@ -936,11 +1006,26 @@ def _host_save(index):
 
 
 def _host_meta(e):
-    return {k: e.get(k) for k in ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
+    out = {k: e.get(k) for k in ("id", "type", "timestamp", "filename", "mime", "size", "preview")}
+    if e.get("type") == "bundle":
+        out["file_count"] = len(e.get("files", []))
+        out["files"] = [
+            {
+                "index": index,
+                "filename": member.get("filename"),
+                "mime": member.get("mime"),
+                "size": member.get("size", 0),
+                "type": member.get("type", "file"),
+            }
+            for index, member in enumerate(e.get("files", []))
+        ]
+    return out
 
 
 def _host_with_content(e):
     out = _host_meta(e)
+    if e["type"] == "bundle":
+        return out
     path = os.path.join(HOST_ITEMS, e["file"])
     if e["type"] == "text":
         with open(path, "r", encoding="utf-8") as f:
@@ -1030,18 +1115,20 @@ def _host_decode_base64(value):
 
 
 def _host_multipart(body, content_type):
-    """Return the first uploaded file or text field from a multipart iOS request."""
+    """Return every uploaded file as one group, or the first text field."""
     prefix = (
         "Content-Type: " + content_type + "\r\n"
         "MIME-Version: 1.0\r\n\r\n"
     ).encode("utf-8")
     message = BytesParser(policy=email_policy).parsebytes(prefix + body)
     text_value = None
+    uploads = []
     for part in message.iter_parts():
         filename = _host_clean_filename(part.get_filename())
         payload = part.get_payload(decode=True) or b""
         if filename is not None:
-            return "file", payload, filename, part.get_content_type()
+            uploads.append((payload, filename, part.get_content_type()))
+            continue
         field = part.get_param("name", header="content-disposition")
         if field in ("text", "value", "content", "clipboard", "string") or text_value is None:
             text_value = _host_decode_text(
@@ -1049,7 +1136,23 @@ def _host_multipart(body, content_type):
                 part.get("Content-Type", "text/plain"),
                 allow_legacy=True,
             )
+    if uploads:
+        return "files", uploads, None, None
     return ("text", text_value, None, None) if text_value is not None else None
+
+
+def _host_entry_files(entry):
+    if entry.get("type") == "bundle":
+        return [member.get("file") for member in entry.get("files", []) if member.get("file")]
+    return [entry.get("file")] if entry.get("file") else []
+
+
+def _host_delete_files(entry):
+    for filename in _host_entry_files(entry):
+        try:
+            os.remove(os.path.join(HOST_ITEMS, filename))
+        except OSError:
+            pass
 
 
 def _host_add(kind, payload, filename=None, mime=None):
@@ -1082,12 +1185,111 @@ def _host_add(kind, payload, filename=None, mime=None):
         index.insert(0, entry)
         while len(index) > config.get("max_local_history", 100):
             old = index.pop()
-            try:
-                os.remove(os.path.join(HOST_ITEMS, old["file"]))
-            except OSError:
-                pass
+            _host_delete_files(old)
         _host_save(index)
     return entry
+
+
+def _host_add_bundle(uploads):
+    if len(uploads) == 1:
+        raw, filename, mime = uploads[0]
+        return _host_add("bin", raw, filename, mime)
+    os.makedirs(HOST_ITEMS, exist_ok=True)
+    iid = uuid.uuid4().hex[:12]
+    members = []
+    for index, (raw, filename, mime) in enumerate(uploads):
+        filename = _host_clean_filename(filename) or f"file-{index + 1}.bin"
+        mime = _host_mime(mime) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        ext = os.path.splitext(filename)[1]
+        ext = ext.lower() if len(ext) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", ext or "") else ".bin"
+        stored = f"{iid}-{index}{ext}"
+        with open(os.path.join(HOST_ITEMS, stored), "wb") as stream:
+            stream.write(raw)
+        members.append({
+            "file": stored,
+            "filename": filename,
+            "mime": mime,
+            "size": len(raw),
+            "type": "image" if mime.startswith("image/") else "file",
+        })
+    entry = {
+        "id": iid,
+        "type": "bundle",
+        "timestamp": _now(),
+        "filename": None,
+        "mime": "application/zip",
+        "size": sum(member["size"] for member in members),
+        "preview": ", ".join(member["filename"] for member in members),
+        "files": members,
+    }
+    with _host_lock:
+        index = _host_load()
+        index.insert(0, entry)
+        while len(index) > config.get("max_local_history", 100):
+            _host_delete_files(index.pop())
+        _host_save(index)
+    return entry
+
+
+def _host_bundle_bytes(entry):
+    output = io.BytesIO()
+    used = set()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        for index, member in enumerate(entry.get("files", [])):
+            name = _host_clean_filename(member.get("filename")) or f"file-{index + 1}.bin"
+            original = name
+            suffix = 2
+            while name.lower() in used:
+                stem, ext = os.path.splitext(original)
+                name = f"{stem} ({suffix}){ext}"
+                suffix += 1
+            used.add(name.lower())
+            archive.write(os.path.join(HOST_ITEMS, member["file"]), name)
+    return output.getvalue()
+
+
+def _host_uploads_from_zip(raw):
+    if not raw:
+        raise ValueError("empty archive")
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            members = [
+                info for info in archive.infolist()
+                if not info.is_dir()
+                and not info.filename.replace("\\", "/").startswith("__MACOSX/")
+                and not info.filename.replace("\\", "/").endswith(".DS_Store")
+            ]
+            if not members:
+                raise ValueError("archive contains no files")
+            if len(members) > 500:
+                raise ValueError("archive contains too many files")
+            max_bytes = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
+            if sum(info.file_size for info in members) > max_bytes:
+                raise ValueError("expanded archive exceeds the upload limit")
+            uploads = []
+            expanded = 0
+            for info in members:
+                if info.flag_bits & 0x1:
+                    raise ValueError("encrypted archives are not supported")
+                filename = _host_clean_filename(info.filename) or "file.bin"
+                chunks = []
+                with archive.open(info) as source:
+                    while True:
+                        chunk = source.read(min(1024 * 1024, max_bytes - expanded + 1))
+                        if not chunk:
+                            break
+                        expanded += len(chunk)
+                        if expanded > max_bytes:
+                            raise ValueError("expanded archive exceeds the upload limit")
+                        chunks.append(chunk)
+                uploads.append((
+                    b"".join(chunks),
+                    filename,
+                    mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                ))
+            return uploads
+    except zipfile.BadZipFile as exc:
+        raise ValueError("invalid ZIP archive") from exc
 
 
 class _SrvHandler(http.server.BaseHTTPRequestHandler):
@@ -1109,6 +1311,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
         if item:
             self.send_header("X-Clipboard-Id", item["id"])
             self.send_header("X-Clipboard-Type", item["type"])
+            if item.get("type") == "bundle":
+                self.send_header("X-Clipboard-File-Count", str(len(item.get("files", []))))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if body:
@@ -1118,6 +1322,14 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
         self._send(code, json.dumps(obj).encode("utf-8"))
 
     def _raw(self, e):
+        if e["type"] == "bundle":
+            return self._send(
+                200,
+                _host_bundle_bytes(e),
+                "application/zip",
+                f"clipboard-{e['id']}.zip",
+                item=e,
+            )
         path = os.path.join(HOST_ITEMS, e["file"])
         if e["type"] == "text":
             with open(path, "r", encoding="utf-8") as f:
@@ -1145,6 +1357,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 return self._json({"status": "ok", "items": len(index)})
             if path == "/clipboard/latest":
                 return self._json(_host_with_content(index[0]) if index else {"type": "empty"})
+            if path == "/clipboard/latest/meta":
+                return self._json(_host_meta(index[0]) if index else {"type": "empty"})
             if path in ("/clipboard/latest/raw", "/clipboard/raw"):
                 return self._raw(index[0]) if index else self._send(200, b"", "text/plain; charset=utf-8")
             if path == "/clipboard/history":
@@ -1153,6 +1367,20 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 e = next((x for x in index if x["id"] == path.split("/")[3]), None)
                 if not e:
                     return self._json({"error": "not found"}, 404)
+                parts = path.strip("/").split("/")
+                if len(parts) == 6 and parts[3] == "file" and parts[5] == "raw":
+                    try:
+                        member = e.get("files", [])[int(parts[4])]
+                    except (ValueError, IndexError):
+                        return self._json({"error": "not found"}, 404)
+                    with open(os.path.join(HOST_ITEMS, member["file"]), "rb") as stream:
+                        return self._send(
+                            200,
+                            stream.read(),
+                            member.get("mime") or "application/octet-stream",
+                            member.get("filename"),
+                            item=e,
+                        )
                 return self._raw(e) if path.endswith("/raw") else self._json(_host_with_content(e))
             self._json({"error": "not found"}, 404)
         except Exception as ex:
@@ -1165,6 +1393,10 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
         try:
             path = self.path.split("?", 1)[0]
             n = int(self.headers.get("Content-Length", 0) or 0)
+            max_request = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
+            if n > max_request:
+                self.close_connection = True
+                return self._json({"error": "upload exceeds the server limit"}, 413)
             body = self.rfile.read(n) if n else b""
             content_type = self.headers.get("Content-Type") or ""
             ctype = _host_mime(content_type)
@@ -1174,6 +1406,18 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 if ctype == "multipart/form-data"
                 else None
             )
+
+            if path == "/clipboard/bundle":
+                try:
+                    e = _host_add_bundle(_host_uploads_from_zip(body))
+                except ValueError as error:
+                    return self._json({"error": str(error)}, 400)
+                return self._json({
+                    "status": "ok",
+                    "id": e["id"],
+                    "type": e["type"],
+                    "file_count": len(e.get("files", [])) or 1,
+                })
 
             if path == "/clipboard/text":
                 if ctype == "application/json":
@@ -1195,8 +1439,14 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             if path == "/clipboard/file":
                 raw = body
                 mime = ctype or None
-                if multipart and multipart[0] == "file":
-                    _, raw, filename, mime = multipart
+                if multipart and multipart[0] == "files":
+                    e = _host_add_bundle(multipart[1])
+                    return self._json({
+                        "status": "ok",
+                        "id": e["id"],
+                        "type": e["type"],
+                        "file_count": len(e.get("files", [])) or 1,
+                    })
                 elif ctype == "application/json" and filename is None:
                     try:
                         data = json.loads(body.decode("utf-8-sig"))
@@ -1217,12 +1467,16 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
 
             if path in ("/clipboard", "/clipboard/image", "/1"):
                 if multipart:
-                    if multipart[0] == "file":
-                        _, raw, multipart_name, mime = multipart
-                        e = _host_add("bin", raw, multipart_name or "clipboard.bin", mime)
+                    if multipart[0] == "files":
+                        e = _host_add_bundle(multipart[1])
                     else:
                         e = _host_add("text", multipart[1])
-                    return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
+                    return self._json({
+                        "status": "ok",
+                        "id": e["id"],
+                        "type": e["type"],
+                        "file_count": len(e.get("files", [])) or 1,
+                    })
 
                 if ctype == "application/json":
                     if filename:
@@ -1280,10 +1534,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             if path == "/clipboard/history":
                 with _host_lock:
                     for e in _host_load():
-                        try:
-                            os.remove(os.path.join(HOST_ITEMS, e["file"]))
-                        except OSError:
-                            pass
+                        _host_delete_files(e)
                     _host_save([])
                 return self._json({"status": "cleared"})
             if path.startswith("/clipboard/item/"):
@@ -1293,10 +1544,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                     e = next((x for x in index if x["id"] == iid), None)
                     _host_save([x for x in index if x["id"] != iid])
                 if e:
-                    try:
-                        os.remove(os.path.join(HOST_ITEMS, e["file"]))
-                    except OSError:
-                        pass
+                    _host_delete_files(e)
                 return self._json({"status": "deleted"})
             self._json({"error": "not found"}, 404)
         except Exception as ex:
@@ -1403,14 +1651,29 @@ def record_local_file(path):
     _local_save(index)
 
 
+def record_local_files(paths):
+    paths = list(paths)
+    if len(paths) == 1:
+        record_local_file(paths[0])
+        return
+    index = _local_load()
+    index.insert(0, {
+        "type": "bundle",
+        "timestamp": _now(),
+        "preview": ", ".join(os.path.basename(path) for path in paths),
+        "paths": paths,
+        "file_count": len(paths),
+    })
+    _local_save(index)
+
+
 # ---------------------------------------------------------------- actions
 def action_send_clipboard(icon=None, item=None):
     try:
         files = get_clipboard_files()
         if files:
-            for p in files:
-                _mark_remote_file_seen(push_file(p))
-                record_local_file(p)
+            _mark_remote_file_seen(push_files(files))
+            record_local_files(files)
             notify(t("files_sent", n=len(files)) if len(files) > 1 else t("file_sent"))
             return
         img = get_clipboard_image()
@@ -1442,15 +1705,24 @@ def action_get_latest(icon=None, item=None):
             set_clipboard_image(Image.open(io.BytesIO(raw)))
             notify_received("image", t("image_recv"))
         elif kind == "file":
-            raw = base64.b64decode(data["data"])
-            dest = save_received(data.get("filename", "file.bin"), raw)
-            set_clipboard_files([dest])
-            record_local_file(dest)
+            paths = save_remote_files(data)
+            set_clipboard_files(paths)
+            record_local_files(paths)
             _mark_remote_file_seen(data.get("id"))
             notify_received(
                 "file",
-                t("file_arrived", name=os.path.basename(dest)),
-                action=lambda path=dest: reveal_received_file(path),
+                t("file_arrived", name=os.path.basename(paths[0])),
+                action=lambda path=paths[0]: reveal_received_file(path),
+            )
+        elif kind == "bundle":
+            paths = save_remote_files(data)
+            set_clipboard_files(paths)
+            record_local_files(paths)
+            _mark_remote_file_seen(data.get("id"))
+            notify_received(
+                "file",
+                t("files_arrived", n=len(paths)),
+                action=lambda: open_received_folder(),
             )
         else:
             notify(t("no_items"))
@@ -1465,9 +1737,8 @@ def action_send_file(icon=None, item=None):
 
     def work():
         try:
-            for p in paths:
-                _mark_remote_file_seen(push_file(p))
-                record_local_file(p)
+            _mark_remote_file_seen(push_files(paths))
+            record_local_files(paths)
             notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
         except Exception as e:
             notify(t("send_err", e=e))
@@ -1509,13 +1780,12 @@ def sync_loop():
                     key = tuple(files)
                     if key != last_files:
                         last_files, last_text, last_img = key, None, None
-                        for p in files:
-                            record_local_file(p)
-                            if config.get("auto_sync"):
-                                try:
-                                    _mark_remote_file_seen(push_file(p))
-                                except Exception:
-                                    pass
+                        record_local_files(files)
+                        if config.get("auto_sync"):
+                            try:
+                                _mark_remote_file_seen(push_files(files))
+                            except Exception:
+                                pass
                 else:
                     img = get_clipboard_image()
                     if img is not None:
@@ -1635,15 +1905,21 @@ def open_history_window(icon=None, item=None):
                     set_clipboard_text(full.get("text", "")); notify(t("copied"))
                 elif full.get("type") == "image":
                     set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"])))); notify(t("copied"))
-                else:
-                    dest = save_received(full.get("filename", "file.bin"), base64.b64decode(full["data"]))
-                    set_clipboard_files([dest])
-                    record_local_file(dest)
+                elif full.get("type") in ("file", "bundle"):
+                    paths = save_remote_files(full)
+                    set_clipboard_files(paths)
+                    record_local_files(paths)
                     _mark_remote_file_seen(full.get("id"))
                     notify_received(
                         "file",
-                        t("file_arrived", name=os.path.basename(dest)),
-                        action=lambda path=dest: reveal_received_file(path),
+                        (
+                            t("files_arrived", n=len(paths)) if len(paths) > 1
+                            else t("file_arrived", name=os.path.basename(paths[0]))
+                        ),
+                        action=(
+                            (lambda: open_received_folder()) if len(paths) > 1
+                            else (lambda path=paths[0]: reveal_received_file(path))
+                        ),
                     )
             except Exception as e:
                 notify(t("recv_err", e=e))
@@ -1698,6 +1974,12 @@ def open_history_window(icon=None, item=None):
                     push_image(Image.open(os.path.join(LOCAL_DIR, it["file"])))
                 elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
                     _mark_remote_file_seen(push_file(it["path"]))
+                elif it["type"] == "bundle":
+                    paths = [path for path in it.get("paths", []) if os.path.isfile(path)]
+                    if paths:
+                        _mark_remote_file_seen(push_files(paths))
+                    else:
+                        notify(t("unavailable")); return
                 else:
                     notify(t("unavailable")); return
                 notify(t("sent_server"))

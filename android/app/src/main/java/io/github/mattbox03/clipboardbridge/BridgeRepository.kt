@@ -58,25 +58,20 @@ class BridgeRepository(private val context: Context) {
     }
 
     private fun sendSharedUris(uris: List<Uri>, declaredMime: String?): OperationResult<String> {
-        var lastId = ""
-        for (uri in uris) {
+        val contents = uris.map { uri ->
             val mime = context.contentResolver.getType(uri)
                 ?: declaredMime?.takeUnless { it == "*/*" }
                 ?: "application/octet-stream"
-            when (
-                val result = send(
-                    OutgoingClipboard.Content(
-                        uri,
-                        context.contentResolver.displayName(uri),
-                        mime,
-                    ),
-                )
-            ) {
-                is OperationResult.Error -> return result
-                is OperationResult.Success -> lastId = result.value
-            }
+            OutgoingClipboard.Content(
+                uri,
+                context.contentResolver.displayName(uri),
+                mime,
+            )
         }
-        return OperationResult.Success(lastId)
+        return send(
+            if (contents.size == 1) contents.first()
+            else OutgoingClipboard.ContentGroup(contents),
+        )
     }
 
     suspend fun sendUri(uri: Uri): OperationResult<String> = withContext(Dispatchers.IO) {
@@ -89,6 +84,10 @@ class BridgeRepository(private val context: Context) {
         )
     }
 
+    suspend fun sendUris(uris: List<Uri>): OperationResult<String> = withContext(Dispatchers.IO) {
+        sendSharedUris(uris, null)
+    }
+
     private fun send(item: OutgoingClipboard): OperationResult<String> {
         val result = when (item) {
             is OutgoingClipboard.Text -> api.uploadText(item.value)
@@ -98,11 +97,16 @@ class BridgeRepository(private val context: Context) {
                 item.filename,
                 item.mime,
             )
+            is OutgoingClipboard.ContentGroup -> api.uploadUris(
+                context.contentResolver,
+                item.items,
+            )
         }
         if (result is OperationResult.Success) {
             val label = when (item) {
                 is OutgoingClipboard.Text -> "Text sent to Clipboard Bridge"
                 is OutgoingClipboard.Content -> "${item.filename} sent to Clipboard Bridge"
+                is OutgoingClipboard.ContentGroup -> "${item.items.size} files sent to Clipboard Bridge"
             }
             NotificationHelper.sent(context, label)
         }

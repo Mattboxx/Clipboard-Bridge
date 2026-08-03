@@ -2,6 +2,33 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.5 - 2026-08-03
+
+### Added
+
+- Grouped multi-file clipboard items across the standalone server, Windows and Android.
+- Automatic iPhone multi-file transport through `/clipboard/bundle` and lightweight
+  type detection through `/clipboard/latest/meta`.
+- Android multi-selection from the file picker, Share Sheet and clipboard.
+
+### Changed
+
+- Multiple files selected in one operation now occupy one server-history row and are
+  restored together on Windows and Android.
+- Generic HTTP clients and iPhone Shortcuts receive grouped files as a ZIP transport.
+- Updated the English and Italian documentation and the public website.
+
+### Security
+
+- Added archive member, expanded-size, path and encryption validation for iPhone ZIP
+  transport uploads.
+
+## Server 1.0.3 - 2026-08-03
+
+- Added grouped multipart uploads and safe iPhone ZIP transport handling.
+- Added metadata-only lookup and per-member raw download endpoints.
+- Preserved arrival order across text, images, individual files and file groups.
+
 ## 2.0.4 - 2026-07-30
 
 ### Changed

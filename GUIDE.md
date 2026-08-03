@@ -97,12 +97,12 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.4` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.5` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.4 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.5 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -133,6 +133,9 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   saved to `Downloads\Clipboard Bridge` and copied as File Explorer files). Also bound to
   `Ctrl+Alt+V`.
 - **Send a file…**: pick any file(s) to upload.
+  Files selected in the same operation remain one grouped history item. Windows and
+  Android restore all members together; iPhone and generic HTTP clients download the
+  group as one ZIP file.
 - **Auto-sync** (Settings → Automation, off by default): when enabled, anything you copy — text,
   images **and files** — is sent to the server automatically, without clicking.
 - **Automatically download new files** (Settings, on by default): while the client is
@@ -192,10 +195,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.4 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.4):
+[Clipboard Bridge 2.0.5 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.5):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.4/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -220,34 +223,56 @@ You can now send or receive the latest item from the iPhone's pull-down Control 
 Apple documents the same procedure in its
 [Shortcuts User Guide](https://support.apple.com/guide/shortcuts/apd06a9201d4/ios).
 
-### 5.1 Send (clipboard → server)
-1. Open **Shortcuts**, tap **+** → **Add Action**.
-2. Add **Get Clipboard**.
-3. Add **Get Contents of URL**, then tap **Show More**:
+### 5.1 Send (clipboard to server)
+
+This version automatically handles a single item or a list received from the iOS Share
+Sheet. Enable **Show in Share Sheet** in the Shortcut details and allow **Any** input.
+
+1. Add **If** and set the condition to **Shortcut Input has any value**.
+2. Inside the first branch, add **Set Variable**: name it `Transfer` and set it to
+   **Shortcut Input**.
+3. In **Otherwise**, add **Get Clipboard**, then **Set Variable** `Transfer` to the
+   **Clipboard** result.
+4. After **End If**, add **Count** and count the items in `Transfer`.
+5. Add another **If**: `Count is greater than 1`.
+6. In its first branch, add **Make Archive** with `Transfer` as input and ZIP format.
+7. Add **Get Contents of URL**:
+   - URL: `http://SERVER_IP:5088/clipboard/bundle`
+   - Method: **POST**
+   - Request Body: **File**, using the **Archive** result.
+8. In **Otherwise**, add **Get Item from List**, choose **First Item** from `Transfer`,
+   then add **Get Contents of URL**:
    - URL: `http://SERVER_IP:5088/clipboard`
    - Method: **POST**
-   - Request Body: **File** → set it to the **Clipboard** variable.
-4. Name it (e.g. "Send") and add it to the Home Screen for one-tap use.
+   - Request Body: **File**, using the selected item.
+9. Close **End If** and add **Show Notification**.
 
-Copy anything and run it: Unicode text, photos and files are sent to the server without
-changing their contents. The endpoint accepts the raw body produced by Shortcuts as well
-as multipart and JSON/Base64 uploads.
+The ZIP exists only during transport. `/clipboard/bundle` validates it, ignores Apple
+metadata, strips paths and creates one ordered server-history group. Selecting one or
+twenty files therefore creates exactly one history row. A normal ZIP sent through
+`/clipboard` is never unpacked.
 
-### 5.2 Receive (server → clipboard)
-1. Tap **+** → add **Get Contents of URL**:
-   - URL: `http://SERVER_IP:5088/clipboard/latest/raw`
-   - Method: **GET**
-2. Add **Copy to Clipboard** (it uses the result).
-3. Name it (e.g. "Receive"). Run it, then paste anywhere.
+### 5.2 Receive (server to clipboard)
 
-It always copies the latest item from the server — text or photo — to your clipboard.
+1. Add **Get Contents of URL** with method **GET** and URL:
+   `http://SERVER_IP:5088/clipboard/latest/meta`.
+2. Add **Get Dictionary Value**, key `type`.
+3. Add **If**: the dictionary value **is** `bundle`.
+4. In the first branch, add **Get Contents of URL** with method **GET** and URL:
+   `http://SERVER_IP:5088/clipboard/latest/raw`.
+5. Add **Extract Archive**, then **Copy to Clipboard** using all extracted files.
+6. In **Otherwise**, request the same `/clipboard/latest/raw` URL and add
+   **Copy to Clipboard** using that response.
+7. Close **End If** and add **Show Notification**.
 
-> **Other file types:** to send a document that is not currently in the clipboard, make a
-> Share-Sheet shortcut that POSTs the file to
-> `http://SERVER_IP:5088/clipboard`; to receive one, GET
-> `http://SERVER_IP:5088/clipboard/latest/raw` and use **Save File** instead of Copy to Clipboard.
-> The server has no extension allowlist and preserves unknown formats, MIME types, Unicode
-> filenames and empty files.
+The metadata request contains no file data, so the Shortcut can choose the correct branch
+quickly. Text, a photo, one file or a complete file group is then copied automatically.
+The extracted group can also be passed to **Save File** when permanent local storage is
+preferred.
+
+For an account or token, append the same query parameters to **every URL above**, including
+`/clipboard/bundle` and `/clipboard/latest/meta`. Alternatively, use the same
+`X-Auth-Token` header in every **Get Contents of URL** action.
 
 ---
 

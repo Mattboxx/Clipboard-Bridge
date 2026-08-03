@@ -3,6 +3,8 @@ import importlib.util
 import json
 import os
 import threading
+import zipfile
+import io
 from pathlib import Path
 
 import requests
@@ -28,7 +30,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.4"
+    assert client.APP_VERSION == "2.0.5"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
@@ -362,6 +364,101 @@ def test_manual_receive_puts_file_on_clipboard(tmp_path, monkeypatch):
     received = Path(client.RECEIVED_DIR) / "manual.pdf"
     assert received.read_bytes() == b"%PDF-manual"
     assert copied == [[str(received)]]
+
+
+def test_remote_file_bundle_is_restored_as_one_clipboard_group(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    history = []
+    copied = []
+    monkeypatch.setattr(client, "fetch_history", lambda limit=200: list(history))
+    monkeypatch.setattr(
+        client,
+        "fetch_item",
+        lambda item_id: {
+            "id": item_id,
+            "type": "bundle",
+            "file_count": 2,
+            "files": [
+                {"index": 0, "filename": "one.txt"},
+                {"index": 1, "filename": "two.pdf"},
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        client,
+        "fetch_bundle_member",
+        lambda item_id, index: (
+            ("one.txt", b"one") if index == 0 else ("two.pdf", b"two")
+        ),
+    )
+    monkeypatch.setattr(client, "set_clipboard_files", lambda paths: copied.append(list(paths)))
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
+
+    assert client._auto_receive_remote_files() == []
+    history.append({"id": "bundle-1", "type": "bundle", "file_count": 2})
+    downloaded = client._auto_receive_remote_files()
+
+    assert [Path(path).name for path in downloaded] == ["one.txt", "two.pdf"]
+    assert copied == [downloaded]
+    local = client._local_load()
+    assert len(local) == 1
+    assert local[0]["type"] == "bundle"
+    assert local[0]["file_count"] == 2
+
+
+def test_windows_server_mode_keeps_multiple_files_in_one_item(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    server = client.http.server.ThreadingHTTPServer(("127.0.0.1", 0), client._SrvHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        response = requests.post(
+            base + "/clipboard",
+            files=[
+                ("files", ("one.txt", b"one", "text/plain")),
+                ("files", ("two.pdf", b"two", "application/pdf")),
+            ],
+            timeout=5,
+        )
+        response.raise_for_status()
+        saved = response.json()
+        assert saved["type"] == "bundle"
+        assert saved["file_count"] == 2
+
+        history = requests.get(base + "/clipboard/history", timeout=5).json()["items"]
+        assert len(history) == 1
+        assert history[0]["file_count"] == 2
+        assert [item["filename"] for item in history[0]["files"]] == ["one.txt", "two.pdf"]
+
+        first = requests.get(
+            base + f"/clipboard/item/{saved['id']}/file/0/raw",
+            timeout=5,
+        )
+        assert first.content == b"one"
+        zipped = requests.get(base + "/clipboard/latest/raw", timeout=5)
+        with zipfile.ZipFile(io.BytesIO(zipped.content)) as archive:
+            assert archive.namelist() == ["one.txt", "two.pdf"]
+
+        ios_archive = io.BytesIO()
+        with zipfile.ZipFile(ios_archive, "w") as archive:
+            archive.writestr("photo.jpg", b"photo")
+            archive.writestr("documents/notes.txt", b"notes")
+        ios_response = requests.post(
+            base + "/clipboard/bundle",
+            data=ios_archive.getvalue(),
+            headers={"Content-Type": "application/zip"},
+            timeout=5,
+        )
+        ios_response.raise_for_status()
+        assert ios_response.json()["file_count"] == 2
+        latest_meta = requests.get(base + "/clipboard/latest/meta", timeout=5).json()
+        assert latest_meta["type"] == "bundle"
+        assert [item["filename"] for item in latest_meta["files"]] == ["photo.jpg", "notes.txt"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
 
 
 def test_default_201_config_recovers_program_files_settings(tmp_path, monkeypatch):
