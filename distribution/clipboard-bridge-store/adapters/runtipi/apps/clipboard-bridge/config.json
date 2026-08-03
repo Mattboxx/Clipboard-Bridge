@@ -6,7 +6,7 @@
   "dynamic_config": true,
   "port": 5088,
   "tipi_version": 3,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "categories": ["utilities"],
   "description": "Share clipboard text and files between Windows, iPhone and your private server.",
   "short_desc": "Private clipboard and file bridge",

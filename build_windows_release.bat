@@ -70,7 +70,7 @@ copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Dow
 copy /Y "clipboard_bridge-Server.py" "%RELEASE_DIR%\" >nul
 copy /Y "clipboard_bridge_windows.py" "%RELEASE_DIR%\" >nul
 if exist "android\app\build\outputs\apk\release\app-release.apk" (
-  copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk" >nul
+  copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk" >nul
 )
 if errorlevel 1 exit /b 1
 

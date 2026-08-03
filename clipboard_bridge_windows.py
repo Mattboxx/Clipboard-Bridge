@@ -31,7 +31,7 @@ from ctypes import wintypes
 from email.message import Message
 from email.parser import BytesParser
 from email.policy import default as email_policy
-from urllib.parse import parse_qs, quote
+from urllib.parse import parse_qs, quote, unquote
 
 import requests
 import pyperclip
@@ -791,10 +791,14 @@ def push_text(text):
 
 
 def push_bytes(filename, raw):
-    payload = {"filename": filename, "data": base64.b64encode(raw).decode()}
-    r = requests.post(f"{server_url()}/clipboard/file",
-                      json=payload, headers=auth_headers(),
-                      params=auth_params(), timeout=30)
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    r = requests.post(
+        f"{server_url()}/clipboard",
+        files=[("files", (filename, raw, mime))],
+        headers=auth_headers(),
+        params=auth_params(),
+        timeout=30,
+    )
     r.raise_for_status()
     try:
         return r.json().get("id")
@@ -803,16 +807,13 @@ def push_bytes(filename, raw):
 
 
 def push_file(path):
-    with open(path, "rb") as f:
-        return push_bytes(os.path.basename(path), f.read())
+    return push_files([path])
 
 
 def push_files(paths):
     paths = [path for path in paths if os.path.isfile(path)]
     if not paths:
         raise ValueError("No readable files selected")
-    if len(paths) == 1:
-        return push_file(paths[0])
     opened = []
     try:
         parts = []
@@ -1051,7 +1052,7 @@ def _host_mime(content_type):
 def _host_header_filename(headers):
     for header in ("X-Filename", "X-File-Name", "X-Clipboard-Filename"):
         if headers.get(header):
-            return _host_clean_filename(headers.get(header))
+            return _host_clean_filename(unquote(headers.get(header)))
     message = Message()
     message["Content-Disposition"] = headers.get("Content-Disposition", "")
     if message.get_filename():
@@ -1305,7 +1306,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             ) or "download"
             self.send_header(
                 "Content-Disposition",
-                f'inline; filename="{fallback}"; filename*=UTF-8\'\'{quote(filename, safe="")}',
+                f'attachment; filename="{fallback}"; filename*=UTF-8\'\'{quote(filename, safe="")}',
             )
             self.send_header("X-Clipboard-Filename", quote(filename, safe=""))
         if item:
@@ -1391,7 +1392,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            path = self.path.split("?", 1)[0]
+            path, _, query_string = self.path.partition("?")
             n = int(self.headers.get("Content-Length", 0) or 0)
             max_request = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
             if n > max_request:
@@ -1401,6 +1402,13 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             content_type = self.headers.get("Content-Type") or ""
             ctype = _host_mime(content_type)
             filename = _host_header_filename(self.headers)
+            if filename is None and query_string:
+                query = parse_qs(query_string, keep_blank_values=True)
+                for key in ("filename", "file_name", "name"):
+                    value = query.get(key, [""])[0]
+                    if value:
+                        filename = _host_clean_filename(unquote(value))
+                        break
             multipart = (
                 _host_multipart(body, content_type)
                 if ctype == "multipart/form-data"

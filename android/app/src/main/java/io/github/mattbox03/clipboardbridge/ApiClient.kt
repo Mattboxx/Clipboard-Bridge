@@ -106,19 +106,15 @@ class ApiClient(
         uri: Uri,
         filename: String = resolver.displayName(uri),
         mime: String = resolver.getType(uri) ?: "application/octet-stream",
-    ): OperationResult<String> {
-        val body = uriRequestBody(resolver, uri, mime)
-        return upload(body, filename)
-    }
+    ): OperationResult<String> = uploadUris(
+        resolver,
+        listOf(OutgoingClipboard.Content(uri, filename, mime)),
+    )
 
     fun uploadUris(
         resolver: ContentResolver,
         items: List<OutgoingClipboard.Content>,
     ): OperationResult<String> {
-        if (items.size == 1) {
-            val item = items.first()
-            return uploadUri(resolver, item.uri, item.filename, item.mime)
-        }
         return runCatching {
             require(items.isNotEmpty()) { "No files were selected." }
             val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)

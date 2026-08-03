@@ -1,7 +1,7 @@
 name: clipboard-bridge
 services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.3
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.4
     container_name: clipboard-bridge
     restart: unless-stopped
     ports:
@@ -51,7 +51,7 @@ x-casaos:
     before_install:
       en_US: Set a web password and API token if the service is reachable by untrusted devices.
       it_IT: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
-  version: "1.0.3"
+  version: "1.0.4"
   update_at: "2026-07-30"
   website: https://github.com/Mattboxx/Clipboard-Bridge
   repo: https://github.com/Mattboxx/Clipboard-Bridge

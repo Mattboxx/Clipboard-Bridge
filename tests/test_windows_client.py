@@ -30,7 +30,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.5"
+    assert client.APP_VERSION == "2.0.6"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
@@ -455,6 +455,54 @@ def test_windows_server_mode_keeps_multiple_files_in_one_item(tmp_path, monkeypa
         latest_meta = requests.get(base + "/clipboard/latest/meta", timeout=5).json()
         assert latest_meta["type"] == "bundle"
         assert [item["filename"] for item in latest_meta["files"]] == ["photo.jpg", "notes.txt"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def test_windows_upload_preserves_unknown_extension_and_bytes(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    server = client.http.server.ThreadingHTTPServer(("127.0.0.1", 0), client._SrvHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    payload = b"AEA1\x00signed-shortcut-data"
+    source = tmp_path / "Automation.shortcut"
+    source.write_bytes(payload)
+    client.config.update({
+        "mode": "client",
+        "server_ip": "127.0.0.1",
+        "server_port": server.server_address[1],
+        "token": "",
+        "username": "",
+        "password": "",
+    })
+    try:
+        item_id = client.push_file(str(source))
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        history = requests.get(base + "/clipboard/history", timeout=5).json()["items"]
+        assert history[0]["id"] == item_id
+        assert history[0]["filename"] == "Automation.shortcut"
+        assert history[0]["mime"] == "application/octet-stream"
+        raw = requests.get(
+            base + f"/clipboard/item/{item_id}/raw",
+            timeout=5,
+        )
+        assert raw.content == payload
+        assert raw.headers["X-Clipboard-Filename"] == "Automation.shortcut"
+        assert raw.headers["Content-Disposition"].startswith("attachment;")
+
+        iphone_payload = b"AEA1\x00iphone-shortcut"
+        uploaded = requests.post(
+            base + "/clipboard?filename=iPhone%20Automation.shortcut",
+            data=iphone_payload,
+            headers={"Content-Type": "application/octet-stream"},
+            timeout=5,
+        )
+        uploaded.raise_for_status()
+        latest = requests.get(base + "/clipboard/latest/raw", timeout=5)
+        assert latest.content == iphone_payload
+        assert latest.headers["X-Clipboard-Filename"] == "iPhone%20Automation.shortcut"
     finally:
         server.shutdown()
         server.server_close()

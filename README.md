@@ -5,7 +5,7 @@
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.5) |
+[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.6) |
 [Server App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Setup guide](GUIDE.md)
 
@@ -64,13 +64,13 @@ the only rule.
 
 | Platform | Download | What it includes |
 |---|---|---|
-| **Android 10+** | [Android APK 1.0.0-beta.9](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
-| **Windows installer** | [Clipboard Bridge Windows 2.0.5 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.5.exe) | Per-user installation; no administrator account required |
-| **Windows portable** | [Clipboard Bridge 2.0.5 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Portable.Windows.x64.V2.0.5.exe) | One executable, no installation |
-| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
-| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
-| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
-| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/clipboard_bridge_windows.py) | Uncompiled Windows client source |
+| **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
+| **Windows installer** | [Clipboard Bridge Windows 2.0.6 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.6.exe) | Per-user installation; no administrator account required |
+| **Windows portable** | [Clipboard Bridge 2.0.6 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/Clipboard.Bridge.Portable.Windows.x64.V2.0.6.exe) | One executable, no installation |
+| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
+| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
+| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
+| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/clipboard_bridge_windows.py) | Uncompiled Windows client source |
 
 The Android app is currently a public beta. The release contains only ready-to-use
 downloads and the two main Python scripts. Developers can clone the repository for
@@ -158,7 +158,7 @@ from the selected Clipboard Bridge server.
 
 ### Install the APK
 
-1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk).
+1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
 2. Open the downloaded file on the Android device.
 3. If requested, allow the browser or file manager to install apps from that source.
 4. Choose **Install** or **Update**.
@@ -287,7 +287,7 @@ multiple files without asking which content type is being transferred.
 
 ### Send the current clipboard
 
-Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut)
+Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Load.Clipboard.shortcut)
 and set its request URL to:
 
 ```text
@@ -295,15 +295,21 @@ http://SERVER_IP:5088/clipboard
 ```
 
 For automatic multiple-file sharing, configure **Load Clipboard** as described in the
-[complete guide](GUIDE.md#51-send-clipboard--server). When the Share Sheet or clipboard
+[complete guide](GUIDE.md#51-send-clipboard-to-server). When the Share Sheet or clipboard
 contains several files, the Shortcut creates a temporary ZIP and sends it to
 `/clipboard/bundle`. Clipboard Bridge safely opens that transport archive and stores its
 members as one grouped history item. A ZIP deliberately shared as one file through the
 normal `/clipboard` endpoint remains an ordinary ZIP file.
 
+For a single file, the upgraded Shortcut also sends its URL-encoded name using
+`?filename=NAME` (or `&filename=NAME` after account/token parameters). This preserves
+unknown extensions such as `.shortcut` even when iOS reports only a generic binary MIME
+type. The [complete guide](GUIDE.md#51-send-clipboard-to-server) shows the required
+actions; text continues to use the URL without the filename parameter.
+
 ### Receive the latest item
 
-Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut)
+Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Download.Clipboard.shortcut)
 and set its URL to:
 
 ```text

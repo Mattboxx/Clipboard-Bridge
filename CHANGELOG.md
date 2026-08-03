@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.6 - 2026-08-03
+
+### Fixed
+
+- Preserved uncommon file extensions, including `.shortcut`, by using multipart file
+  uploads from Windows and Android.
+- Forced generic files to download with their original filename instead of being treated
+  as unnamed binary data by browsers and mobile clients.
+- Added an optional `filename` URL parameter for raw iPhone Shortcut uploads.
+
+## Server 1.0.4 - 2026-08-03
+
+- Added filename fallbacks for raw uploads from iPhone and generic HTTP clients.
+- Returned individual files and grouped archives as named attachments.
+
 ## 2.0.5 - 2026-08-03
 
 ### Added

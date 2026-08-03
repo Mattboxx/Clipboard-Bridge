@@ -405,6 +405,7 @@ def test_readable_files_keep_their_file_type(server):
         ("settings.json", "application/json", b'{"data":"this is a real JSON file"}'),
         ("drawing.svg", "image/svg+xml", b"<svg><rect width='10' height='10'/></svg>"),
         ("notes.txt", "text/plain", b"this is a text file, not clipboard text"),
+        ("automation.shortcut", "application/octet-stream", b"AEA1\x00signed-shortcut-data"),
     )
 
     for filename, mime, payload in cases:
@@ -421,6 +422,25 @@ def test_readable_files_keep_their_file_type(server):
         latest = client.get("/clipboard/latest/raw" + token)
         assert latest.data == payload
         assert latest.headers["X-Clipboard-Filename"] == filename
+        if filename.endswith(".shortcut"):
+            assert latest.headers["Content-Disposition"].startswith("attachment;")
+
+
+def test_raw_iphone_upload_can_preserve_an_unusual_filename_in_the_url(server):
+    client = server.app.test_client()
+    payload = b"AEA1\x00binary-shortcut"
+
+    response = client.post(
+        "/clipboard?token=shared-token&filename=Morning%20Automation.shortcut",
+        data=payload,
+        content_type="application/octet-stream",
+    )
+
+    assert response.status_code == 200
+    latest = client.get("/clipboard/latest/raw?token=shared-token")
+    assert latest.data == payload
+    assert latest.headers["X-Clipboard-Filename"] == "Morning%20Automation.shortcut"
+    assert latest.headers["Content-Disposition"].startswith("attachment;")
 
 
 def test_web_login_builds_encoded_shortcut_urls(server):
@@ -458,4 +478,4 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.3"
+    assert response.get_json()["version"] == "1.0.4"

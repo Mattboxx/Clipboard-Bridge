@@ -97,12 +97,12 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.5` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.6` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.5 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.6 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -195,10 +195,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.5 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.5):
+[Clipboard Bridge 2.0.6 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.6):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -240,17 +240,25 @@ Sheet. Enable **Show in Share Sheet** in the Shortcut details and allow **Any** 
    - URL: `http://SERVER_IP:5088/clipboard/bundle`
    - Method: **POST**
    - Request Body: **File**, using the **Archive** result.
-8. In **Otherwise**, add **Get Item from List**, choose **First Item** from `Transfer`,
-   then add **Get Contents of URL**:
-   - URL: `http://SERVER_IP:5088/clipboard`
-   - Method: **POST**
-   - Request Body: **File**, using the selected item.
-9. Close **End If** and add **Show Notification**.
+8. In **Otherwise**, add **Get Item from List** and choose **First Item** from `Transfer`.
+9. Add **Get Type** for the selected item and an **If** action:
+   - when the type is **Text**, POST the selected item as a **File** request body to
+     `http://SERVER_IP:5088/clipboard`;
+   - otherwise, use **Get Details of Files > Name**, URL-encode that name, and POST the
+     selected item as a **File** request body to
+     `http://SERVER_IP:5088/clipboard?filename=ENCODED_NAME`.
+10. Close both **End If** blocks and add **Show Notification**.
 
 The ZIP exists only during transport. `/clipboard/bundle` validates it, ignores Apple
 metadata, strips paths and creates one ordered server-history group. Selecting one or
 twenty files therefore creates exactly one history row. A normal ZIP sent through
 `/clipboard` is never unpacked.
+
+The `filename` parameter is important for formats that iOS does not recognize, such as
+`.shortcut`, uncommon archives and application-specific documents. Their MIME type may
+only be `application/octet-stream`; the explicit name ensures the server and every
+receiving device preserve the original extension. If the URL already contains account
+or token parameters, append it with `&filename=ENCODED_NAME` instead of `?filename=...`.
 
 ### 5.2 Receive (server to clipboard)
 
