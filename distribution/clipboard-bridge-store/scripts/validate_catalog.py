@@ -22,7 +22,7 @@ for pattern in ("*.yml", "*.yaml"):
     for path in ROOT.rglob(pattern):
         yaml.safe_load(path.read_text(encoding="utf-8"))
 for path in ROOT.rglob("docker-compose.yml"):
-    if "ghcr.io/mattboxx/clipboard-bridge-server:1.0.3" not in path.read_text(encoding="utf-8"):
+    if "ghcr.io/mattboxx/clipboard-bridge-server:1.0.4" not in path.read_text(encoding="utf-8"):
         raise SystemExit(f"Unexpected image in {path.relative_to(ROOT)}")
 
 store = json.loads((ROOT / "store-config.json").read_text(encoding="utf-8"))

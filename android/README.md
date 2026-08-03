@@ -3,10 +3,10 @@
 The native Android client connects Android phones and tablets to the same Clipboard
 Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
-**Current public build:** `1.0.0-beta.9`<br>
+**Current public build:** `1.0.0-beta.10`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.5/Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk)
+[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.6/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk)
 
 ## Features
 
@@ -29,7 +29,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
 ## Install
 
-1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.9.apk`.
+1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk`.
 2. Open the APK from Android's browser or file manager.
 3. If Android asks, allow that application to install unknown apps.
 4. Select **Install**.

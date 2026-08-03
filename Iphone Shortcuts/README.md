@@ -10,6 +10,8 @@ The updated **Load Clipboard** Shortcut automatically:
 - uses Share Sheet input when available, otherwise the current clipboard;
 - detects whether it received one item or several items;
 - sends one item to `/clipboard`;
+- appends the URL-encoded file name for a single non-text item, preserving uncommon
+  extensions such as `.shortcut`;
 - creates a temporary transport ZIP for several items and sends it to
   `/clipboard/bundle`.
 

@@ -51,7 +51,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.3"
+SERVER_VERSION = "1.0.4"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -473,10 +473,15 @@ def _decode_base64(value):
 
 def _request_filename():
     """Read the filename variants commonly emitted by iOS Shortcuts and HTTP clients."""
+    for parameter in ("filename", "file_name", "name"):
+        value = request.args.get(parameter)
+        if value:
+            return _clean_filename(unquote(value, encoding="utf-8", errors="replace"))
+
     for header in ("X-Filename", "X-File-Name", "X-Clipboard-Filename"):
         value = request.headers.get(header)
         if value:
-            return _clean_filename(value)
+            return _clean_filename(unquote(value, encoding="utf-8", errors="replace"))
 
     disposition = request.headers.get("Content-Disposition", "")
     match = re.search(r"filename\*\s*=\s*(?:\"([^\"]*)\"|([^;]*))", disposition, re.I)
@@ -636,6 +641,7 @@ def _raw_item_response(entry):
             _bundle_zip(entry),
             mimetype="application/zip",
             download_name=filename,
+            as_attachment=True,
         )
         response.headers["X-Clipboard-Filename"] = quote(filename, safe="")
         response.headers["X-Clipboard-File-Count"] = str(len(entry.get("files", [])))
@@ -644,6 +650,7 @@ def _raw_item_response(entry):
             os.path.join(_items_dir(), entry["file"]),
             mimetype=entry["mime"] or "application/octet-stream",
             download_name=entry["filename"],
+            as_attachment=entry["type"] == "file",
         )
         response.headers["X-Clipboard-Filename"] = quote(entry["filename"] or "", safe="")
     response.headers["X-Clipboard-Id"] = entry["id"]
@@ -660,6 +667,7 @@ def _bundle_member_response(entry, member_index):
         os.path.join(_items_dir(), member["file"]),
         mimetype=member.get("mime") or "application/octet-stream",
         download_name=member.get("filename") or "file.bin",
+        as_attachment=member.get("type", "file") == "file",
     )
     response.headers["X-Clipboard-Filename"] = quote(member.get("filename") or "file.bin", safe="")
     response.headers["X-Clipboard-Id"] = entry["id"]
