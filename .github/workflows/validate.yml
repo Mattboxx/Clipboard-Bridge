@@ -83,4 +83,6 @@ jobs:
           java-version: "17"
 
       - name: Test and build Android client
-        run: ./gradlew testDebugUnitTest assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest assembleDebug
