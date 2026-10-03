@@ -48,7 +48,7 @@ Per proteggerla, modifica in ZimaOS le variabili dell’app:
 | Variabile | Funzione | Esempio |
 |---|---|---|
 | `CLIPBOARD_PASSWORD` | Password della pagina web | `cambia-questa-password` |
-| `CLIPBOARD_TOKEN` | Token per client Windows e iPhone | `cambia-questo-token` |
+| `CLIPBOARD_TOKEN` | Token per client Windows, Android e iPhone | `cambia-questo-token` |
 | `CLIPBOARD_ACCOUNTS` | Utenti isolati aggiuntivi | `alice:pass1,bob:pass2` |
 | `CLIPBOARD_MAX_HISTORY` | Elementi massimi nello storico | `200` |
 | `CLIPBOARD_MAX_UPLOAD_MB` | Dimensione massima di un upload in MB | `64` |
@@ -56,7 +56,7 @@ Per proteggerla, modifica in ZimaOS le variabili dell’app:
 La clipboard generale rimane sempre disponibile. Ogni account aggiuntivo ha
 cronologia e file separati.
 
-## Windows e iPhone
+## Windows, Android e iPhone
 
 Nel client Windows imposta:
 
@@ -225,7 +225,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Apri **App Store** in Runtipi.
 2. Seleziona **Add custom app**.
 3. Usa `clipboard-bridge` come ID e `Clipboard Bridge` come nome.
-4. Inserisci l’immagine `ghcr.io/mattboxx/clipboard-bridge-server:1.0.4`.
+4. Inserisci l’immagine `ghcr.io/mattboxx/clipboard-bridge-server:1.0.5`.
 5. Imposta la porta del container su `5088` e rendila esponibile.
 6. Aggiungi un volume persistente dalla directory applicativa proposta da
    Runtipi a `/data` nel container.

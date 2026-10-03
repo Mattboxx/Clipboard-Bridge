@@ -5,7 +5,7 @@ ARG VERSION=dev
 ARG VCS_REF=unknown
 
 LABEL org.opencontainers.image.title="Clipboard Bridge Server" \
-      org.opencontainers.image.description="Local-network clipboard bridge for Windows and iPhone" \
+      org.opencontainers.image.description="Local-network clipboard bridge for Windows, Android and iPhone" \
       org.opencontainers.image.url="https://github.com/Mattboxx/Clipboard-Bridge" \
       org.opencontainers.image.source="https://github.com/Mattboxx/Clipboard-Bridge" \
       org.opencontainers.image.documentation="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md" \

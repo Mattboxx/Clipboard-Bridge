@@ -52,7 +52,7 @@ safer installation, edit the application environment variables in ZimaOS:
 | Variable | Purpose | Example |
 |---|---|---|
 | `CLIPBOARD_PASSWORD` | Password for the web interface | `change-this-password` |
-| `CLIPBOARD_TOKEN` | Token used by Windows and iPhone API requests | `change-this-token` |
+| `CLIPBOARD_TOKEN` | Token used by Windows, Android and iPhone API requests | `change-this-token` |
 | `CLIPBOARD_ACCOUNTS` | Extra isolated users | `alice:pass1,bob:pass2` |
 | `CLIPBOARD_MAX_HISTORY` | Maximum stored items | `200` |
 | `CLIPBOARD_MAX_UPLOAD_MB` | Maximum size of one upload in MB | `64` |
@@ -61,7 +61,7 @@ The shared clipboard always remains available. Extra accounts have separate
 history and files. There is no fixed account limit; for many accounts use the
 accounts-file method documented in the main project.
 
-## Windows and iPhone
+## Windows, Android and iPhone
 
 Download or build the Windows client from the
 [main project](https://github.com/Mattboxx/Clipboard-Bridge). In client mode,
@@ -252,7 +252,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Open **App Store** in Runtipi.
 2. Select **Add custom app**.
 3. Use `clipboard-bridge` as the app ID and `Clipboard Bridge` as its name.
-4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.4`.
+4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.5`.
 5. Set container port `5088` and expose it through Runtipi.
 6. Add a persistent volume from `/data` in the container to the app data
    directory proposed by Runtipi.

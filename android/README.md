@@ -6,7 +6,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 **Current public build:** `1.0.0-beta.10`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.7/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk)
+[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk)
 
 ## Features
 

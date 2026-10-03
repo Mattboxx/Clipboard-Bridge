@@ -1,7 +1,7 @@
 name: clipboard-bridge
 services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.4
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.5
     container_name: clipboard-bridge
     restart: unless-stopped
     ports:
@@ -41,18 +41,18 @@ x-casaos:
     en_US: Clipboard Bridge
     it_IT: Clipboard Bridge
   tagline:
-    en_US: Share text and files between Windows, iPhone and your server.
-    it_IT: Condividi testo e file tra Windows, iPhone e il tuo server.
+    en_US: Share text and files between Windows, Android, iPhone and your server.
+    it_IT: Condividi testo e file tra Windows, Android, iPhone e il tuo server.
   description:
-    en_US: A private clipboard and file bridge with history, multiple accounts and iPhone Shortcuts support.
-    it_IT: Un ponte privato per clipboard e file con cronologia, account multipli e supporto Comandi Rapidi iPhone.
+    en_US: A private clipboard and file bridge with history, multiple accounts and Android and iPhone Shortcuts support.
+    it_IT: Un ponte privato per clipboard e file con cronologia, account multipli e supporto Android e Comandi Rapidi iPhone.
   thumbnail: ""
   tips:
     before_install:
       en_US: Set a web password and API token if the service is reachable by untrusted devices.
       it_IT: Imposta password web e token API se il servizio è raggiungibile da dispositivi non fidati.
-  version: "1.0.4"
-  update_at: "2026-07-30"
+  version: "1.0.5"
+  update_at: "2026-10-03"
   website: https://github.com/Mattboxx/Clipboard-Bridge
   repo: https://github.com/Mattboxx/Clipboard-Bridge
   support: https://github.com/Mattboxx/Clipboard-Bridge/issues
