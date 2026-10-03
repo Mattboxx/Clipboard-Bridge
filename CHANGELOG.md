@@ -2,6 +2,35 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.8 - 2026-10-03
+
+### Fixed
+
+- Retried failed automatic uploads instead of silently forgetting local content.
+- Retried a temporarily busy Windows clipboard without repeated downloads or notifications.
+- Kept newer text/images on the clipboard when older files arrive in the same polling cycle.
+- Prevented manually received history items from being uploaded back to the server.
+- Preserved empty files, long Unicode filenames and unsupported image formats as files.
+- Cleaned up interrupted multi-file downloads and reused completed downloads.
+- Detected content changes in files copied from the same path.
+- Reported server errors when deleting history entries instead of appearing to succeed.
+
+### Performance
+
+- Polled metadata instead of downloading unchanged Base64 file/image content.
+- Downloaded individual files through their raw endpoint.
+- Skipped repeated bitmap reads and hashing when the Windows clipboard has not changed.
+
+## Server 1.0.5 - 2026-10-03
+
+- Preserved exact CRLF, CR and LF line endings in both server modes.
+- Added UTF-32 BOM detection alongside UTF-8 and UTF-16.
+- Supported Unicode account passwords and tokens without authentication errors.
+- Preserved literal percent sequences in URL filenames.
+- Rejected malformed JSON without replacing the latest clipboard item.
+- Made the Windows embedded-server index writes atomic.
+- Added regression coverage for concurrent uploads and large file groups.
+
 ## 2.0.7 - 2026-08-10
 
 ### Fixed

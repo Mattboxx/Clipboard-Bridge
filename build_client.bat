@@ -32,6 +32,7 @@ echo Compiling...
   --add-data "VERSION;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
+  --exclude-module numpy ^
   clipboard_bridge_windows.py
 if errorlevel 1 exit /b 1
 

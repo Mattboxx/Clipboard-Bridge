@@ -5,9 +5,11 @@ import os
 import threading
 import zipfile
 import io
+from types import SimpleNamespace
 from pathlib import Path
 
 import requests
+import pytest
 
 
 def load_client(tmp_path, monkeypatch):
@@ -30,7 +32,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.7"
+    assert client.APP_VERSION == "2.0.8"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
@@ -60,13 +62,10 @@ def test_new_remote_pdf_is_downloaded_once(tmp_path, monkeypatch):
     monkeypatch.setattr(
         client,
         "fetch_item",
-        lambda item_id: {
-            "id": item_id,
-            "type": "file",
-            "filename": "new-report.pdf",
-            "data": base64.b64encode(b"%PDF-new").decode("ascii"),
-        },
+        lambda item_id: (_ for _ in ()).throw(AssertionError("Use raw file downloads")),
     )
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"%PDF-new", raise_for_status=lambda: None))
     monkeypatch.setattr(
         client,
         "notify",
@@ -186,8 +185,8 @@ def test_auto_sync_notifies_when_remote_text_is_copied(tmp_path, monkeypatch):
     monkeypatch.setattr(client, "get_clipboard_text", lambda: "")
     monkeypatch.setattr(
         client,
-        "pull_latest",
-        lambda: {"id": "remote-text", "type": "text", "text": "From iPhone"},
+        "poll_latest",
+        lambda known_id: {"id": "remote-text", "type": "text", "text": "From iPhone"},
     )
     monkeypatch.setattr(client, "set_clipboard_text", lambda text: copied.append(text))
     monkeypatch.setattr(
@@ -245,8 +244,8 @@ def test_auto_sync_does_not_receive_or_upload_its_own_text_again(tmp_path, monke
     monkeypatch.setattr(client, "get_clipboard_text", lambda: "Sent from this PC")
     monkeypatch.setattr(
         client,
-        "pull_latest",
-        lambda: {"id": "local-text", "type": "text", "text": "Sent from this PC"},
+        "poll_latest",
+        lambda known_id: {"id": "local-text", "type": "text", "text": "Sent from this PC"},
     )
     monkeypatch.setattr(client, "set_clipboard_text", lambda text: copied.append(text))
     monkeypatch.setattr(
@@ -295,8 +294,8 @@ def test_last_handled_item_is_not_notified_again_after_restart(tmp_path, monkeyp
     monkeypatch.setattr(second, "get_clipboard_text", lambda: "")
     monkeypatch.setattr(
         second,
-        "pull_latest",
-        lambda: {"id": "already-seen", "type": "text", "text": "Old text"},
+        "poll_latest",
+        lambda known_id: {"id": "already-seen", "type": "text", "text": "Old text"},
     )
     monkeypatch.setattr(second, "set_clipboard_text", lambda text: copied.append(text))
     monkeypatch.setattr(
@@ -321,13 +320,10 @@ def test_two_remote_file_items_leave_only_the_newest_on_clipboard(tmp_path, monk
     monkeypatch.setattr(
         client,
         "fetch_item",
-        lambda item_id: {
-            "id": item_id,
-            "type": "file",
-            "filename": item_id + ".pdf",
-            "data": base64.b64encode(item_id.encode("ascii")).decode("ascii"),
-        },
+        lambda item_id: (_ for _ in ()).throw(AssertionError("Use raw file downloads")),
     )
+    monkeypatch.setattr(client.requests, "get", lambda url, **kw: SimpleNamespace(
+        content=url.split("/")[-2].encode("ascii"), raise_for_status=lambda: None))
     monkeypatch.setattr(
         client,
         "set_clipboard_files",
@@ -623,7 +619,9 @@ def test_remote_file_bundle_is_restored_as_one_clipboard_group(tmp_path, monkeyp
     monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
 
     assert client._auto_receive_remote_files() == []
-    history.append({"id": "bundle-1", "type": "bundle", "file_count": 2})
+    history.append({"id": "bundle-1", "type": "bundle", "file_count": 2,
+                    "files": [{"index": 0, "filename": "one.txt"},
+                              {"index": 1, "filename": "two.pdf"}]})
     downloaded = client._auto_receive_remote_files()
 
     assert [Path(path).name for path in downloaded] == ["one.txt", "two.pdf"]
@@ -873,3 +871,210 @@ def test_windows_single_instance_mutex_blocks_duplicate(tmp_path, monkeypatch):
 
     assert second._acquire_single_instance(mutex_name) is True
     second._release_single_instance()
+
+
+def test_unchanged_latest_poll_never_downloads_binary_content(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    calls = []
+    def get(url, **kwargs):
+        calls.append(url)
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None,
+                               json=lambda: {"id": "same", "type": "image", "size": 64000000})
+    monkeypatch.setattr(client.requests, "get", get)
+    for _ in range(5):
+        assert "data" not in client.poll_latest("same")
+    assert all(url.endswith("/clipboard/latest/meta") for url in calls)
+
+
+def test_empty_file_download_is_valid_and_reused(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    item = {"id": "empty", "type": "file", "filename": "empty.shortcut", "data": ""}
+    paths = client.save_remote_files(item)
+    assert len(paths) == 1
+    assert Path(paths[0]).read_bytes() == b""
+    assert client.save_remote_files(item) == paths
+    assert len(list(Path(client.RECEIVED_DIR).iterdir())) == 1
+
+
+def test_old_file_download_does_not_replace_newer_text(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    history = []
+    copied = []
+    monkeypatch.setattr(client, "fetch_history", lambda limit: history)
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"pdf", raise_for_status=lambda: None))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda paths: copied.append(paths))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: None)
+    client._auto_receive_remote_files()
+    history.extend([{"id": "new-text", "type": "text"},
+                    {"id": "old-file", "type": "file", "filename": "old.pdf"}])
+    assert client._auto_receive_remote_files() == []
+    assert copied == []
+    assert client._last_remembered_item() is None
+    assert (Path(client.RECEIVED_DIR) / "old.pdf").read_bytes() == b"pdf"
+
+
+def test_busy_file_clipboard_retries_without_duplicate_download(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    history = []
+    copies, downloads, notifications = [], [], []
+    monkeypatch.setattr(client, "fetch_history", lambda limit: history)
+    def get(*args, **kwargs):
+        downloads.append(1)
+        return SimpleNamespace(content=b"pdf", raise_for_status=lambda: None)
+    def copy(paths):
+        copies.append(paths)
+        if len(copies) == 1:
+            raise OSError("clipboard busy")
+    monkeypatch.setattr(client.requests, "get", get)
+    monkeypatch.setattr(client, "set_clipboard_files", copy)
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: notifications.append(1))
+    client._auto_receive_remote_files()
+    history.append({"id": "new", "type": "file", "filename": "new.pdf"})
+    with pytest.raises(OSError):
+        client._auto_receive_remote_files()
+    assert client._last_remembered_item() is None
+    assert client._auto_receive_remote_files() == copies[-1]
+    assert len(downloads) == len(notifications) == 1
+    assert client._last_remembered_item() == "new"
+
+
+def test_interrupted_bundle_removes_partial_downloads(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    def member(item_id, index):
+        if index == 1:
+            raise requests.ConnectionError("interrupted")
+        return "one.txt", b"one"
+    monkeypatch.setattr(client, "fetch_bundle_member", member)
+    bundle = {"id": "group", "type": "bundle", "files": [{"index": 0}, {"index": 1}]}
+    with pytest.raises(requests.ConnectionError):
+        client.save_remote_files(bundle)
+    assert list(Path(client.RECEIVED_DIR).iterdir()) == []
+
+
+def test_same_file_path_with_new_content_changes_clipboard_key(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    path = tmp_path / "notes.txt"
+    path.write_bytes(b"old")
+    before = client._file_clipboard_key([path])
+    path.write_bytes(b"updated")
+    assert client._file_clipboard_key([path]) != before
+
+
+def test_manual_receive_does_not_reupload_and_failed_copy_is_not_remembered(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    item = {"id": "manual-text", "type": "text", "text": "received"}
+    monkeypatch.setattr(client, "set_clipboard_text", lambda text: (_ for _ in ()).throw(OSError("busy")))
+    with pytest.raises(OSError):
+        client._copy_remote_item(item)
+    assert client._last_remembered_item() is None
+    monkeypatch.setattr(client, "set_clipboard_text", lambda text: None)
+    assert client._copy_remote_item(item)
+    assert client._take_local_upload_marker() == ("text", "received")
+
+
+@pytest.mark.parametrize("operation", ["upload", "receive"])
+def test_sync_retries_transient_clipboard_or_upload_failure(tmp_path, monkeypatch, operation):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(auto_sync=True, auto_receive_files=False, monitor_clipboard=False)
+    class TwoIterations:
+        count = 0
+        def is_set(self): return self.count >= 2
+        def wait(self, timeout): self.count += 1
+    attempts, pulls = [], []
+    def attempt(value):
+        attempts.append(value)
+        if len(attempts) == 1:
+            raise OSError("temporarily unavailable")
+        return "uploaded"
+    monkeypatch.setattr(client, "stop_event", TwoIterations())
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "local" if operation == "upload" else "")
+    monkeypatch.setattr(client, "push_text", attempt)
+    monkeypatch.setattr(client, "set_clipboard_text", attempt)
+    def poll(known_id):
+        pulls.append(known_id)
+        return {"id": "remote", "type": "text", "text": "remote"} if operation == "receive" else {"type": "empty"}
+    monkeypatch.setattr(client, "poll_latest", poll)
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: None)
+    client.sync_loop()
+    assert len(attempts) == 2
+    if operation == "upload":
+        assert len(pulls) == 1  # failed local upload must not be overwritten remotely
+    else:
+        assert client._last_remembered_item() == "remote"
+
+
+def test_unsupported_image_is_received_as_original_file(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    copied = []
+    raw = b'<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+    monkeypatch.setattr(client, "set_clipboard_files", lambda paths: copied.extend(paths))
+    item = {"id": "svg", "type": "image", "filename": "drawing.svg",
+            "data": base64.b64encode(raw).decode("ascii")}
+    assert client._copy_remote_item(item) == "file"
+    assert Path(copied[0]).read_bytes() == raw
+    assert Path(copied[0]).suffix == ".svg"
+    assert client._take_local_upload_marker()[0] == "files"
+
+
+def test_long_unicode_filenames_are_safe_and_collisions_preserve_both_files(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    name = "\U0001f600" * 200 + ".shortcut"
+    first = Path(client.save_received(name, b"first"))
+    second = Path(client.save_received(name, b"second"))
+    assert first != second
+    assert first.suffix == second.suffix == ".shortcut"
+    assert first.read_bytes() == b"first"
+    assert second.read_bytes() == b"second"
+    assert len(str(second).encode("utf-16-le")) // 2 < 260
+
+
+def test_embedded_server_preserves_line_endings_utf32_and_literal_percent_names(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    text = "line1\r\nline2\rline3\n\u96ea"
+    for encoding in ("utf-8", "utf-16", "utf-32"):
+        assert client._host_decode_text(text.encode(encoding), "text/plain") == text
+    saved = client._host_add("text", text)
+    assert client._host_with_content(saved)["text"] == text
+    assert (Path(client.HOST_ITEMS) / saved["file"]).read_bytes() == text.encode("utf-8")
+    assert not Path(client.HOST_INDEX + ".tmp").exists()
+
+
+def test_whitespace_text_can_be_sent_manually(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    sent = []
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "\t \r\n ")
+    monkeypatch.setattr(client, "push_text", lambda text: sent.append(text))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: None)
+    client.action_send_clipboard()
+    assert sent == ["\t \r\n "]
+
+
+def test_unchanged_clipboard_skips_repeated_bitmap_reads(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    reads = []
+    client.config.update(auto_sync=False, auto_receive_files=False, monitor_clipboard=True)
+    class TwoIterations:
+        count = 0
+        def is_set(self): return self.count >= 2
+        def wait(self, timeout): self.count += 1
+    monkeypatch.setattr(client, "stop_event", TwoIterations())
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: 123)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: reads.append(1))
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "")
+    client.sync_loop()
+    assert reads == [1]
+
+
+def test_unicode_token_uses_encoded_url_not_invalid_header(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["token"] = "\u96ea-\U0001f511"
+    assert client.auth_headers() == {}
+    assert client.auth_params()["token"] == client.config["token"]

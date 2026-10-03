@@ -32,7 +32,7 @@ Example with a token (PowerShell):
 
 from flask import Flask, request, jsonify, Response, send_file, redirect, session, g
 from markupsafe import escape
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
 from werkzeug.http import parse_options_header
 from urllib.parse import quote, unquote
 import base64
@@ -51,7 +51,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.4"
+SERVER_VERSION = "1.0.5"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -133,7 +133,7 @@ if os.name != "nt":
         pass
 app.permanent_session_lifetime = timedelta(days=3650)  # keep the device logged in ~10 years
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 
 # ---------- Accounts / per-request data location ----------
@@ -163,7 +163,9 @@ def _use_account(name):
 
 def _same_secret(first, second):
     """Compare user-provided secrets without early-exit timing differences."""
-    return hmac.compare_digest(str(first or ""), str(second or ""))
+    return hmac.compare_digest(
+        str(first or "").encode("utf-8"), str(second or "").encode("utf-8")
+    )
 
 
 # ---------- Index / history management ----------
@@ -234,7 +236,7 @@ def _meta(entry):
 def _read_text(entry):
     path = os.path.join(_items_dir(), entry["file"])
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", newline="") as f:
             return f.read()
     return ""
 
@@ -264,7 +266,7 @@ def _latest_of(types):
 def _add_text(text):
     entry_id = uuid.uuid4().hex[:12]
     fname = entry_id + ".txt"
-    with open(os.path.join(_items_dir(), fname), "w", encoding="utf-8") as f:
+    with open(os.path.join(_items_dir(), fname), "w", encoding="utf-8", newline="") as f:
         f.write(text)
     entry = {
         "id": entry_id,
@@ -432,7 +434,9 @@ def _decode_text_bytes(raw, allow_legacy=False):
     candidates = []
     if charset:
         candidates.append(charset)
-    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+    if raw.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        candidates.append("utf-32")
+    elif raw.startswith((b"\xff\xfe", b"\xfe\xff")):
         candidates.append("utf-16")
     candidates.extend(("utf-8-sig", "utf-8"))
     if allow_legacy:
@@ -476,7 +480,7 @@ def _request_filename():
     for parameter in ("filename", "file_name", "name"):
         value = request.args.get(parameter)
         if value:
-            return _clean_filename(unquote(value, encoding="utf-8", errors="replace"))
+            return _clean_filename(value)
 
     for header in ("X-Filename", "X-File-Name", "X-Clipboard-Filename"):
         value = request.headers.get(header)
@@ -504,7 +508,7 @@ def _request_filename():
 def _get_posted_text():
     """Accept JSON, common form fields or raw UTF text."""
     if request.is_json:
-        return _json_as_text(request.get_json(silent=True))
+        return _json_as_text(request.get_json())
     form_value = _form_text()
     if form_value is not None:
         return form_value
@@ -736,6 +740,11 @@ def _set_response_headers(response):
     return response
 
 
+@app.errorhandler(BadRequest)
+def _bad_request(_error):
+    return jsonify({"error": "invalid request or JSON body"}), 400
+
+
 @app.errorhandler(RequestEntityTooLarge)
 def _upload_too_large(_error):
     return jsonify({
@@ -905,10 +914,11 @@ def file_latest():
 @app.route("/clipboard/latest", methods=["GET"])
 def latest_any():
     """Latest item of any type, content included."""
-    index = _load_index()
-    if not index:
-        return jsonify({"type": "empty"})
-    return jsonify(_entry_with_content(index[0]))
+    with _lock:
+        index = _load_index()
+        if not index:
+            return jsonify({"type": "empty"})
+        return jsonify(_entry_with_content(index[0]))
 
 
 @app.route("/clipboard/latest/meta", methods=["GET"])
@@ -921,10 +931,11 @@ def latest_meta():
 @app.route("/clipboard/latest/raw", methods=["GET"])
 def latest_raw():
     """Latest item (any type) as raw content: text or binary file."""
-    index = _load_index()
-    if not index:
-        return Response("", content_type="text/plain; charset=utf-8")
-    return _raw_item_response(index[0])
+    with _lock:
+        index = _load_index()
+        if not index:
+            return Response("", content_type="text/plain; charset=utf-8")
+        return _raw_item_response(index[0])
 
 
 @app.route("/clipboard/raw", methods=["GET"])
@@ -943,7 +954,7 @@ def push_any():
         if filename:
             e = _add_binary(request.get_data(cache=True), filename, _clean_mime(request.content_type))
             return jsonify({"status": "ok", "id": e["id"], "type": e["type"]})
-        d = request.get_json(silent=True)
+        d = request.get_json()
         if isinstance(d, dict) and "data" in d:
             raw, fn, mime = _extract_upload()
             if raw is None:
@@ -1026,32 +1037,34 @@ def history():
 
 @app.route("/clipboard/item/<item_id>", methods=["GET", "DELETE"])
 def item(item_id):
-    e = next((x for x in _load_index() if x["id"] == item_id), None)
-    if not e:
-        return jsonify({"error": "not found"}), 404
-    if request.method == "DELETE":
-        with _lock:
+    with _lock:
+        e = next((x for x in _load_index() if x["id"] == item_id), None)
+        if not e:
+            return jsonify({"error": "not found"}), 404
+        if request.method == "DELETE":
             index = [x for x in _load_index() if x["id"] != item_id]
             _save_index(index)
-        _delete_entry_files(e)
-        return jsonify({"status": "deleted"})
-    return jsonify(_entry_with_content(e))
+            _delete_entry_files(e)
+            return jsonify({"status": "deleted"})
+        return jsonify(_entry_with_content(e))
 
 
 @app.route("/clipboard/item/<item_id>/raw", methods=["GET"])
 def item_raw(item_id):
-    e = next((x for x in _load_index() if x["id"] == item_id), None)
-    if not e:
-        return jsonify({"error": "not found"}), 404
-    return _raw_item_response(e)
+    with _lock:
+        e = next((x for x in _load_index() if x["id"] == item_id), None)
+        if not e:
+            return jsonify({"error": "not found"}), 404
+        return _raw_item_response(e)
 
 
 @app.route("/clipboard/item/<item_id>/file/<int:member_index>/raw", methods=["GET"])
 def item_bundle_file_raw(item_id, member_index):
-    e = next((x for x in _load_index() if x["id"] == item_id), None)
-    if not e:
-        return jsonify({"error": "not found"}), 404
-    return _bundle_member_response(e, member_index)
+    with _lock:
+        e = next((x for x in _load_index() if x["id"] == item_id), None)
+        if not e:
+            return jsonify({"error": "not found"}), 404
+        return _bundle_member_response(e, member_index)
 
 
 # ---------- Diagnostics ----------

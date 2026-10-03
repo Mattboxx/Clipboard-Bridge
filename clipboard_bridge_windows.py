@@ -460,19 +460,24 @@ def server_url():
     return f"http://{config['server_ip']}:{config['server_port']}"
 
 
-def auth_headers():
-    return {"X-Auth-Token": config["token"]} if config.get("token") else {}
+def auth_headers(settings=None):
+    token = str((settings or config).get("token", ""))
+    return {"X-Auth-Token": token} if token and token.isascii() else {}
 
 
-def auth_params(extra=None):
+def auth_params(extra=None, settings=None):
     # When a server account is configured, append ?user=&password= so the
     # server routes the request to that account (ignored by the shared space
     # and by the built-in server). Optionally merge extra query params.
     p = dict(extra) if extra else {}
-    user = config.get("username", "").strip()
+    values = settings or config
+    user = values.get("username", "").strip()
     if user:
         p["user"] = user
-        p["password"] = config.get("password", "")
+        p["password"] = values.get("password", "")
+    token = str(values.get("token", ""))
+    if token and not token.isascii():
+        p["token"] = token  # query encoding supports secrets beyond HTTP's ASCII headers
     return p
 
 
@@ -526,13 +531,8 @@ def check_connection(settings=None):
     else:
         target = f"http://{values.get('server_ip', '127.0.0.1')}:{values.get('server_port', 5088)}"
 
-    params = {"limit": 1}
-    user = str(values.get("username", "")).strip()
-    if user:
-        params["user"] = user
-        params["password"] = values.get("password", "")
-    token = str(values.get("token", "")).strip()
-    headers = {"X-Auth-Token": token} if token else {}
+    params = auth_params({"limit": 1}, values)
+    headers = auth_headers(values)
 
     _set_connection_state("checking", target)
     try:
@@ -608,6 +608,13 @@ def get_clipboard_text():
         return pyperclip.paste()
     except Exception:
         return ""
+
+
+def _clipboard_sequence():
+    try:
+        return ctypes.windll.user32.GetClipboardSequenceNumber()
+    except (AttributeError, OSError):
+        return None
 
 
 def set_clipboard_text(text):
@@ -740,13 +747,22 @@ def image_to_png(img):
 
 def _img_hash(img):
     try:
-        return hashlib.md5(img.tobytes()).hexdigest()
+        rgb = img.convert("RGB")
+        return hashlib.sha256(str(rgb.size).encode("ascii") + rgb.tobytes()).hexdigest()
     except Exception:
         return None
 
 
 def _file_clipboard_key(paths):
-    return tuple(os.path.normcase(os.path.abspath(path)) for path in paths)
+    result = []
+    for path in paths:
+        path = os.path.normcase(os.path.abspath(path))
+        try:
+            info = os.stat(path)
+            result.append((path, info.st_size, info.st_mtime_ns))
+        except OSError:
+            result.append((path, None, None))
+    return tuple(result)
 
 
 def _set_local_upload_marker(kind, value):
@@ -776,14 +792,21 @@ def save_received(filename, raw):
     }:
         name = "_" + name
         stem, ext = os.path.splitext(name)
-    dest = os.path.join(RECEIVED_DIR, name)
-    i = 1
-    while os.path.exists(dest):
-        dest = os.path.join(RECEIVED_DIR, f"{stem} ({i}){ext}")
-        i += 1
-    with open(dest, "wb") as f:
-        f.write(raw)
-    return dest
+    # Leave room for the download directory and collision suffix on Windows.
+    budget = max(40, min(180, 240 - len(RECEIVED_DIR.encode("utf-16-le")) // 2))
+    ext = ext.encode("utf-16-le")[:64].decode("utf-16-le", errors="ignore")
+    stem_budget = max(8, budget - len(ext.encode("utf-16-le")) // 2 - 16)
+    stem = stem.encode("utf-16-le")[:stem_budget * 2].decode("utf-16-le", errors="ignore")
+    i = 0
+    while True:
+        suffix = f" ({i})" if i else ""
+        dest = os.path.join(RECEIVED_DIR, f"{stem}{suffix}{ext}")
+        try:
+            with open(dest, "xb") as f:
+                f.write(raw)
+            return dest
+        except FileExistsError:
+            i += 1
 
 
 def reveal_received_file(path):
@@ -884,6 +907,21 @@ def pull_latest():
         return r.json()
 
 
+def poll_latest(known_id):
+    """Poll small metadata; download content only when the latest ID changes."""
+    with _remote_activity_lock:
+        r = requests.get(f"{server_url()}/clipboard/latest/meta",
+                         headers=auth_headers(), params=auth_params(), timeout=5)
+        if r.status_code in (404, 405):
+            return pull_latest()  # compatibility with older servers
+        r.raise_for_status()
+        metadata = r.json()
+        if (not metadata.get("id") or metadata["id"] == known_id
+                or metadata.get("type") in ("file", "bundle")):
+            return metadata
+        return fetch_item(metadata["id"])
+
+
 def fetch_history(limit=100):
     with _remote_activity_lock:
         r = requests.get(f"{server_url()}/clipboard/history",
@@ -918,15 +956,43 @@ def fetch_bundle_member(item_id, member_index):
 
 
 def save_remote_files(item):
-    if item.get("type") == "bundle":
+    with _remote_activity_lock:
+        key, item_id = _sync_source_key(), item.get("id")
+        with _sync_state_lock:
+            saved = _load_sync_state().get("downloads", {}).get(key, {}).get(item_id, [])
+        if saved and all(os.path.isfile(path) for path in saved):
+            return saved
         paths = []
-        for member in item.get("files", []):
-            filename, raw = fetch_bundle_member(item["id"], member.get("index", 0))
-            paths.append(save_received(member.get("filename") or filename, raw))
-        return paths
-    if item.get("type") == "file" and item.get("data"):
-        return [save_received(item.get("filename", "file.bin"), base64.b64decode(item["data"]))]
-    return []
+        try:
+            if item.get("type") == "bundle":
+                for member in item.get("files", []):
+                    filename, raw = fetch_bundle_member(item_id, member.get("index", 0))
+                    paths.append(save_received(member.get("filename") or filename, raw))
+            elif item.get("type") == "file":
+                if "data" in item:
+                    raw = base64.b64decode(item["data"])
+                else:
+                    r = requests.get(f"{server_url()}/clipboard/item/{item_id}/raw",
+                                     headers=auth_headers(), params=auth_params(), timeout=60)
+                    r.raise_for_status()
+                    raw = r.content
+                paths.append(save_received(item.get("filename", "file.bin"), raw))
+            if paths and item_id:
+                with _sync_state_lock:
+                    state = _load_sync_state()
+                    downloads = state.setdefault("downloads", {}).setdefault(key, {})
+                    downloads[item_id] = paths
+                    state["downloads"][key] = dict(list(downloads.items())[-500:])
+                    _save_sync_state(state)
+            return paths
+        except Exception:
+            # An interrupted group must not leave half a group or duplicate files on retry.
+            for path in paths:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+            raise
 
 
 def _sync_source_key():
@@ -959,13 +1025,14 @@ def _save_sync_state(state):
     os.replace(temp, SYNC_STATE_FILE)
 
 
-def _remember_item(item_id, *, file_seen=False, suppress_notification=False):
+def _remember_item(item_id, *, file_seen=False, suppress_notification=False, update_latest=True):
     if not item_id:
         return
     with _sync_state_lock:
         state = _load_sync_state()
         key = _sync_source_key()
-        state.setdefault("latest_items", {})[key] = item_id
+        if update_latest:
+            state.setdefault("latest_items", {})[key] = item_id
         if file_seen:
             sources = state.setdefault("sources", {})
             seen = sources.setdefault(key, [])
@@ -981,7 +1048,7 @@ def _remember_item(item_id, *, file_seen=False, suppress_notification=False):
 
 
 def _mark_remote_file_seen(item_id):
-    _remember_item(item_id, file_seen=True)
+    _remember_item(item_id, file_seen=True, update_latest=False)
 
 
 def _mark_local_item_sent(item_id, file_item=False):
@@ -1033,16 +1100,17 @@ def _auto_receive_remote_files():
         seen = set(sources.get(key, []))
 
     new_items = [item for item in reversed(remote_files) if item["id"] not in seen]
+    latest = items[0] if items else {}
     clipboard_paths = []
     for item in new_items:
-        full = fetch_item(item["id"])
-        paths = save_remote_files(full)
+        paths = save_remote_files(item)
         if not paths:
             _mark_remote_file_seen(item["id"])
             continue
         record_local_files(paths)
         _mark_remote_file_seen(item["id"])
-        clipboard_paths = paths
+        if item["id"] == latest.get("id"):
+            clipboard_paths = paths
         message = (
             t("files_arrived", n=len(paths)) if len(paths) > 1
             else t("file_arrived", name=os.path.basename(paths[0]))
@@ -1055,8 +1123,16 @@ def _auto_receive_remote_files():
                 else (lambda path=paths[0]: reveal_received_file(path))
             ),
         )
+    # Retry a busy clipboard using the saved files, without downloading/notifying twice.
+    if latest.get("type") in ("file", "bundle") and latest.get("id") != _last_remembered_item():
+        with _sync_state_lock:
+            saved = _load_sync_state().get("downloads", {}).get(key, {}).get(latest["id"], [])
+        if saved and all(os.path.isfile(path) for path in saved):
+            clipboard_paths = saved
     if clipboard_paths:
         set_clipboard_files(clipboard_paths)
+        _set_local_upload_marker("files", _file_clipboard_key(clipboard_paths))
+        _remember_item(latest.get("id"))
     return clipboard_paths
 
 
@@ -1080,8 +1156,10 @@ def _host_load():
 
 def _host_save(index):
     os.makedirs(HOST_ITEMS, exist_ok=True)
-    with open(HOST_INDEX, "w", encoding="utf-8") as f:
+    temp = HOST_INDEX + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
+    os.replace(temp, HOST_INDEX)
 
 
 def _host_meta(e):
@@ -1107,7 +1185,7 @@ def _host_with_content(e):
         return out
     path = os.path.join(HOST_ITEMS, e["file"])
     if e["type"] == "text":
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", newline="") as f:
             out["text"] = f.read()
     else:
         with open(path, "rb") as f:
@@ -1146,7 +1224,9 @@ def _host_decode_text(raw, content_type="", allow_legacy=False):
     candidates = []
     if message.get_content_charset():
         candidates.append(message.get_content_charset())
-    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+    if raw.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        candidates.append("utf-32")
+    elif raw.startswith((b"\xff\xfe", b"\xfe\xff")):
         candidates.append("utf-16")
     candidates.extend(("utf-8-sig", "utf-8"))
     if allow_legacy:
@@ -1239,7 +1319,7 @@ def _host_add(kind, payload, filename=None, mime=None):
     iid = uuid.uuid4().hex[:12]
     if kind == "text":
         fn = iid + ".txt"
-        with open(os.path.join(HOST_ITEMS, fn), "w", encoding="utf-8") as f:
+        with open(os.path.join(HOST_ITEMS, fn), "w", encoding="utf-8", newline="") as f:
             f.write(payload)
         entry = {"id": iid, "type": "text", "timestamp": _now(), "file": fn, "filename": None,
                  "mime": "text/plain", "size": len(payload.encode("utf-8")), "preview": payload[:140]}
@@ -1411,7 +1491,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             )
         path = os.path.join(HOST_ITEMS, e["file"])
         if e["type"] == "text":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8", newline="") as f:
                 self._send(
                     200,
                     f.read().encode("utf-8"),
@@ -1485,7 +1565,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 for key in ("filename", "file_name", "name"):
                     value = query.get(key, [""])[0]
                     if value:
-                        filename = _host_clean_filename(unquote(value))
+                        filename = _host_clean_filename(value)
                         break
             multipart = (
                 _host_multipart(body, content_type)
@@ -1788,7 +1868,7 @@ def action_send_clipboard(icon=None, item=None):
             notify(t("image_sent"))
             return
         text = get_clipboard_text()
-        if text and text.strip():
+        if text:
             push_text(text)
             record_local_text(text)
             notify(t("text_sent"))
@@ -1798,26 +1878,53 @@ def action_send_clipboard(icon=None, item=None):
         notify(t("send_err", e=e))
 
 
+def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
+    """Remember a receive only after Windows actually accepts the clipboard data."""
+    kind = data.get("type")
+    if kind == "text":
+        value = data.get("text", "")
+        set_clipboard_text(value)
+        _set_local_upload_marker("text", value)
+    elif kind == "image":
+        try:
+            image = Image.open(io.BytesIO(base64.b64decode(data["data"])))
+            image.load()
+        except (OSError, ValueError):
+            # Preserve unsupported image formats (e.g. SVG/HEIC) as original files.
+            data = dict(data, type="file")
+            kind = "file"
+            paths = save_remote_files(data)
+            set_clipboard_files(paths)
+            _set_local_upload_marker("files", _file_clipboard_key(paths))
+        else:
+            set_clipboard_image(image)
+            restored = get_clipboard_image()
+            _set_local_upload_marker("image", _img_hash(restored if restored is not None else image))
+    elif kind in ("file", "bundle"):
+        paths = save_remote_files(data)
+        set_clipboard_files(paths)
+        _set_local_upload_marker("files", _file_clipboard_key(paths))
+    else:
+        return False
+    _remember_item(data.get("id"), file_seen=kind in ("file", "bundle"),
+                   suppress_notification=suppress_notification, update_latest=update_latest)
+    return kind
+
+
 def action_get_latest(icon=None, item=None):
     try:
         with _remote_activity_lock:
             data = pull_latest()
             kind = data.get("type")
-            _remember_item(
-                data.get("id"),
-                file_seen=kind in ("file", "bundle"),
-                suppress_notification=True,
-            )
+            kind = _copy_remote_item(data)
+            if kind == "file" and data.get("type") == "image":
+                data = dict(data, type="file")
         if kind == "text":
-            set_clipboard_text(data.get("text", ""))
             notify_received("text", t("text_recv"))
         elif kind == "image":
-            raw = base64.b64decode(data["data"])
-            set_clipboard_image(Image.open(io.BytesIO(raw)))
             notify_received("image", t("image_recv"))
         elif kind == "file":
             paths = save_remote_files(data)
-            set_clipboard_files(paths)
             record_local_files(paths)
             notify_received(
                 "file",
@@ -1826,7 +1933,6 @@ def action_get_latest(icon=None, item=None):
             )
         elif kind == "bundle":
             paths = save_remote_files(data)
-            set_clipboard_files(paths)
             record_local_files(paths)
             notify_received(
                 "file",
@@ -1867,13 +1973,16 @@ def sync_loop():
     last_text = last_img = last_files = last_server = None
     active_source = None
     next_connection_check = 0
+    last_sequence = None
     while not stop_event.is_set():
         try:
+            upload_failed = False
             source = _sync_source_key()
             if source != active_source:
                 active_source = source
                 last_server = _last_remembered_item()
                 last_text = last_img = last_files = None
+                last_sequence = None
 
             marker = _take_local_upload_marker()
             if marker:
@@ -1889,35 +1998,27 @@ def sync_loop():
                 check_connection()
                 next_connection_check = time.monotonic() + 15
 
-            if config.get("auto_receive_files", True):
-                try:
-                    received = _auto_receive_remote_files()
-                    if received:
-                        # The clipboard change came from the server. Treat it as
-                        # already seen so auto-sync does not upload it again.
-                        last_files = _file_clipboard_key(received)
-                        last_text = last_img = None
-                except Exception:
-                    pass
-
-            if config.get("monitor_clipboard") or config.get("auto_sync"):
+            sequence = _clipboard_sequence()
+            files_changed = last_files and _file_clipboard_key([entry[0] for entry in last_files]) != last_files
+            if ((config.get("monitor_clipboard") or config.get("auto_sync"))
+                    and (sequence is None or sequence != last_sequence or files_changed)):
                 files = get_clipboard_files()
                 if files:
                     key = _file_clipboard_key(files)
                     if key != last_files:
-                        last_files, last_text, last_img = key, None, None
                         record_local_files(files)
                         if config.get("auto_sync"):
                             try:
-                                push_files(files)
+                                last_server = push_files(files) or last_server
                             except Exception:
-                                pass
+                                upload_failed = True
+                        if not upload_failed:
+                            last_files, last_text, last_img = key, None, None
                 else:
                     img = get_clipboard_image()
                     if img is not None:
                         h = _img_hash(img)
                         if h and h != last_img:
-                            last_img, last_text, last_files = h, None, None
                             record_local_image(img)
                             if config.get("auto_sync"):
                                 try:
@@ -1925,11 +2026,12 @@ def sync_loop():
                                     if sent_id:
                                         last_server = sent_id
                                 except Exception:
-                                    pass
+                                    upload_failed = True
+                            if not upload_failed:
+                                last_img, last_text, last_files = h, None, None
                     else:
                         text = get_clipboard_text()
                         if text and text != last_text:
-                            last_text, last_img, last_files = text, None, None
                             record_local_text(text)
                             if config.get("auto_sync"):
                                 try:
@@ -1937,27 +2039,49 @@ def sync_loop():
                                     if sent_id:
                                         last_server = sent_id
                                 except Exception:
-                                    pass
+                                    upload_failed = True
+                            if not upload_failed:
+                                last_text, last_img, last_files = text, None, None
+                if not upload_failed:
+                    last_sequence = sequence
 
-            if config.get("auto_sync"):
+            if config.get("auto_receive_files", True) and not upload_failed:
                 try:
-                    data = pull_latest()
+                    received = _auto_receive_remote_files()
+                    if received:
+                        last_files = _file_clipboard_key(received)
+                        last_text = last_img = None
+                        last_server = _last_remembered_item()
+                except Exception:
+                    pass
+
+            if config.get("auto_sync") and not upload_failed:
+                try:
+                    data = poll_latest(last_server)
                     sid = data.get("id")
                     if sid and sid != last_server:
-                        last_server = sid
                         suppress = _consume_silent_item(sid)
                         if not suppress and data.get("type") == "text":
                             txt = data.get("text", "")
-                            set_clipboard_text(txt)
-                            last_text = txt
+                            _copy_remote_item(data, suppress_notification=False)
+                            last_text, last_img, last_files = txt, None, None
                             notify_received("text", t("text_arrived"))
                         elif not suppress and data.get("type") == "image":
-                            raw = base64.b64decode(data["data"])
-                            im = Image.open(io.BytesIO(raw))
-                            set_clipboard_image(im)
-                            rb = get_clipboard_image()
-                            last_img = _img_hash(rb) if rb is not None else _img_hash(im)
-                            notify_received("image", t("image_arrived"))
+                            copied_kind = _copy_remote_item(data, suppress_notification=False)
+                            marker = _take_local_upload_marker()
+                            if copied_kind == "image":
+                                last_img, last_text, last_files = marker[1], None, None
+                                notify_received("image", t("image_arrived"))
+                            else:
+                                last_files, last_text, last_img = marker[1], None, None
+                                notify_received("file", t("file_arrived", name=data.get("filename", "image")),
+                                                action=lambda: open_received_folder())
+                        elif not suppress and data.get("type") in ("file", "bundle"):
+                            if config.get("auto_receive_files", True):
+                                _copy_remote_item(data)
+                                last_files = _file_clipboard_key(save_remote_files(data))
+                                last_text = last_img = None
+                        last_server = sid
                         _remember_item(sid)
                 except Exception:
                     pass
@@ -2030,18 +2154,13 @@ def open_history_window(icon=None, item=None):
             try:
                 with _remote_activity_lock:
                     full = fetch_item(it["id"])
-                    _remember_item(
-                        full.get("id"),
-                        file_seen=full.get("type") in ("file", "bundle"),
-                        suppress_notification=True,
-                    )
+                    _copy_remote_item(full, update_latest=False)
                 if full.get("type") == "text":
-                    set_clipboard_text(full.get("text", "")); notify(t("copied"))
+                    notify(t("copied"))
                 elif full.get("type") == "image":
-                    set_clipboard_image(Image.open(io.BytesIO(base64.b64decode(full["data"])))); notify(t("copied"))
+                    notify(t("copied"))
                 elif full.get("type") in ("file", "bundle"):
                     paths = save_remote_files(full)
-                    set_clipboard_files(paths)
                     record_local_files(paths)
                     notify_received(
                         "file",
@@ -2066,8 +2185,9 @@ def open_history_window(icon=None, item=None):
 
         def work():
             try:
-                requests.delete(f"{server_url()}/clipboard/item/{item_id}",
-                                headers=auth_headers(), params=auth_params(), timeout=5)
+                response = requests.delete(f"{server_url()}/clipboard/item/{item_id}",
+                                           headers=auth_headers(), params=auth_params(), timeout=5)
+                response.raise_for_status()
                 ui_q.put(srv_refresh)
             except Exception as e:
                 notify(t("recv_err", e=e))
@@ -2703,7 +2823,10 @@ def _release_single_instance():
     global _instance_mutex
     if os.name == "nt" and _instance_mutex:
         try:
-            ctypes.windll.kernel32.CloseHandle(_instance_mutex)
+            close_handle = ctypes.WinDLL("kernel32", use_last_error=True).CloseHandle
+            close_handle.argtypes = (wintypes.HANDLE,)
+            close_handle.restype = wintypes.BOOL
+            close_handle(_instance_mutex)
         except Exception:
             pass
     _instance_mutex = None

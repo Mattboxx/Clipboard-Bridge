@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from flask.testing import FlaskClient
 
 
 SERVER_FILE = Path(__file__).resolve().parents[1] / "clipboard_bridge-Server.py"
@@ -27,6 +28,11 @@ def server(tmp_path, monkeypatch):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     module.app.config.update(TESTING=True)
+    class BufferedClient(FlaskClient):
+        def open(self, *args, **kwargs):
+            kwargs.setdefault("buffered", True)
+            return super().open(*args, **kwargs)
+    module.app.test_client_class = BufferedClient
     yield module
     sys.modules.pop(module_name, None)
 
@@ -478,4 +484,88 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.4"
+    assert response.get_json()["version"] == "1.0.5"
+
+
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-16", "utf-32"])
+def test_unicode_text_and_line_endings_round_trip_exactly(server, encoding):
+    client = server.app.test_client()
+    text = "A\r\nB\rC\n\t  \u96ea\U0001f600\x00"
+    saved = client.post("/clipboard?token=shared-token", data=text.encode(encoding),
+                        content_type="text/plain")
+    assert saved.status_code == 200
+    assert client.get("/clipboard/latest/raw?token=shared-token").data == text.encode("utf-8")
+    assert client.get("/clipboard/latest?token=shared-token").get_json()["text"] == text
+
+
+def test_unicode_password_and_token_are_supported(server):
+    server.ACCOUNTS["unicode"] = "caff\u00e8-\u96ea-\U0001f511"
+    server.AUTH_TOKEN = "tok\u00e9n-\u96ea"
+    client = server.app.test_client()
+    assert client.post("/clipboard", query_string={"user": "unicode", "password": server.ACCOUNTS["unicode"]},
+                       json="private").status_code == 200
+    assert client.get("/clipboard/history", query_string={"token": server.AUTH_TOKEN}).status_code == 200
+    assert client.get("/clipboard/history", query_string={"user": "unicode", "password": "wrong\u96ea"}).status_code == 401
+
+
+def test_url_filename_is_not_decoded_twice(server):
+    client = server.app.test_client()
+    response = client.post("/clipboard", query_string={"token": "shared-token", "filename": "literal%20name.shortcut"},
+                           data=b"test", content_type="application/octet-stream")
+    assert response.status_code == 200
+    latest = client.get("/clipboard/latest?token=shared-token").get_json()
+    assert latest["filename"] == "literal%20name.shortcut"
+
+
+@pytest.mark.parametrize("route", ["/clipboard", "/clipboard/text"])
+def test_malformed_json_does_not_replace_the_clipboard(server, route):
+    client = server.app.test_client()
+    client.post("/clipboard?token=shared-token", json="keep me")
+    response = client.post(route + "?token=shared-token", data=b"{not JSON", content_type="application/json")
+    assert response.status_code == 400
+    assert client.get("/clipboard/latest/raw?token=shared-token").data == b"keep me"
+
+
+def test_large_group_duplicate_names_and_zero_byte_members(server):
+    client = server.app.test_client()
+    uploads = [(io.BytesIO(bytes([n]) * n), "same.shortcut") for n in range(30)]
+    response = client.post("/clipboard?token=shared-token", data={"files": uploads})
+    assert response.status_code == 200
+    item_id = response.get_json()["id"]
+    history = client.get("/clipboard/history?token=shared-token").get_json()["items"]
+    assert len(history) == 1
+    assert history[0]["file_count"] == 30
+    for index in (0, 1, 29):
+        assert client.get(f"/clipboard/item/{item_id}/file/{index}/raw?token=shared-token").data == bytes([index]) * index
+    with zipfile.ZipFile(io.BytesIO(client.get("/clipboard/latest/raw?token=shared-token").data)) as zipped:
+        assert len(set(zipped.namelist())) == 30
+        assert zipped.read(zipped.namelist()[29]) == bytes([29]) * 29
+
+
+def test_concurrent_uploads_preserve_every_history_entry(server):
+    from concurrent.futures import ThreadPoolExecutor
+    server.MAX_HISTORY = 100
+    def post(number):
+        with server.app.test_client() as client:
+            response = client.post("/clipboard?token=shared-token", json={"text": str(number)})
+            assert response.status_code == 200
+            return response.get_json()["id"]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        ids = set(pool.map(post, range(32)))
+    history = server.app.test_client().get("/clipboard/history?token=shared-token").get_json()["items"]
+    assert {item["id"] for item in history} == ids
+
+
+def test_readers_and_history_trimming_do_not_race_deleted_files(server):
+    from concurrent.futures import ThreadPoolExecutor
+    server.MAX_HISTORY = 1
+    def exercise(number):
+        with server.app.test_client() as client:
+            saved = client.post("/clipboard?token=shared-token", data=bytes([number]),
+                                content_type="application/octet-stream").get_json()
+            for route in ("/clipboard/latest", "/clipboard/latest/raw",
+                          f"/clipboard/item/{saved['id']}", f"/clipboard/item/{saved['id']}/raw"):
+                response = client.get(route + "?token=shared-token")
+                assert response.status_code in (200, 404)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(exercise, range(32)))
