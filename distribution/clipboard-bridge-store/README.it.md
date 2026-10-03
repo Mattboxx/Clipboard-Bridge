@@ -48,7 +48,7 @@ Per proteggerla, modifica in ZimaOS le variabili dell’app:
 | Variabile | Funzione | Esempio |
 |---|---|---|
 | `CLIPBOARD_PASSWORD` | Password della pagina web | `cambia-questa-password` |
-| `CLIPBOARD_TOKEN` | Token per client Windows e iPhone | `cambia-questo-token` |
+| `CLIPBOARD_TOKEN` | Token per client Windows, Android e iPhone | `cambia-questo-token` |
 | `CLIPBOARD_ACCOUNTS` | Utenti isolati aggiuntivi | `alice:pass1,bob:pass2` |
 | `CLIPBOARD_MAX_HISTORY` | Elementi massimi nello storico | `200` |
 | `CLIPBOARD_MAX_UPLOAD_MB` | Dimensione massima di un upload in MB | `64` |
@@ -56,7 +56,7 @@ Per proteggerla, modifica in ZimaOS le variabili dell’app:
 La clipboard generale rimane sempre disponibile. Ogni account aggiuntivo ha
 cronologia e file separati.
 
-## Windows e iPhone
+## Windows, Android e iPhone
 
 Nel client Windows imposta:
 
