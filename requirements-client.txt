@@ -1,6 +1,6 @@
 # Windows client dependencies (not required when using a release executable)
 requests>=2.32,<3
-pyperclip>=1.9,<2
+pyperclip>=1.11.0,<2
 pystray>=0.19,<1
 pillow>=11,<13
 keyboard>=0.13,<1
