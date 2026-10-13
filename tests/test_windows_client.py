@@ -8,11 +8,30 @@ import io
 import socket
 import http.client
 import time
+import gc
+import tkinter
 from types import SimpleNamespace
 from pathlib import Path
 
 import requests
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def collect_gui_resources_on_test_thread():
+    yield
+    # Destroyed Tk windows can leave cycles; release them before HTTP workers run.
+    gc.collect()
+
+
+@pytest.fixture(scope="session")
+def tk_test_root():
+    # Match the app: one Tk interpreter, separate Toplevel windows for each view.
+    root = tkinter.Tk()
+    root.withdraw()
+    yield root
+    root.destroy()
+    gc.collect()
 
 
 @pytest.fixture()
@@ -298,11 +317,10 @@ def test_embedded_read_and_trim_are_serialized(embedded):
 
 
 @pytest.mark.parametrize("lang", ["en", "it"])
-def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang):
+def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_test_root):
     client = load_client(tmp_path, monkeypatch)
     client.config["lang"] = lang
-    app = client.tk.Tk()
-    app.withdraw()
+    app = tk_test_root
     monkeypatch.setattr(client, "_root", app)
     requests_seen = []
 
@@ -364,7 +382,8 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang):
         app.update()
         assert not window.winfo_exists()
     finally:
-        app.destroy()
+        for child in app.winfo_children():
+            child.destroy()
 
 
 def test_tray_left_click_opens_history_without_upload(tmp_path, monkeypatch):
@@ -378,11 +397,10 @@ def test_tray_left_click_opens_history_without_upload(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("lang", ["en", "it"])
-def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang):
+def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, tk_test_root):
     client = load_client(tmp_path, monkeypatch)
     client.config["lang"] = lang
-    app = client.tk.Tk()
-    app.withdraw()
+    app = tk_test_root
     monkeypatch.setattr(client, "_root", app)
     monkeypatch.setattr(client, "check_connection", lambda *args: True)
 
@@ -416,7 +434,8 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang):
         assert client.config["server_port"] == client.config["host_port"] == 5088
         assert any(isinstance(child, client.ttk.Label) and child.cget("text") == client.t("err_ports") for child in widgets)
     finally:
-        app.destroy()
+        for child in app.winfo_children():
+            child.destroy()
 
 
 def load_client(tmp_path, monkeypatch):
