@@ -8,11 +8,19 @@ import io
 import socket
 import http.client
 import time
+import gc
 from types import SimpleNamespace
 from pathlib import Path
 
 import requests
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def collect_gui_resources_on_test_thread():
+    yield
+    # Destroyed Tk windows can leave cycles; release them before HTTP workers run.
+    gc.collect()
 
 
 @pytest.fixture()
