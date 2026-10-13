@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.10 - 2026-10-13
+
+- Compact unified Windows history with at least 17 visible rows at its initial size.
+- Flat Server / This PC selector and sidebar Settings navigation instead of notebook tabs.
+- Thin draggable scrollbars without arrow buttons; native Windows checkbox indicators.
+- Explicit icon-and-text Refresh and Previous/Next buttons with higher contrast.
+- Optional preview pane; double-click or Enter to copy the selected item.
+- Copy local text, images and file groups directly, without having to send them first.
+- Dark appearance by default, with live Light/Dark preview and a saved preference.
+- Restore the saved appearance when cancelling Settings; keep open windows consistent.
+- Reopen existing History/Settings windows rather than creating duplicates.
+- Optional Ko-fi support link at the bottom of Windows Settings and the server web page, without popups.
+- Friendly support explanation and thank-you in the selected English/Italian language.
+- Visible Support navigation and donation section on the project website, including mobile.
+
+## Server 1.0.7 - 2026-10-13
+
+- Added a discreet Ko-fi support link in the web footer; no API, account or storage changes.
+
 ## 2.0.9 - 2026-10-13
 
 ### Added

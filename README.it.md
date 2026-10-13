@@ -5,7 +5,7 @@
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.9) |
+[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.10) |
 [App Store del server](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Guida completa](GUIDE.md)
 
@@ -64,24 +64,24 @@ l'ordine di arrivo.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
-| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.9](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.9.exe) | Installazione per l'utente corrente, senza account amministratore |
-| **Portable Windows** | [Clipboard Bridge 2.0.9 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Portable.Windows.x64.V2.0.9.exe) | Un solo eseguibile, nessuna installazione |
-| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
-| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
-| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
-| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
+| **Android 10+** | [APK Android 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
+| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.10.exe) | Installazione per l'utente corrente, senza account amministratore |
+| **Portable Windows** | [Clipboard Bridge 2.0.10 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Portable.Windows.x64.V2.0.10.exe) | Un solo eseguibile, nessuna installazione |
+| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
+| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
+| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
+| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
 
 L'app Android è attualmente una beta pubblica. La release contiene soltanto i download
 pronti all'uso e i due script Python principali. Gli sviluppatori possono clonare il
 repository per documentazione, test, file Docker e sorgenti completi.
 
-**Novità della 2.0.9:** cronologia Windows con tabella moderna, anteprima, ricerca,
-filtri e paginazione; impostazioni ridisegnate e scorrevoli. Gli invii in corso
-mantengono l'account originale anche cambiando le impostazioni. File mancanti nei
-gruppi ed errori di scrittura vengono gestiti senza perdere i dati precedenti.
-Il server 1.0.6 aggiunge ricerca e paginazione web. Gli endpoint Android e iPhone
-esistenti restano validi.
+**Novità della 2.0.10:** cronologia Windows compatta, selezione piatta Server / Questo PC,
+anteprima facoltativa, doppio clic per copiare e pulsanti con icona e testo leggibile.
+La modalità scura è predefinita; scegli Chiaro o Scuro in **Impostazioni → Generale → Aspetto**.
+Le impostazioni hanno una navigazione laterale e barre sottili senza frecce.
+Il server 1.0.7 aggiunge un collegamento Ko-fi discreto e bilingue. Account, dati ed
+endpoint Android e iPhone restano compatibili.
 
 > **Avviso download Windows:** gli eseguibili Windows non sono ancora firmati con un
 > certificato Authenticode pubblico. Defender o Smart App Control potrebbero mostrare un
@@ -166,7 +166,7 @@ direttamente dal server Clipboard Bridge selezionato.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
+1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -253,7 +253,7 @@ la voce del menu oppure la combinazione di tasti configurata nelle impostazioni.
 
 ![Cronologia Windows con ricerca, filtri e anteprima dell'elemento selezionato](docs/assets/windows-history.png)
 
-*Clipboard Bridge 2.0.9. Schermate reali con soli dati di esempio pubblici.*
+*Clipboard Bridge 2.0.10. Schermate reali con soli dati di esempio pubblici.*
 
 <table>
   <tr>
@@ -304,7 +304,7 @@ e file multipli senza chiedere quale tipo di contenuto si sta trasferendo.
 
 ### Inviare la clipboard attuale
 
-Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut)
+Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Load.Clipboard.shortcut)
 e imposta l'URL della richiesta:
 
 ```text
@@ -326,7 +326,7 @@ mostra le azioni necessarie; il testo continua a usare l'URL senza il parametro 
 
 ### Ricevere l'ultimo elemento
 
-Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut)
+Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Download.Clipboard.shortcut)
 e imposta:
 
 ```text
@@ -446,7 +446,7 @@ Consulta [SECURITY.md](SECURITY.md) prima di usare il server fuori da una LAN at
 
 ### Cronologia ricercabile
 
-Windows 2.0.9 e server 1.0.6 aggiungono ricerca, filtri per tipo e pagine precedenti/successive
+Windows 2.0.10 e server 1.0.7 aggiungono ricerca, filtri per tipo e pagine precedenti/successive
 alla cronologia del client Windows e alla pagina web del server indipendente.
 La ricerca riguarda anteprime testuali e nomi dei file, inclusi tutti i membri dei
 gruppi; non cerca dentro il contenuto completo dei documenti. Anche la cronologia
@@ -469,3 +469,10 @@ Le correzioni complete sono elencate nel [changelog](CHANGELOG.md).
 - Regole per contribuire: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 Clipboard Bridge è distribuito con [licenza MIT](LICENSE).
+
+### Sostieni il progetto
+
+Se Clipboard Bridge ti è utile, una donazione aiuta a mantenere e aggiornare il progetto.
+Grazie di cuore se scegli di contribuire!
+
+[Supporta su Ko-fi](https://ko-fi.com/mattboxx)

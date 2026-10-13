@@ -4,6 +4,7 @@ import io
 import sys
 import uuid
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,28 @@ from flask.testing import FlaskClient
 
 
 SERVER_FILE = Path(__file__).resolve().parents[1] / "clipboard_bridge-Server.py"
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_support_link_is_localized_and_does_not_leak_account_credentials(server, lang):
+    class Links(HTMLParser):
+        support = []
+        def handle_starttag(self, tag, attributes):
+            attrs = dict(attributes)
+            if tag == "a" and attrs.get("class") == "support-link":
+                self.support.append(attrs)
+
+    response = server.app.test_client().get("/", query_string={
+        "user": "alice", "password": "p&ss?word", "lang": lang})
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    parser = Links()
+    parser.feed(html)
+    assert len(parser.support) == 1
+    assert parser.support[0]["href"] == "https://ko-fi.com/mattboxx"
+    assert set(parser.support[0]["rel"].split()) == {"noopener", "noreferrer"}
+    assert server.WEB_STRINGS[lang]["support_note"] in html
+    assert server.WEB_STRINGS[lang]["support"] in html
 
 
 @pytest.fixture()
@@ -578,7 +601,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.6"
+    assert response.get_json()["version"] == "1.0.7"
 
 
 @pytest.mark.parametrize("encoding", ["utf-8", "utf-16", "utf-32"])
