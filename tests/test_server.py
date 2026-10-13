@@ -52,6 +52,100 @@ def test_shared_clipboard_and_security_headers(server):
     assert response.headers["Referrer-Policy"] == "no-referrer"
 
 
+def test_history_search_pagination_and_account_isolation(server):
+    server.MAX_HISTORY = 50
+    client = server.app.test_client()
+    token = "?token=shared-token"
+    for value in ("alpha", "report uno", "report due", "report tre"):
+        client.post("/clipboard" + token, data=value, content_type="text/plain")
+    client.post("/clipboard?user=bob&password=second", data="report private", content_type="text/plain")
+    page = client.get("/clipboard/history" + token + "&q=REPORT&type=text&limit=2").get_json()
+    assert [entry["preview"] for entry in page["items"]] == ["report tre", "report due"]
+    assert page["total"] == 3 and page["count"] == 2 and page["has_more"]
+    next_page = client.get("/clipboard/history" + token + "&q=report&limit=2&offset=2").get_json()
+    assert [entry["preview"] for entry in next_page["items"]] == ["report uno"]
+    assert not next_page["has_more"]
+    assert next_page["offset"] == 2
+    assert client.get("/clipboard/history" + token).get_json()["count"] == 4
+
+
+def test_history_searches_all_bundle_filenames(server):
+    client = server.app.test_client()
+    response = client.post("/clipboard?token=shared-token", data={
+        "files": [(io.BytesIO(b"one"), "first.pdf"), (io.BytesIO(b"two"), "second.pdf"),
+                  (io.BytesIO(b"three"), "third.pdf"), (io.BytesIO(b"four"), "Caffè.shortcut")],
+    }, content_type="multipart/form-data")
+    page = client.get("/clipboard/history?token=shared-token&q=caff%C3%A8&type=bundle").get_json()
+    assert [entry["id"] for entry in page["items"]] == [response.get_json()["id"]]
+
+
+@pytest.mark.parametrize("query", ["limit=-1", "limit=0", "limit=1001", "offset=-1", "limit=nope", "type=bad", "q=" + "x" * 201])
+def test_invalid_history_parameters_are_rejected(server, query):
+    assert server.app.test_client().get("/clipboard/history?token=shared-token&" + query).status_code == 400
+
+
+def test_web_history_search_and_next_page(server):
+    server.MAX_HISTORY = 30
+    client = server.app.test_client()
+    client.post("/login", data={"password": "shared-web-password"})
+    for index in range(25):
+        client.post("/clipboard", data=f"report {index}", content_type="text/plain")
+    page = client.get("/?q=report&type=text").get_data(as_text=True)
+    assert 'id="history"' in page and "25 results" in page
+    assert 'offset=20' in page and ">Next</a>" in page
+    page = client.get("/?q=report&type=text&offset=20&lang=it").get_data(as_text=True)
+    assert "25 risultati" in page and ">Precedenti</a>" in page
+    assert "report 0" in page
+
+
+@pytest.mark.parametrize("action", ["upload", "clear"])
+def test_failed_index_commit_keeps_existing_files(server, monkeypatch, action):
+    server.MAX_HISTORY = 1
+    client = server.app.test_client()
+    client.post("/clipboard?token=shared-token", json="keep me")
+    before = set((Path(server.DATA_DIR) / "items").iterdir())
+
+    def fail_save(index):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(server, "_save_index", fail_save)
+    with pytest.raises(OSError):
+        if action == "upload":
+            client.post("/clipboard?token=shared-token", json="new item")
+        else:
+            client.delete("/clipboard/history?token=shared-token")
+    assert set((Path(server.DATA_DIR) / "items").iterdir()) == before
+    assert client.get("/clipboard/latest/raw?token=shared-token").data == b"keep me"
+
+
+def test_partial_item_write_is_removed(server, monkeypatch):
+    real_open = open
+
+    class FailingWriter:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def write(self, payload):
+            self.stream.write(payload[:1])
+            raise OSError("disk full")
+
+    def failing_open(path, mode="r", *args, **kwargs):
+        stream = real_open(path, mode, *args, **kwargs)
+        return FailingWriter(stream) if mode == "wb" else stream
+
+    monkeypatch.setattr(server, "open", failing_open, raising=False)
+    with server.app.test_request_context():
+        with pytest.raises(OSError):
+            server._add_binary(b"payload", "file.pdf")
+    assert list((Path(server.DATA_DIR) / "items").iterdir()) == []
+
+
 def test_latest_item_follows_arrival_order_regardless_of_type(server):
     client = server.app.test_client()
     token = "?token=shared-token"
@@ -484,7 +578,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.5"
+    assert response.get_json()["version"] == "1.0.6"
 
 
 @pytest.mark.parametrize("encoding", ["utf-8", "utf-16", "utf-32"])

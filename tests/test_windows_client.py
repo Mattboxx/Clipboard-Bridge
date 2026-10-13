@@ -5,11 +5,418 @@ import os
 import threading
 import zipfile
 import io
+import socket
+import http.client
+import time
 from types import SimpleNamespace
 from pathlib import Path
 
 import requests
 import pytest
+
+
+@pytest.fixture()
+def embedded(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    server = client.http.server.ThreadingHTTPServer(("127.0.0.1", 0), client._SrvHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield client, server.server_address
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=5)
+
+
+def test_embedded_rejects_negative_bundle_member(embedded):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    entry = client._host_add_bundle([(b"first", "a.bin", None), (b"last", "b.bin", None)])
+    response = requests.get(base + f"/clipboard/item/{entry['id']}/file/-1/raw", timeout=5)
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("headers,body", [
+    (b"Content-Length: -1\r\n", b""),
+    (b"Content-Length: nope\r\n", b""),
+    (b"Content-Length: 10\r\n", b"short"),
+    (b"Content-Length: 3\r\nContent-Length: 3\r\n", b"abc"),
+])
+def test_embedded_rejects_invalid_or_incomplete_body(embedded, headers, body):
+    client, address = embedded
+    with socket.create_connection(address, timeout=5) as connection:
+        connection.sendall(b"POST /clipboard/text HTTP/1.0\r\nHost: localhost\r\n"
+                           + headers + b"Content-Type: text/plain\r\n\r\n" + body)
+        connection.shutdown(socket.SHUT_WR)
+        response = http.client.HTTPResponse(connection)
+        response.begin()
+        assert response.status == 400
+        response.read()
+    assert client._host_load() == []
+
+
+def test_missing_file_does_not_upload_a_partial_group(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    present = tmp_path / "present.pdf"
+    present.write_bytes(b"pdf")
+    monkeypatch.setattr(client.requests, "post", lambda *a, **kw: pytest.fail("Partial upload"))
+    with pytest.raises((ValueError, FileNotFoundError)):
+        client.push_files([str(present), str(tmp_path / "missing.pdf")])
+
+
+def test_auto_sync_resends_text_after_clipboard_was_cleared(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    sent = []
+
+    class Iterations:
+        step = 0
+
+        def is_set(self):
+            return self.step == 3
+
+        def wait(self, timeout):
+            self.step += 1
+
+    iterations = Iterations()
+    client.config.update(auto_sync=True, auto_receive_files=False)
+    monkeypatch.setattr(client, "stop_event", iterations)
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: iterations.step)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: ["hello", "", "hello"][iterations.step])
+    monkeypatch.setattr(client, "poll_latest", lambda known: {})
+    monkeypatch.setattr(client, "push_text", lambda value: sent.append(value))
+    client.sync_loop()
+    assert sent == ["hello", "hello"]
+
+
+def test_embedded_history_has_search_filters_and_pages(embedded):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    for value in ("other", "Report one", "Report two", "Report three"):
+        client._host_add("text", value)
+    page = requests.get(base + "/clipboard/history", params={"q": "REPORT", "type": "text", "limit": 2}, timeout=5).json()
+    assert page["total"] == 3 and page["has_more"]
+    assert [entry["preview"] for entry in page["items"]] == ["Report three", "Report two"]
+    response = requests.get(base + "/clipboard/history?offset=-1", timeout=5)
+    assert response.status_code == 400
+    assert requests.delete(base + "/clipboard/item/missing", timeout=5).status_code == 404
+    item_id = client._host_load()[0]["id"]
+    assert requests.delete(base + f"/clipboard/item/{item_id}/raw", timeout=5).status_code == 404
+    assert requests.get(base + f"/clipboard/item/{item_id}", timeout=5).status_code == 200
+
+
+def test_client_requests_history_page_in_the_selected_account(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="alice", password="private")
+    captured = []
+
+    def get(url, **kwargs):
+        captured.append(kwargs["params"])
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"items": [], "total": 0})
+
+    monkeypatch.setattr(client.requests, "get", get)
+    assert client.fetch_history_page(30, "report", "file", 60)["total"] == 0
+    assert captured == [{"limit": 30, "q": "report", "type": "file", "offset": 60,
+                         "user": "alice", "password": "private"}]
+    bundle = {"type": "bundle", "preview": "first", "paths": ["other.pdf", "report.pdf"]}
+    assert client._filter_history([bundle], "REPORT", "bundle") == [bundle]
+
+
+def test_failed_embedded_index_commit_keeps_old_files(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["max_local_history"] = 1
+    client._host_add("text", "keep me")
+    before = set(Path(client.HOST_ITEMS).iterdir())
+
+    def fail_save(index):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(client, "_host_save", fail_save)
+    with pytest.raises(OSError):
+        client._host_add_bundle([(b"one", "first.bin", None), (b"two", "second.bin", None)])
+    assert set(Path(client.HOST_ITEMS).iterdir()) == before
+    assert client._host_with_content(client._host_load()[0])["text"] == "keep me"
+
+
+def test_partial_embedded_bundle_is_cleaned_up(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    original = client._host_write_item
+    calls = []
+
+    def write(filename, payload):
+        calls.append(filename)
+        if len(calls) == 2:
+            raise OSError("disk full")
+        original(filename, payload)
+
+    monkeypatch.setattr(client, "_host_write_item", write)
+    with pytest.raises(OSError):
+        client._host_add_bundle([(b"one", "a.bin", None), (b"two", "b.bin", None)])
+    assert list(Path(client.HOST_ITEMS).iterdir()) == []
+    assert client._host_load() == []
+
+
+def test_failed_local_history_commit_preserves_images(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["max_local_history"] = 1
+    client.record_local_image(client.Image.new("RGB", (2, 2), "red"))
+    before = set(Path(client.LOCAL_DIR).glob("*.png"))
+    old_index = client._local_load()
+    original = client.os.replace
+
+    def replace(source, target):
+        if target == client.LOCAL_INDEX:
+            raise OSError("disk full")
+        original(source, target)
+
+    monkeypatch.setattr(client.os, "replace", replace)
+    with pytest.raises(OSError):
+        client.record_local_image(client.Image.new("RGB", (2, 2), "blue"))
+    assert set(Path(client.LOCAL_DIR).glob("*.png")) == before
+    assert client._local_load() == old_index
+
+
+@pytest.mark.parametrize("saved", [[], {"server_port": -1, "host_port": None,
+    "poll_interval": "invalid", "max_local_history": -10, "_legacy_migration_version": "broken",
+    "token": None, "auto_sync": "false", "username": "alice", "password": "keep-password"}])
+def test_invalid_saved_config_does_not_crash_or_erase_valid_credentials(tmp_path, monkeypatch, saved):
+    directory = tmp_path / "LocalAppData" / "Clipboard Bridge"
+    directory.mkdir(parents=True)
+    (directory / "config.json").write_text(json.dumps(saved), encoding="utf-8")
+    client = load_client(tmp_path, monkeypatch)
+    assert client.config["server_port"] == client.config["host_port"] == 5088
+    assert client.config["auto_sync"] is False
+    assert client.config["token"] == ""
+    if isinstance(saved, dict):
+        assert client.config["username"] == "alice"
+        assert client.config["password"] == "keep-password"
+
+
+def test_account_change_during_upload_does_not_relabel_its_response(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="alice", password="test-one")
+    source = client._sync_source_key()
+
+    def post(*args, **kwargs):
+        assert kwargs["params"]["user"] == "alice"
+        client.config.update(username="bob", password="test-two")
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"id": "alice-item"})
+
+    monkeypatch.setattr(client.requests, "post", post)
+    client.push_text("demo")
+    state = client._load_sync_state()
+    assert state["latest_items"][source] == "alice-item"
+    assert client._sync_source_key() not in state["latest_items"]
+    assert client._take_local_upload_marker() is None
+
+
+def test_account_change_cannot_split_a_group_download(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="alice", password="test-one")
+    source = client._sync_source_key()
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append(kwargs["params"]["user"])
+        client.config.update(username="bob", password="test-two")
+        return SimpleNamespace(raise_for_status=lambda: None, headers={}, content=b"data")
+
+    monkeypatch.setattr(client.requests, "get", get)
+    saved = client.save_remote_files({"id": "alice-group", "type": "bundle", "files": [
+        {"index": 0, "filename": "a.bin"}, {"index": 1, "filename": "b.bin"}]})
+    assert calls == ["alice", "alice"]
+    assert client._load_sync_state()["downloads"][source]["alice-group"] == saved
+    assert client._sync_source_key() not in client._load_sync_state()["downloads"]
+
+
+def test_failed_received_file_write_does_not_leave_a_partial_copy(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    original = open
+
+    class FailingWriter:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def write(self, payload):
+            self.stream.write(payload[:1])
+            raise OSError("disk full")
+
+    monkeypatch.setattr(client, "open", lambda *a, **kw: FailingWriter(original(*a, **kw)), raising=False)
+    with pytest.raises(OSError):
+        client.save_received("report.pdf", b"full payload")
+    assert list(Path(client.RECEIVED_DIR).iterdir()) == []
+
+
+def test_older_connection_check_cannot_overwrite_newer_success(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    waiting = threading.Event()
+    release = threading.Event()
+
+    def get(url, **kwargs):
+        if "old-server" in url:
+            waiting.set()
+            assert release.wait(timeout=5)
+            return SimpleNamespace(status_code=401)
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: {"items": []})
+
+    monkeypatch.setattr(client.requests, "get", get)
+    old = dict(client.config, server_ip="old-server")
+    new = dict(client.config, server_ip="new-server")
+    thread = threading.Thread(target=client.check_connection, args=(old,))
+    thread.start()
+    try:
+        assert waiting.wait(timeout=5)
+        assert client.check_connection(new)
+    finally:
+        release.set()
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert client._connection_state == "connected"
+    assert client._connection_checked_server == "http://new-server:5088"
+
+
+def test_embedded_read_and_trim_are_serialized(embedded):
+    from concurrent.futures import ThreadPoolExecutor
+    client, address = embedded
+    client.config["max_local_history"] = 1
+    base = f"http://{address[0]}:{address[1]}"
+
+    def exercise(number):
+        saved = requests.post(base + "/clipboard", files={"file": ("test.bin", bytes([number]))}, timeout=5).json()
+        for path in ("/clipboard/latest", "/clipboard/latest/raw", f"/clipboard/item/{saved['id']}/raw"):
+            assert requests.get(base + path, timeout=5).status_code in (200, 404)
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(exercise, range(16)))
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["lang"] = lang
+    app = client.tk.Tk()
+    app.withdraw()
+    monkeypatch.setattr(client, "_root", app)
+    requests_seen = []
+
+    def fetch(limit, query, kind, offset):
+        requests_seen.append((query, kind, offset))
+        size = 1 if query else limit
+        return {"items": [{"id": str(offset + i), "type": kind or "text", "preview": query or f"item {offset + i}"}
+                          for i in range(size)], "total": 65, "has_more": offset + size < 65}
+
+    monkeypatch.setattr(client, "fetch_history_page", fetch)
+
+    def widgets(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from widgets(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 4
+        while not predicate():
+            assert time.monotonic() < deadline
+            app.update()
+            time.sleep(.02)
+
+    try:
+        client.open_history_window()
+        window = next(child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel))
+        window.geometry("740x500")
+        all_widgets = list(widgets(window))
+        listing = next(child for child in all_widgets if isinstance(child, client.ttk.Treeview))
+        until(lambda: len(listing.get_children()) == 30)
+        app.update()
+        notebook = next(child for child in all_widgets if isinstance(child, client.ttk.Notebook))
+        for tab in notebook.tabs():
+            notebook.select(tab)
+            app.update()
+            for child in widgets(window.nametowidget(tab)):
+                if isinstance(child, client.ttk.Button):
+                    assert child.winfo_ismapped()
+                    assert child.winfo_rooty() + child.winfo_height() <= window.winfo_rooty() + window.winfo_height()
+        notebook.select(0)
+        app.update()
+        preview = next(child for child in all_widgets if isinstance(child, client.tk.Text))
+        assert preview.winfo_ismapped()
+        assert preview.winfo_rooty() + preview.winfo_height() <= window.winfo_rooty() + window.winfo_height()
+        next_button = next(child for child in all_widgets if isinstance(child, client.ttk.Button) and child.cget("text") == client.t("next"))
+        next_button.invoke()
+        until(lambda: len(listing.get_children()) == 30 and "item 30" in listing.item("0", "values")[0])
+        entry = next(child for child in all_widgets if isinstance(child, client.ttk.Entry))
+        variable = client.tk.StringVar(master=app, name=entry.cget("textvariable"))
+        variable.set("report")
+        selector = next(child for child in all_widgets if isinstance(child, client.ttk.Combobox))
+        assert selector.get() == client.t("all_types")
+        selector.current(3)
+        selector.event_generate("<<ComboboxSelected>>")
+        until(lambda: len(listing.get_children()) == 1 and "report" in listing.item("0", "values")[0])
+        assert requests_seen[-1] == ("report", "file", 0)
+        close_command = window.protocol("WM_DELETE_WINDOW")
+        app.tk.call(close_command)
+        app.update()
+        assert not window.winfo_exists()
+    finally:
+        app.destroy()
+
+
+def test_tray_left_click_opens_history_without_upload(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_run_bg", lambda *args: pytest.fail("Left-click must not upload"))
+    defaults = [item for item in client.build_menu().items if item.default]
+    assert len(defaults) == 1
+    assert defaults[0].text == client.t("history")
+    defaults[0](None)
+    assert client._cmd_q.get_nowait() is client.open_history_window
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["lang"] = lang
+    app = client.tk.Tk()
+    app.withdraw()
+    monkeypatch.setattr(client, "_root", app)
+    monkeypatch.setattr(client, "check_connection", lambda *args: True)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    try:
+        client.open_settings()
+        window = next(child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel))
+        window.geometry("580x600")
+        app.update()
+        widgets = list(descendants(window))
+        notebook = next(child for child in widgets if isinstance(child, client.ttk.Notebook))
+        for tab in notebook.tabs():
+            notebook.select(tab)
+            app.update()
+            page = window.nametowidget(tab)
+            canvas = next(child for child in page.winfo_children() if isinstance(child, client.tk.Canvas))
+            assert canvas.bbox("all")[3] >= canvas.winfo_height() or canvas.yview() == (0.0, 1.0)
+            canvas.yview_moveto(1)
+            app.update()
+            assert canvas.winfo_width() > 450
+        port = next(child for child in widgets if isinstance(child, client.ttk.Entry) and child.get() == "5088")
+        port.delete(0, "end")
+        port.insert(0, "-1")
+        save = next(child for child in widgets if isinstance(child, client.ttk.Button) and child.cget("text") == client.t("save"))
+        save.invoke()
+        app.update()
+        assert client.config["server_port"] == client.config["host_port"] == 5088
+        assert any(isinstance(child, client.ttk.Label) and child.cget("text") == client.t("err_ports") for child in widgets)
+    finally:
+        app.destroy()
 
 
 def load_client(tmp_path, monkeypatch):
@@ -32,7 +439,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.8"
+    assert client.APP_VERSION == "2.0.9"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

@@ -17,9 +17,11 @@ def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeyp
     client = load_client(tmp_path, monkeypatch)
     client.config.update(mode="client", server_ip=address.hostname, server_port=address.port,
                          username="alice", password="test-password", token="")
+    shared_before = requests.get(base + "/clipboard/latest/raw", timeout=5)
+    shared_before.raise_for_status()
     auth = client.auth_params()
     assert client.check_connection()
-    assert requests.get(base + "/health", timeout=5).json()["version"] == "1.0.5"
+    assert requests.get(base + "/health", timeout=5).json()["version"] == "1.0.6"
     text = "\u96ea\U0001f600\r\n\t \r\nend\r"
     text_id = client.push_text(text)
     assert client.fetch_item(text_id)["text"] == text
@@ -43,6 +45,6 @@ def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeyp
     next_id = client.push_text("newest text")
     assert client.poll_latest(group_id)["id"] == next_id
     assert client.poll_latest(next_id).get("text") is None
-    assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == b""  # shared space is isolated
+    assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == shared_before.content
     for item_id in (text_id, group_id, next_id):
         requests.delete(base + f"/clipboard/item/{item_id}", params=auth, timeout=5).raise_for_status()

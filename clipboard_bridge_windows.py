@@ -27,6 +27,8 @@ import shutil
 import subprocess
 import time
 import zipfile
+from contextlib import contextmanager
+from functools import wraps
 from ctypes import wintypes
 from email.message import Message
 from email.parser import BytesParser
@@ -39,6 +41,7 @@ from PIL import Image, ImageGrab, ImageDraw, ImageTk
 from pystray import Icon, MenuItem, Menu
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from tkinter import font as tkfont
 
 try:
     import keyboard
@@ -180,12 +183,14 @@ _notification_action = None
 _notification_lock = threading.Lock()
 _sync_state_lock = threading.Lock()
 _remote_activity_lock = threading.RLock()
+_remote_request_context = threading.local()
 _local_history_lock = threading.RLock()
 _local_upload_lock = threading.Lock()
 _local_upload_marker = None
 _connection_lock = threading.Lock()
 _connection_state = "checking"
 _connection_checked_server = None
+_connection_check_generation = 0
 _instance_mutex = None
 
 # ---------------------------------------------------------------- translations
@@ -256,6 +261,16 @@ STRINGS = {
         "tab_server": "Server",
         "tab_local": "Local",
         "refresh": "Refresh",
+        "history_search": "Search previews and filenames",
+        "all_types": "All types", "text_type": "Text", "image_type": "Images",
+        "file_type": "Files", "bundle_type": "File groups",
+        "previous": "Previous", "next": "Next",
+        "history_results": "{shown} shown / {total} results",
+        "history_error": "Could not load history. Check the connection and refresh.",
+        "column_content": "Content", "column_type": "Type", "column_date": "Date",
+        "column_size": "Size", "preview": "Preview", "preview_empty": "No item selected",
+        "send_now": "Send clipboard", "receive_now": "Receive latest",
+        "confirm_delete": "Delete this item from server history?",
         "loading": "Loading…",
         "use": "Use",
         "delete": "Delete",
@@ -284,6 +299,7 @@ STRINGS = {
         "chk_notify_files": "Files received",
         "chk_hotkeys": "Keyboard shortcuts enabled",
         "err_numbers": "Port, interval and history limit must be whole numbers.",
+        "err_ports": "Ports must be between 1 and 65535.",
         "save": "Save",
         "cancel": "Cancel",
     },
@@ -353,6 +369,16 @@ STRINGS = {
         "tab_server": "Server",
         "tab_local": "Locale",
         "refresh": "Aggiorna",
+        "history_search": "Cerca nelle anteprime e nei nomi dei file",
+        "all_types": "Tutti i tipi", "text_type": "Testo", "image_type": "Immagini",
+        "file_type": "File", "bundle_type": "Gruppi di file",
+        "previous": "Precedenti", "next": "Successivi",
+        "history_results": "{shown} visualizzati / {total} risultati",
+        "history_error": "Cronologia non disponibile. Controlla la connessione e aggiorna.",
+        "column_content": "Contenuto", "column_type": "Tipo", "column_date": "Data",
+        "column_size": "Dimensione", "preview": "Anteprima", "preview_empty": "Nessun elemento selezionato",
+        "send_now": "Invia appunti", "receive_now": "Ricevi ultimo",
+        "confirm_delete": "Eliminare questo elemento dalla cronologia server?",
         "loading": "Caricamento…",
         "use": "Usa",
         "delete": "Elimina",
@@ -381,6 +407,7 @@ STRINGS = {
         "chk_notify_files": "File ricevuti",
         "chk_hotkeys": "Scorciatoie da tastiera attive",
         "err_numbers": "Porta, intervallo e limite cronologia devono essere numeri interi.",
+        "err_ports": "Le porte devono essere comprese tra 1 e 65535.",
         "save": "Salva",
         "cancel": "Annulla",
     },
@@ -395,17 +422,46 @@ def t(key, **kw):
 
 
 # ---------------------------------------------------------------- config
+def _normalize_config(values):
+    cfg = dict(values)
+    for key, default in DEFAULT_CONFIG.items():
+        value = cfg.get(key, default)
+        if isinstance(default, bool) and not isinstance(value, bool):
+            cfg[key] = default
+        elif isinstance(default, str) and not isinstance(value, str):
+            cfg[key] = default
+    for key, minimum, maximum in (
+        ("server_port", 1, 65535), ("host_port", 1, 65535),
+        ("poll_interval", 1, 3600), ("max_local_history", 1, 100000),
+        ("host_max_upload_mb", 1, 1024), ("_legacy_migration_version", 0, 2),
+    ):
+        default = DEFAULT_CONFIG.get(key, 0)
+        try:
+            number = int(cfg.get(key, default))
+            cfg[key] = number if minimum <= number <= maximum else default
+        except (TypeError, ValueError, OverflowError):
+            cfg[key] = default
+    if cfg.get("lang") not in ("en", "it"):
+        cfg["lang"] = "en"
+    if cfg.get("mode") not in ("client", "server"):
+        cfg["mode"] = "client"
+    return cfg
+
+
 def load_config():
     cfg = dict(DEFAULT_CONFIG)
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                cfg.update(json.load(f))
+                saved = json.load(f)
+            if isinstance(saved, dict):
+                cfg.update(saved)
         except (json.JSONDecodeError, OSError):
             pass
     else:
         save_config(cfg)
 
+    cfg = _normalize_config(cfg)
     # Recover a legacy configuration even when 2.0.1 has already created an
     # empty default config in LocalAppData. Explicit settings made after that
     # installation always take precedence over the recovered values.
@@ -434,7 +490,7 @@ def load_config():
                         for key, value in cfg.items():
                             if key not in DEFAULT_CONFIG or value != DEFAULT_CONFIG[key]:
                                 merged[key] = value
-                        cfg = merged
+                        cfg = _normalize_config(merged)
                 cfg["_legacy_migration_version"] = 2
                 save_config(cfg)
             except (json.JSONDecodeError, OSError):
@@ -453,15 +509,42 @@ def save_config(cfg):
 config = load_config()
 
 
+def _request_settings():
+    return getattr(_remote_request_context, "settings", config)
+
+
+@contextmanager
+def _remote_operation():
+    with _remote_activity_lock:
+        nested = hasattr(_remote_request_context, "settings")
+        if not nested:
+            _remote_request_context.settings = dict(config)
+        try:
+            yield
+        finally:
+            if not nested:
+                del _remote_request_context.settings
+
+
+def _in_remote_operation(function):
+    @wraps(function)
+    def call(*args, **kwargs):
+        # A settings change must not reroute later members of an in-flight group.
+        with _remote_operation():
+            return function(*args, **kwargs)
+    return call
+
+
 def server_url():
     # In server mode the client talks to its own embedded server on localhost.
-    if config.get("mode") == "server":
-        return f"http://127.0.0.1:{config.get('host_port', 5088)}"
-    return f"http://{config['server_ip']}:{config['server_port']}"
+    values = _request_settings()
+    if values.get("mode") == "server":
+        return f"http://127.0.0.1:{values.get('host_port', 5088)}"
+    return f"http://{values['server_ip']}:{values['server_port']}"
 
 
 def auth_headers(settings=None):
-    token = str((settings or config).get("token", ""))
+    token = str((settings or _request_settings()).get("token", ""))
     return {"X-Auth-Token": token} if token and token.isascii() else {}
 
 
@@ -470,7 +553,7 @@ def auth_params(extra=None, settings=None):
     # server routes the request to that account (ignored by the shared space
     # and by the built-in server). Optionally merge extra query params.
     p = dict(extra) if extra else {}
-    values = settings or config
+    values = settings or _request_settings()
     user = values.get("username", "").strip()
     if user:
         p["user"] = user
@@ -481,9 +564,13 @@ def auth_params(extra=None, settings=None):
     return p
 
 
-def _set_connection_state(state, checked_server=None):
-    global _connection_state, _connection_checked_server
+def _set_connection_state(state, checked_server=None, generation=None):
+    global _connection_state, _connection_checked_server, _connection_check_generation
     with _connection_lock:
+        if generation is not None and generation != _connection_check_generation:
+            return
+        if generation is None and state == "checking":
+            _connection_check_generation += 1
         changed = _connection_state != state
         _connection_state = state
         if checked_server:
@@ -525,7 +612,8 @@ def settings_connection_status_text():
 
 def check_connection(settings=None):
     """Verify both server reachability and credentials for the selected space."""
-    values = settings or config
+    global _connection_check_generation
+    values = dict(settings or config)
     if values.get("mode") == "server":
         target = f"http://127.0.0.1:{values.get('host_port', 5088)}"
     else:
@@ -534,7 +622,10 @@ def check_connection(settings=None):
     params = auth_params({"limit": 1}, values)
     headers = auth_headers(values)
 
-    _set_connection_state("checking", target)
+    with _connection_lock:
+        _connection_check_generation += 1
+        generation = _connection_check_generation
+    _set_connection_state("checking", target, generation)
     try:
         response = requests.get(
             f"{target}/clipboard/history",
@@ -543,16 +634,16 @@ def check_connection(settings=None):
             timeout=4,
         )
         if response.status_code in (401, 403):
-            _set_connection_state("auth", target)
+            _set_connection_state("auth", target, generation)
             return False
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, dict) or "items" not in payload:
             raise ValueError("unexpected server response")
-        _set_connection_state("connected", target)
+        _set_connection_state("connected", target, generation)
         return True
     except Exception:
-        _set_connection_state("offline", target)
+        _set_connection_state("offline", target, generation)
         return False
 
 
@@ -768,7 +859,7 @@ def _file_clipboard_key(paths):
 def _set_local_upload_marker(kind, value):
     global _local_upload_marker
     with _local_upload_lock:
-        _local_upload_marker = (kind, value)
+        _local_upload_marker = (_sync_source_key(), kind, value)
 
 
 def _take_local_upload_marker():
@@ -776,7 +867,7 @@ def _take_local_upload_marker():
     with _local_upload_lock:
         marker = _local_upload_marker
         _local_upload_marker = None
-        return marker
+        return marker[1:] if marker and marker[0] == _sync_source_key() else None
 
 
 def save_received(filename, raw):
@@ -802,11 +893,20 @@ def save_received(filename, raw):
         suffix = f" ({i})" if i else ""
         dest = os.path.join(RECEIVED_DIR, f"{stem}{suffix}{ext}")
         try:
-            with open(dest, "xb") as f:
-                f.write(raw)
-            return dest
+            stream = open(dest, "xb")
         except FileExistsError:
             i += 1
+            continue
+        try:
+            with stream:
+                stream.write(raw)
+            return dest
+        except Exception:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            raise
 
 
 def reveal_received_file(path):
@@ -824,6 +924,7 @@ def reveal_received_file(path):
 
 
 # ---------------------------------------------------------------- network
+@_in_remote_operation
 def push_text(text):
     with _remote_activity_lock:
         r = requests.post(f"{server_url()}/clipboard/text",
@@ -839,6 +940,7 @@ def push_text(text):
         return item_id
 
 
+@_in_remote_operation
 def push_bytes(filename, raw):
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     with _remote_activity_lock:
@@ -862,10 +964,14 @@ def push_file(path):
     return push_files([path])
 
 
+@_in_remote_operation
 def push_files(paths):
-    paths = [os.path.abspath(path) for path in paths if os.path.isfile(path)]
+    paths = [os.path.abspath(path) for path in paths]
     if not paths:
         raise ValueError("No readable files selected")
+    for path in paths:
+        if not os.path.isfile(path):
+            raise FileNotFoundError(path)
     opened = []
     try:
         parts = []
@@ -892,6 +998,7 @@ def push_files(paths):
             stream.close()
 
 
+@_in_remote_operation
 def push_image(img):
     with _remote_activity_lock:
         item_id = push_bytes("clipboard.png", image_to_png(img))
@@ -899,6 +1006,7 @@ def push_image(img):
         return item_id
 
 
+@_in_remote_operation
 def pull_latest():
     with _remote_activity_lock:
         r = requests.get(f"{server_url()}/clipboard/latest",
@@ -907,6 +1015,7 @@ def pull_latest():
         return r.json()
 
 
+@_in_remote_operation
 def poll_latest(known_id):
     """Poll small metadata; download content only when the latest ID changes."""
     with _remote_activity_lock:
@@ -922,14 +1031,21 @@ def poll_latest(known_id):
         return fetch_item(metadata["id"])
 
 
-def fetch_history(limit=100):
+@_in_remote_operation
+def fetch_history_page(limit=100, query="", kind="", offset=0):
     with _remote_activity_lock:
         r = requests.get(f"{server_url()}/clipboard/history",
-                         params=auth_params({"limit": limit}), headers=auth_headers(), timeout=5)
+                         params=auth_params({"limit": limit, "q": query, "type": kind, "offset": offset}),
+                         headers=auth_headers(), timeout=5)
         r.raise_for_status()
-        return r.json().get("items", [])
+        return r.json()
 
 
+def fetch_history(limit=100):
+    return fetch_history_page(limit).get("items", [])
+
+
+@_in_remote_operation
 def fetch_item(item_id):
     with _remote_activity_lock:
         r = requests.get(f"{server_url()}/clipboard/item/{item_id}",
@@ -938,6 +1054,7 @@ def fetch_item(item_id):
         return r.json()
 
 
+@_in_remote_operation
 def fetch_bundle_member(item_id, member_index):
     with _remote_activity_lock:
         r = requests.get(
@@ -955,6 +1072,7 @@ def fetch_bundle_member(item_id, member_index):
         return filename, r.content
 
 
+@_in_remote_operation
 def save_remote_files(item):
     with _remote_activity_lock:
         key, item_id = _sync_source_key(), item.get("id")
@@ -996,9 +1114,10 @@ def save_remote_files(item):
 
 
 def _sync_source_key():
+    values = _request_settings()
     source = {
         "url": server_url(),
-        "account": config.get("username", "").strip(),
+        "account": values.get("username", "").strip() if values.get("mode") != "server" else "",
     }
     return hashlib.sha256(
         json.dumps(source, sort_keys=True).encode("utf-8")
@@ -1079,6 +1198,7 @@ def _consume_silent_item(item_id):
         return True
 
 
+@_in_remote_operation
 def _auto_receive_remote_files():
     items = fetch_history(200)
     remote_files = [
@@ -1142,6 +1262,38 @@ def _auto_receive_remote_files():
 _host_lock = threading.Lock()
 _host_server = None
 _host_thread = None
+
+
+def _filter_history(items, query="", kind=""):
+    query = query.strip().casefold()
+    result = []
+    for item in items:
+        if kind and item.get("type") != kind:
+            continue
+        names = " ".join(member.get("filename") or "" for member in item.get("files", []))
+        names += " " + " ".join(os.path.basename(path) for path in item.get("paths", []))
+        searchable = " ".join((item.get("preview") or "", item.get("filename") or "", names))
+        if not query or query in searchable.casefold():
+            result.append(item)
+    return result
+
+
+def _host_history_page(index, params):
+    query = (params.get("q") or "").strip()
+    kind = params.get("type") or ""
+    if len(query) > 200 or kind not in ("", "text", "image", "file", "bundle"):
+        raise ValueError("invalid history search or type")
+    try:
+        offset = int(params.get("offset", 0))
+        limit = int(params["limit"]) if "limit" in params else None
+    except (TypeError, ValueError):
+        raise ValueError("invalid history limit or offset") from None
+    if offset < 0 or (limit is not None and not 1 <= limit <= 1000):
+        raise ValueError("history limit must be 1-1000 and offset must be nonnegative")
+    filtered = _filter_history(index, query, kind)
+    page = filtered[offset:offset + limit] if limit is not None else filtered[offset:]
+    return {"items": [_host_meta(e) for e in page], "count": len(page), "total": len(filtered),
+            "offset": offset, "has_more": offset + len(page) < len(filtered)}
 
 
 def _host_load():
@@ -1314,13 +1466,40 @@ def _host_delete_files(entry):
             pass
 
 
+def _host_commit_entry(entry):
+    with _host_lock:
+        index = [entry] + _host_load()
+        limit = config.get("max_local_history", 100)
+        expired = index[limit:]
+        try:
+            _host_save(index[:limit])
+        except Exception:
+            _host_delete_files(entry)
+            raise
+        for old in expired:
+            _host_delete_files(old)
+    return entry
+
+
+def _host_write_item(filename, payload):
+    path = os.path.join(HOST_ITEMS, filename)
+    try:
+        with open(path, "wb") as stream:
+            stream.write(payload)
+    except Exception:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
+
+
 def _host_add(kind, payload, filename=None, mime=None):
     os.makedirs(HOST_ITEMS, exist_ok=True)
     iid = uuid.uuid4().hex[:12]
     if kind == "text":
         fn = iid + ".txt"
-        with open(os.path.join(HOST_ITEMS, fn), "w", encoding="utf-8", newline="") as f:
-            f.write(payload)
+        _host_write_item(fn, payload.encode("utf-8"))
         entry = {"id": iid, "type": "text", "timestamp": _now(), "file": fn, "filename": None,
                  "mime": "text/plain", "size": len(payload.encode("utf-8")), "preview": payload[:140]}
     else:
@@ -1332,21 +1511,13 @@ def _host_add(kind, payload, filename=None, mime=None):
         ) else ""
         ext = ext or (mimetypes.guess_extension(mime or "") or ".bin")
         fn = iid + ext
-        with open(os.path.join(HOST_ITEMS, fn), "wb") as f:
-            f.write(payload)
+        _host_write_item(fn, payload)
         if not mime:
             mime = mimetypes.guess_type(filename or fn)[0] or "application/octet-stream"
         entry = {"id": iid, "type": "image" if mime.startswith("image/") else "file",
                  "timestamp": _now(), "file": fn, "filename": filename or fn,
                  "mime": mime, "size": len(payload), "preview": filename or fn}
-    with _host_lock:
-        index = _host_load()
-        index.insert(0, entry)
-        while len(index) > config.get("max_local_history", 100):
-            old = index.pop()
-            _host_delete_files(old)
-        _host_save(index)
-    return entry
+    return _host_commit_entry(entry)
 
 
 def _host_add_bundle(uploads):
@@ -1356,21 +1527,24 @@ def _host_add_bundle(uploads):
     os.makedirs(HOST_ITEMS, exist_ok=True)
     iid = uuid.uuid4().hex[:12]
     members = []
-    for index, (raw, filename, mime) in enumerate(uploads):
-        filename = _host_clean_filename(filename) or f"file-{index + 1}.bin"
-        mime = _host_mime(mime) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        ext = os.path.splitext(filename)[1]
-        ext = ext.lower() if len(ext) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", ext or "") else ".bin"
-        stored = f"{iid}-{index}{ext}"
-        with open(os.path.join(HOST_ITEMS, stored), "wb") as stream:
-            stream.write(raw)
-        members.append({
-            "file": stored,
-            "filename": filename,
-            "mime": mime,
-            "size": len(raw),
-            "type": "image" if mime.startswith("image/") else "file",
-        })
+    try:
+        for index, (raw, filename, mime) in enumerate(uploads):
+            filename = _host_clean_filename(filename) or f"file-{index + 1}.bin"
+            mime = _host_mime(mime) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            ext = os.path.splitext(filename)[1]
+            ext = ext.lower() if len(ext) <= 32 and re.fullmatch(r"\.[A-Za-z0-9._+-]+", ext or "") else ".bin"
+            stored = f"{iid}-{index}{ext}"
+            _host_write_item(stored, raw)
+            members.append({
+                "file": stored,
+                "filename": filename,
+                "mime": mime,
+                "size": len(raw),
+                "type": "image" if mime.startswith("image/") else "file",
+            })
+    except Exception:
+        _host_delete_files({"type": "bundle", "files": members})
+        raise
     entry = {
         "id": iid,
         "type": "bundle",
@@ -1381,13 +1555,7 @@ def _host_add_bundle(uploads):
         "preview": ", ".join(member["filename"] for member in members),
         "files": members,
     }
-    with _host_lock:
-        index = _host_load()
-        index.insert(0, entry)
-        while len(index) > config.get("max_local_history", 100):
-            _host_delete_files(index.pop())
-        _host_save(index)
-    return entry
+    return _host_commit_entry(entry)
 
 
 def _host_bundle_bytes(entry):
@@ -1452,6 +1620,10 @@ def _host_uploads_from_zip(raw):
 
 
 class _SrvHandler(http.server.BaseHTTPRequestHandler):
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(30)
+
     def log_message(self, *a):
         pass  # keep the console quiet
 
@@ -1473,6 +1645,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             if item.get("type") == "bundle":
                 self.send_header("X-Clipboard-File-Count", str(len(item.get("files", []))))
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         if body:
             self.wfile.write(body)
@@ -1482,66 +1656,64 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
 
     def _raw(self, e):
         if e["type"] == "bundle":
-            return self._send(
-                200,
-                _host_bundle_bytes(e),
-                "application/zip",
-                f"clipboard-{e['id']}.zip",
-                item=e,
-            )
+            return dict(code=200, body=_host_bundle_bytes(e), ctype="application/zip",
+                        filename=f"clipboard-{e['id']}.zip", item=e)
         path = os.path.join(HOST_ITEMS, e["file"])
         if e["type"] == "text":
             with open(path, "r", encoding="utf-8", newline="") as f:
-                self._send(
-                    200,
-                    f.read().encode("utf-8"),
-                    "text/plain; charset=utf-8",
-                    item=e,
-                )
+                return dict(code=200, body=f.read().encode("utf-8"),
+                            ctype="text/plain; charset=utf-8", item=e)
         else:
             with open(path, "rb") as f:
-                self._send(
-                    200,
-                    f.read(),
-                    e.get("mime") or "application/octet-stream",
-                    e.get("filename"),
-                    item=e,
-                )
+                return dict(code=200, body=f.read(),
+                            ctype=e.get("mime") or "application/octet-stream",
+                            filename=e.get("filename"), item=e)
+
+    def _get_payload(self, path, index, params):
+        if path == "/health":
+            return {"status": "ok", "items": len(index)}
+        if path == "/clipboard/latest":
+            return _host_with_content(index[0]) if index else {"type": "empty"}
+        if path == "/clipboard/latest/meta":
+            return _host_meta(index[0]) if index else {"type": "empty"}
+        if path in ("/clipboard/latest/raw", "/clipboard/raw"):
+            return self._raw(index[0]) if index else dict(code=200, body=b"", ctype="text/plain; charset=utf-8")
+        if path == "/clipboard/history":
+            return _host_history_page(index, params)
+        parts = path.strip("/").split("/")
+        if len(parts) >= 3 and parts[:2] == ["clipboard", "item"]:
+            e = next((x for x in index if x["id"] == parts[2]), None)
+            if e:
+                if len(parts) == 6 and parts[3] == "file" and parts[5] == "raw":
+                    try:
+                        member_index = int(parts[4])
+                        if member_index < 0:
+                            raise IndexError
+                        member = e.get("files", [])[member_index]
+                    except (ValueError, IndexError):
+                        return dict(code=404, body=b'{"error":"not found"}')
+                    with open(os.path.join(HOST_ITEMS, member["file"]), "rb") as stream:
+                        return dict(code=200, body=stream.read(),
+                                    ctype=member.get("mime") or "application/octet-stream",
+                                    filename=member.get("filename"), item=e)
+                if len(parts) == 4 and parts[3] == "raw":
+                    return self._raw(e)
+                if len(parts) == 3:
+                    return _host_with_content(e)
+        return dict(code=404, body=b'{"error":"not found"}')
 
     def do_GET(self):
         try:
-            path = self.path.split("?", 1)[0]
-            index = _host_load()
-            if path == "/health":
-                return self._json({"status": "ok", "items": len(index)})
-            if path == "/clipboard/latest":
-                return self._json(_host_with_content(index[0]) if index else {"type": "empty"})
-            if path == "/clipboard/latest/meta":
-                return self._json(_host_meta(index[0]) if index else {"type": "empty"})
-            if path in ("/clipboard/latest/raw", "/clipboard/raw"):
-                return self._raw(index[0]) if index else self._send(200, b"", "text/plain; charset=utf-8")
-            if path == "/clipboard/history":
-                return self._json({"items": [_host_meta(e) for e in index], "count": len(index)})
-            if path.startswith("/clipboard/item/"):
-                e = next((x for x in index if x["id"] == path.split("/")[3]), None)
-                if not e:
-                    return self._json({"error": "not found"}, 404)
-                parts = path.strip("/").split("/")
-                if len(parts) == 6 and parts[3] == "file" and parts[5] == "raw":
-                    try:
-                        member = e.get("files", [])[int(parts[4])]
-                    except (ValueError, IndexError):
-                        return self._json({"error": "not found"}, 404)
-                    with open(os.path.join(HOST_ITEMS, member["file"]), "rb") as stream:
-                        return self._send(
-                            200,
-                            stream.read(),
-                            member.get("mime") or "application/octet-stream",
-                            member.get("filename"),
-                            item=e,
-                        )
-                return self._raw(e) if path.endswith("/raw") else self._json(_host_with_content(e))
-            self._json({"error": "not found"}, 404)
+            path, _, query = self.path.partition("?")
+            params = {key: values[0] for key, values in parse_qs(query, keep_blank_values=True).items()}
+            # Snapshot content under the store lock, then write to the socket outside it.
+            with _host_lock:
+                payload = self._get_payload(path, _host_load(), params)
+            if "body" in payload:
+                return self._send(**payload)
+            return self._json(payload)
+        except ValueError as ex:
+            self._json({"error": str(ex)}, 400)
         except Exception as ex:
             try:
                 self._json({"error": str(ex)}, 500)
@@ -1551,12 +1723,26 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             path, _, query_string = self.path.partition("?")
-            n = int(self.headers.get("Content-Length", 0) or 0)
+            if self.headers.get("Transfer-Encoding"):
+                self.close_connection = True
+                return self._json({"error": "Transfer-Encoding is not supported; send Content-Length"}, 501)
+            lengths = self.headers.get_all("Content-Length", [])
+            if len(lengths) != 1 or not re.fullmatch(r"[0-9]+", lengths[0].strip()):
+                self.close_connection = True
+                return self._json({"error": "invalid or missing Content-Length"}, 400)
+            n = int(lengths[0])
             max_request = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
             if n > max_request:
                 self.close_connection = True
                 return self._json({"error": "upload exceeds the server limit"}, 413)
-            body = self.rfile.read(n) if n else b""
+            try:
+                body = self.rfile.read(n) if n else b""
+            except socket.timeout:
+                self.close_connection = True
+                return self._json({"error": "upload timed out"}, 408)
+            if len(body) != n:
+                self.close_connection = True
+                return self._json({"error": "incomplete request body"}, 400)
             content_type = self.headers.get("Content-Type") or ""
             ctype = _host_mime(content_type)
             filename = _host_header_filename(self.headers)
@@ -1699,17 +1885,20 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             path = self.path.split("?", 1)[0]
             if path == "/clipboard/history":
                 with _host_lock:
-                    for e in _host_load():
-                        _host_delete_files(e)
+                    index = _host_load()
                     _host_save([])
+                    for e in index:
+                        _host_delete_files(e)
                 return self._json({"status": "cleared"})
-            if path.startswith("/clipboard/item/"):
-                iid = path.split("/")[3]
+            parts = path.strip("/").split("/")
+            if len(parts) == 3 and parts[:2] == ["clipboard", "item"]:
+                iid = parts[2]
                 with _host_lock:
                     index = _host_load()
                     e = next((x for x in index if x["id"] == iid), None)
+                    if e is None:
+                        return self._json({"error": "not found"}, 404)
                     _host_save([x for x in index if x["id"] != iid])
-                if e:
                     _host_delete_files(e)
                 return self._json({"status": "deleted"})
             self._json({"error": "not found"}, 404)
@@ -1778,17 +1967,18 @@ def _local_load():
 
 def _local_save(index):
     with _local_history_lock:
-        while len(index) > config.get("max_local_history", 100):
-            old = index.pop()
+        limit = config.get("max_local_history", 100)
+        expired = index[limit:]
+        temp = LOCAL_INDEX + ".tmp"
+        with open(temp, "w", encoding="utf-8") as f:
+            json.dump(index[:limit], f, ensure_ascii=False, indent=2)
+        os.replace(temp, LOCAL_INDEX)
+        for old in expired:
             if old.get("file"):
                 try:
                     os.remove(os.path.join(LOCAL_DIR, old["file"]))
                 except OSError:
                     pass
-        temp = LOCAL_INDEX + ".tmp"
-        with open(temp, "w", encoding="utf-8") as f:
-            json.dump(index, f, ensure_ascii=False, indent=2)
-        os.replace(temp, LOCAL_INDEX)
 
 
 def _now():
@@ -1813,11 +2003,17 @@ def record_local_image(img):
         if index and index[0].get("type") == "image" and index[0].get("hash") == digest:
             return
         name = uuid.uuid4().hex[:12] + ".png"
-        img.save(os.path.join(LOCAL_DIR, name))
-        index.insert(0, {"type": "image", "timestamp": _now(),
-                         "preview": f"image {img.width}x{img.height}", "file": name,
-                         "hash": digest})
-        _local_save(index)
+        path = os.path.join(LOCAL_DIR, name)
+        try:
+            img.save(path)
+            index.insert(0, {"type": "image", "timestamp": _now(),
+                             "preview": f"image {img.width}x{img.height}", "file": name,
+                             "hash": digest})
+            _local_save(index)
+        except Exception:
+            if os.path.exists(path):
+                os.remove(path)
+            raise
 
 
 def record_local_file(path):
@@ -1853,6 +2049,7 @@ def record_local_files(paths):
 
 
 # ---------------------------------------------------------------- actions
+@_in_remote_operation
 def action_send_clipboard(icon=None, item=None):
     try:
         files = get_clipboard_files()
@@ -1878,6 +2075,7 @@ def action_send_clipboard(icon=None, item=None):
         notify(t("send_err", e=e))
 
 
+@_in_remote_operation
 def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
     """Remember a receive only after Windows actually accepts the clipboard data."""
     kind = data.get("type")
@@ -1911,6 +2109,7 @@ def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
     return kind
 
 
+@_in_remote_operation
 def action_get_latest(icon=None, item=None):
     try:
         with _remote_activity_lock:
@@ -2031,6 +2230,8 @@ def sync_loop():
                                 last_img, last_text, last_files = h, None, None
                     else:
                         text = get_clipboard_text()
+                        if not text:
+                            last_text = last_img = last_files = None
                         if text and text != last_text:
                             record_local_text(text)
                             if config.get("auto_sync"):
@@ -2057,32 +2258,33 @@ def sync_loop():
 
             if config.get("auto_sync") and not upload_failed:
                 try:
-                    data = poll_latest(last_server)
-                    sid = data.get("id")
-                    if sid and sid != last_server:
-                        suppress = _consume_silent_item(sid)
-                        if not suppress and data.get("type") == "text":
-                            txt = data.get("text", "")
-                            _copy_remote_item(data, suppress_notification=False)
-                            last_text, last_img, last_files = txt, None, None
-                            notify_received("text", t("text_arrived"))
-                        elif not suppress and data.get("type") == "image":
-                            copied_kind = _copy_remote_item(data, suppress_notification=False)
-                            marker = _take_local_upload_marker()
-                            if copied_kind == "image":
-                                last_img, last_text, last_files = marker[1], None, None
-                                notify_received("image", t("image_arrived"))
-                            else:
-                                last_files, last_text, last_img = marker[1], None, None
-                                notify_received("file", t("file_arrived", name=data.get("filename", "image")),
-                                                action=lambda: open_received_folder())
-                        elif not suppress and data.get("type") in ("file", "bundle"):
-                            if config.get("auto_receive_files", True):
-                                _copy_remote_item(data)
-                                last_files = _file_clipboard_key(save_remote_files(data))
-                                last_text = last_img = None
-                        last_server = sid
-                        _remember_item(sid)
+                    with _remote_operation():
+                        data = poll_latest(last_server)
+                        sid = data.get("id")
+                        if sid and sid != last_server:
+                            suppress = _consume_silent_item(sid)
+                            if not suppress and data.get("type") == "text":
+                                txt = data.get("text", "")
+                                _copy_remote_item(data, suppress_notification=False)
+                                last_text, last_img, last_files = txt, None, None
+                                notify_received("text", t("text_arrived"))
+                            elif not suppress and data.get("type") == "image":
+                                copied_kind = _copy_remote_item(data, suppress_notification=False)
+                                marker = _take_local_upload_marker()
+                                if copied_kind == "image":
+                                    last_img, last_text, last_files = marker[1], None, None
+                                    notify_received("image", t("image_arrived"))
+                                else:
+                                    last_files, last_text, last_img = marker[1], None, None
+                                    notify_received("file", t("file_arrived", name=data.get("filename", "image")),
+                                                    action=lambda: open_received_folder())
+                            elif not suppress and data.get("type") in ("file", "bundle"):
+                                if config.get("auto_receive_files", True):
+                                    _copy_remote_item(data)
+                                    last_files = _file_clipboard_key(save_remote_files(data))
+                                    last_text = last_img = None
+                            last_server = sid
+                            _remember_item(sid)
                 except Exception:
                     pass
         except Exception:
@@ -2091,16 +2293,161 @@ def sync_loop():
 
 
 # ---------------------------------------------------------------- history window
+def _modern_window(root):
+    root.configure(background="#f4f6f8")
+    for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
+        tkfont.nametofont(name, root=root).configure(family="Segoe UI", size=10)
+    style = ttk.Style(root)
+    style.theme_use("clam")
+    style.configure(".", font=("Segoe UI", 10), background="#ffffff", foreground="#202830")
+    style.configure("TFrame", background="#ffffff")
+    style.configure("TLabel", background="#ffffff")
+    style.configure("TButton", background="#ffffff", bordercolor="#d8dee5",
+                    lightcolor="#ffffff", darkcolor="#ffffff", padding=(12, 8), relief="flat")
+    style.map("TButton", background=[("active", "#eef3f8"), ("pressed", "#dce8f4")],
+              foreground=[("disabled", "#a0a8b0")])
+    style.configure("Primary.TButton", background="#1668dc", foreground="#ffffff", borderwidth=0)
+    style.map("Primary.TButton", background=[("active", "#0d55b8"), ("pressed", "#084494")],
+              foreground=[("disabled", "#d4dfec"), ("!disabled", "#ffffff")])
+    style.configure("TEntry", fieldbackground="#ffffff", bordercolor="#d8dee5", padding=7)
+    style.configure("TCombobox", fieldbackground="#ffffff", background="#f4f6f8",
+                    bordercolor="#d8dee5", padding=6, arrowsize=14)
+    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")],
+              selectbackground=[("readonly", "#ffffff")], selectforeground=[("readonly", "#202830")])
+    style.configure("TSpinbox", fieldbackground="#ffffff", bordercolor="#d8dee5", padding=6)
+    style.configure("TCheckbutton", padding=(0, 5), background="#ffffff")
+    style.configure("TRadiobutton", padding=(0, 5), background="#ffffff")
+    style.configure("TNotebook", background="#ffffff", borderwidth=0)
+    style.configure("TNotebook.Tab", padding=(18, 10), background="#f4f6f8", borderwidth=0)
+    style.map("TNotebook.Tab", background=[("selected", "#ffffff"), ("active", "#eaf1f8")],
+              foreground=[("selected", "#1668dc")])
+    style.configure("Treeview", rowheight=34, background="#ffffff", fieldbackground="#ffffff",
+                    borderwidth=0, font=("Segoe UI", 10))
+    style.configure("Treeview.Heading", background="#f4f6f8", foreground="#566572",
+                    relief="flat", font=("Segoe UI", 9, "bold"), padding=(10, 9))
+    style.map("Treeview", background=[("selected", "#e8f1ff")], foreground=[("selected", "#134c99")])
+    style.configure("Vertical.TScrollbar", background="#c8d1dc", troughcolor="#f4f6f8",
+                    borderwidth=0, arrowsize=12)
+    return style
+
+
+def _window_header(root, subtitle):
+    header = tk.Frame(root, background="#ffffff", padx=22, pady=16)
+    header.pack(fill="x")
+    try:
+        with Image.open(ICON_PATH) as image:
+            root._header_logo = ImageTk.PhotoImage(image.resize((36, 36), Image.Resampling.LANCZOS))
+        tk.Label(header, image=root._header_logo, background="#ffffff").pack(side="left")
+    except OSError:
+        pass
+    title = tk.Frame(header, background="#ffffff")
+    title.pack(side="left", padx=(12, 0))
+    tk.Label(title, text="Clipboard Bridge", font=("Segoe UI", 15, "bold"),
+             background="#ffffff", foreground="#202830").pack(anchor="w")
+    tk.Label(title, text=subtitle, font=("Segoe UI", 10),
+             background="#ffffff", foreground="#64748b").pack(anchor="w")
+    return header
+
+
+def _settings_page(notebook):
+    page = ttk.Frame(notebook)
+    canvas = tk.Canvas(page, background="#ffffff", highlightthickness=0, borderwidth=0)
+    scrollbar = ttk.Scrollbar(page, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+    content = ttk.Frame(canvas, padding=18)
+    window = canvas.create_window((0, 0), window=content, anchor="nw")
+    content.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
+
+    def scroll(event):
+        canvas.yview_scroll(-int(event.delta / 120), "units")
+        return "break"
+
+    def bind_scroll(parent):
+        if not isinstance(parent, (ttk.Entry, ttk.Combobox, ttk.Spinbox)):
+            parent.bind("<MouseWheel>", scroll, add="+")
+        for child in parent.winfo_children():
+            bind_scroll(child)
+
+    page.after_idle(lambda: bind_scroll(content))
+    canvas.bind("<MouseWheel>", scroll)
+    return page, content
+
+
+def _history_table(parent):
+    frame = ttk.Frame(parent)
+    frame.pack(fill="both", expand=True, padx=16, pady=(12, 6))
+    tree = ttk.Treeview(frame, columns=("content", "type", "date", "size"),
+                        show="headings", selectmode="browse")
+    for name, width, minimum, stretch, anchor in (
+        ("content", 400, 210, True, "w"), ("type", 110, 95, False, "w"),
+        ("date", 165, 130, False, "w"), ("size", 85, 75, False, "e"),
+    ):
+        tree.heading(name, text=t("column_" + name))
+        tree.column(name, width=width, minwidth=minimum, stretch=stretch, anchor=anchor)
+    tree.tag_configure("alternate", background="#f8fafc")
+    scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scroll.set)
+    tree.pack(side="left", fill="both", expand=True)
+    scroll.pack(side="right", fill="y")
+    return tree
+
+
+def _fill_history_table(tree, items):
+    tree.delete(*tree.get_children())
+    kinds = {"text": "text_type", "image": "image_type", "file": "file_type", "bundle": "bundle_type"}
+    for index, item in enumerate(items):
+        size = item.get("size")
+        if size is None:
+            size_text = ""
+        elif size < 1024:
+            size_text = f"{size} B"
+        else:
+            size_text = f"{size / (1024 ** (2 if size >= 1024 ** 2 else 1)):.1f} {'MB' if size >= 1024 ** 2 else 'KB'}"
+        date = str(item.get("timestamp") or "").replace("T", " ")[:16]
+        tree.insert("", "end", iid=str(index), values=(
+            (item.get("preview") or item.get("filename") or "").replace("\n", " ").replace("\r", " "),
+            t(kinds.get(item.get("type"), "file_type")), date, size_text,
+        ), tags=("alternate",) if index % 2 else ())
+
+
 def open_history_window(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_history"))
-    root.geometry("620x440")
+    root.geometry("920x640")
+    root.minsize(740, 500)
+    _modern_window(root)
     apply_window_icon(root)
+    header = _window_header(root, t("history").rstrip("…"))
+    ttk.Button(header, text=t("receive_now"), style="Primary.TButton",
+               command=lambda: _run_bg(action_get_latest)).pack(side="right")
+    ttk.Button(header, text=t("send_now"),
+               command=lambda: _run_bg(action_send_clipboard)).pack(side="right", padx=(0, 8))
 
     # UI updates from worker threads are queued and applied on the Tk thread.
     ui_q = queue.Queue()
+    search_job = None
+    pump_job = None
+
+    search_bar = ttk.Frame(root)
+    search_bar.pack(fill="x", padx=20, pady=(16, 4))
+    ttk.Label(search_bar, text=t("history_search"), foreground="#64748b").pack(anchor="w", pady=(0, 5))
+    query = tk.StringVar()
+    search_entry = ttk.Entry(search_bar, textvariable=query)
+    search_entry.pack(side="left", fill="x", expand=True, pady=4)
+    type_codes = ("", "text", "image", "file", "bundle")
+    type_selector = ttk.Combobox(search_bar, state="readonly", width=17,
+        values=[t(key) for key in ("all_types", "text_type", "image_type", "file_type", "bundle_type")])
+    type_selector.current(0)
+    type_selector.pack(side="right", padx=(8, 0))
+
+    def selected_type():
+        return type_codes[max(0, type_selector.current())]
 
     def _pump():
+        nonlocal pump_job
         try:
             while True:
                 ui_q.get_nowait()()
@@ -2109,50 +2456,96 @@ def open_history_window(icon=None, item=None):
         except Exception:
             pass
         try:
-            root.after(100, _pump)
+            pump_job = root.after(100, _pump)
         except Exception:
             pass
 
     nb = ttk.Notebook(root)
-    nb.pack(fill="both", expand=True, padx=8, pady=8)
+    nb.pack(fill="both", expand=True, padx=20, pady=(12, 18))
 
     # ----- server tab -----
     tab_srv = ttk.Frame(nb)
     nb.add(tab_srv, text=t("tab_server"))
-    srv_list = tk.Listbox(tab_srv)
-    srv_list.pack(fill="both", expand=True, padx=4, pady=4)
+    srv_list = _history_table(tab_srv)
     srv_items = []
+    srv_offset = 0
+    request_generation = 0
+    page_size = 30
+    page_status = tk.StringVar()
+    preview = tk.StringVar(value=t("preview_empty"))
 
-    def _srv_fill(items):
-        srv_list.delete(0, tk.END)
-        srv_items.clear()
-        for it in items:
-            srv_items.append(it)
-            srv_list.insert(tk.END, f"[{it['type']}] {it.get('timestamp','')}  {it.get('preview','')}")
+    def selected(items, tree):
+        selection = tree.selection()
+        if not selection:
+            return None
+        index = int(selection[0])
+        return items[index] if index < len(items) else None
 
-    def srv_refresh():
-        srv_list.delete(0, tk.END)
-        srv_list.insert(tk.END, t("loading"))
-        srv_items.clear()
-
-        def work():
-            try:
-                items = fetch_history(100)
-                ui_q.put(lambda: _srv_fill(items))
-            except Exception as e:
-                ui_q.put(lambda: srv_list.delete(0, tk.END))
-                notify(t("recv_err", e=e))
-        threading.Thread(target=work, daemon=True).start()
-
-    def srv_use():
-        sel = srv_list.curselection()
-        if not sel or sel[0] >= len(srv_items):
+    def update_preview(*_args):
+        tree, items = (srv_list, srv_items) if nb.index(nb.select()) == 0 else (loc_list, loc_items)
+        item = selected(items, tree)
+        if item is None:
+            preview.set(t("preview_empty"))
             return
-        it = srv_items[sel[0]]
+        members = item.get("files", [])
+        value = "\n".join(member.get("filename", "") for member in members) if members else (
+            item.get("text") or item.get("preview") or item.get("filename") or "")
+        preview.set(value[:1000])
+
+    def _srv_fill(page, generation, source):
+        if generation != request_generation or not root.winfo_exists():
+            return
+        if source != _sync_source_key():
+            srv_refresh(reset=True)
+            return
+        srv_items.clear()
+        srv_items.extend(page.get("items", []))
+        _fill_history_table(srv_list, srv_items)
+        if srv_items:
+            srv_list.selection_set("0")
+        update_preview()
+        page_status.set(t("history_results", shown=len(srv_items), total=page.get("total", len(srv_items))))
+        previous_button.configure(state="normal" if srv_offset else "disabled")
+        next_button.configure(state="normal" if page.get("has_more") else "disabled")
+
+    def srv_refresh(reset=False):
+        nonlocal srv_offset, request_generation
+        if reset:
+            srv_offset = 0
+        request_generation += 1
+        generation = request_generation
+        search, kind, offset = query.get(), selected_type(), srv_offset
+        source = _sync_source_key()
+        srv_list.delete(*srv_list.get_children())
+        srv_items.clear()
+        previous_button.configure(state="disabled")
+        next_button.configure(state="disabled")
+        page_status.set(t("loading"))
+
+        def failed():
+            if generation == request_generation:
+                srv_list.delete(*srv_list.get_children())
+                page_status.set(t("history_error"))
 
         def work():
             try:
                 with _remote_activity_lock:
+                    if generation != request_generation:
+                        return
+                    page = fetch_history_page(page_size, search, kind, offset)
+                ui_q.put(lambda: _srv_fill(page, generation, source))
+            except Exception:
+                ui_q.put(failed)
+        threading.Thread(target=work, daemon=True).start()
+
+    def srv_use():
+        it = selected(srv_items, srv_list)
+        if it is None:
+            return
+
+        def work():
+            try:
+                with _remote_operation():
                     full = fetch_item(it["id"])
                     _copy_remote_item(full, update_latest=False)
                 if full.get("type") == "text":
@@ -2178,10 +2571,12 @@ def open_history_window(icon=None, item=None):
         threading.Thread(target=work, daemon=True).start()
 
     def srv_delete():
-        sel = srv_list.curselection()
-        if not sel or sel[0] >= len(srv_items):
+        it = selected(srv_items, srv_list)
+        if it is None:
             return
-        item_id = srv_items[sel[0]]["id"]
+        if not messagebox.askyesno(t("delete"), t("confirm_delete"), parent=root):
+            return
+        item_id = it["id"]
 
         def work():
             try:
@@ -2194,30 +2589,40 @@ def open_history_window(icon=None, item=None):
         threading.Thread(target=work, daemon=True).start()
 
     b = ttk.Frame(tab_srv)
-    b.pack(fill="x", padx=4, pady=4)
+    b.pack(side="bottom", fill="x", before=srv_list.master, padx=16, pady=(8, 4))
     ttk.Button(b, text=t("refresh"), command=srv_refresh).pack(side="left")
-    ttk.Button(b, text=t("use"), command=srv_use).pack(side="left", padx=4)
+    ttk.Button(b, text=t("use"), command=srv_use, style="Primary.TButton").pack(side="left", padx=8)
     ttk.Button(b, text=t("delete"), command=srv_delete).pack(side="left")
+
+    def move_page(direction):
+        nonlocal srv_offset
+        srv_offset = max(0, srv_offset + direction * page_size)
+        srv_refresh()
+
+    previous_button = ttk.Button(b, text=t("previous"), command=lambda: move_page(-1))
+    next_button = ttk.Button(b, text=t("next"), command=lambda: move_page(1))
+    next_button.pack(side="right", padx=4)
+    previous_button.pack(side="right")
+    ttk.Label(tab_srv, textvariable=page_status, foreground="#64748b").pack(
+        side="bottom", fill="x", before=b, padx=16, pady=(2, 12))
 
     # ----- local tab -----
     tab_loc = ttk.Frame(nb)
     nb.add(tab_loc, text=t("tab_local"))
-    loc_list = tk.Listbox(tab_loc)
-    loc_list.pack(fill="both", expand=True, padx=4, pady=4)
+    loc_list = _history_table(tab_loc)
     loc_items = []
 
     def loc_refresh():
-        loc_list.delete(0, tk.END)
         loc_items.clear()
-        for it in _local_load():
-            loc_items.append(it)
-            loc_list.insert(tk.END, f"[{it['type']}] {it.get('timestamp','')}  {it.get('preview','')}")
+        loc_items.extend(_filter_history(_local_load(), query.get(), selected_type()))
+        _fill_history_table(loc_list, loc_items)
+        if loc_items:
+            loc_list.selection_set("0")
 
     def loc_send():
-        sel = loc_list.curselection()
-        if not sel or sel[0] >= len(loc_items):
+        it = selected(loc_items, loc_list)
+        if it is None:
             return
-        it = loc_items[sel[0]]
 
         def work():
             try:
@@ -2228,7 +2633,7 @@ def open_history_window(icon=None, item=None):
                 elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
                     push_file(it["path"])
                 elif it["type"] == "bundle":
-                    paths = [path for path in it.get("paths", []) if os.path.isfile(path)]
+                    paths = it.get("paths", [])
                     if paths:
                         push_files(paths)
                     else:
@@ -2241,22 +2646,73 @@ def open_history_window(icon=None, item=None):
         threading.Thread(target=work, daemon=True).start()
 
     b2 = ttk.Frame(tab_loc)
-    b2.pack(fill="x", padx=4, pady=4)
+    b2.pack(side="bottom", fill="x", before=loc_list.master, padx=16, pady=(8, 12))
     ttk.Button(b2, text=t("refresh"), command=loc_refresh).pack(side="left")
-    ttk.Button(b2, text=t("send_to_server"), command=loc_send).pack(side="left", padx=4)
+    ttk.Button(b2, text=t("send_to_server"), command=loc_send, style="Primary.TButton").pack(side="left", padx=8)
+
+    preview_bar = tk.Frame(root, background="#ffffff", padx=22, pady=12)
+    preview_bar.pack(side="bottom", fill="x", before=nb)
+    ttk.Label(preview_bar, text=t("preview"), font=("Segoe UI", 9, "bold"), foreground="#64748b").pack(anchor="w")
+    preview_text = tk.Text(preview_bar, height=3, width=40, wrap="word", state="disabled",
+                           background="#ffffff", foreground="#202830", font=("Segoe UI", 10),
+                           borderwidth=0, highlightthickness=0, padx=0, pady=4)
+    preview_scroll = ttk.Scrollbar(preview_bar, orient="vertical", command=preview_text.yview)
+    preview_text.configure(yscrollcommand=preview_scroll.set)
+    preview_text.pack(side="left", fill="x", expand=True)
+    preview_scroll.pack(side="right", fill="y")
+
+    def draw_preview(*_args):
+        preview_text.configure(state="normal")
+        preview_text.delete("1.0", "end")
+        preview_text.insert("1.0", preview.get())
+        preview_text.configure(state="disabled")
+
+    preview.trace_add("write", draw_preview)
+    draw_preview()
+    srv_list.bind("<<TreeviewSelect>>", update_preview)
+    loc_list.bind("<<TreeviewSelect>>", update_preview)
+    nb.bind("<<NotebookTabChanged>>", update_preview)
+
+    def apply_search():
+        nonlocal search_job
+        if search_job is not None:
+            root.after_cancel(search_job)
+        search_job = None
+        srv_refresh(reset=True)
+        loc_refresh()
+
+    def schedule_search(*_args):
+        nonlocal search_job
+        if search_job is not None:
+            root.after_cancel(search_job)
+        search_job = root.after(350, apply_search)
+
+    query.trace_add("write", schedule_search)
+    type_selector.bind("<<ComboboxSelected>>", schedule_search)
+    search_entry.bind("<Return>", lambda _event: apply_search())
+
+    def close_history():
+        nonlocal request_generation
+        request_generation += 1
+        for job in (search_job, pump_job):
+            if job is not None:
+                root.after_cancel(job)
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", close_history)
 
     loc_refresh()
     root.after(0, srv_refresh)   # window draws first, then loads in background
-    root.after(100, _pump)
+    pump_job = root.after(100, _pump)
 
 
 # ---------------------------------------------------------------- settings window
 def open_settings(icon=None, item=None):
     root = tk.Toplevel(_root)
     root.title(t("win_settings"))
-    root.geometry("560x650")
-    root.minsize(520, 610)
-    root.configure(background="#f5f7fb")
+    root.geometry("640x730")
+    root.minsize(580, 600)
+    style = _modern_window(root)
     root.attributes("-topmost", True)
     apply_window_icon(root)
 
@@ -2268,62 +2724,41 @@ def open_settings(icon=None, item=None):
 
     root.after(300, release_topmost)
 
-    style = ttk.Style(root)
-    style.configure("Settings.TNotebook", background="#f5f7fb", borderwidth=0)
+    style.configure("Settings.TNotebook", background="#f4f6f8", borderwidth=0)
     style.configure(
         "Settings.TNotebook.Tab",
-        font=("Segoe UI", 9, "bold"),
+        font=("Segoe UI", 10),
         padding=(16, 9),
     )
     style.configure(
         "Settings.Section.TLabelframe",
-        padding=12,
+        padding=14, borderwidth=1, relief="solid", bordercolor="#e1e6ec",
+        lightcolor="#ffffff", darkcolor="#ffffff", background="#ffffff",
     )
     style.configure(
         "Settings.Section.TLabelframe.Label",
-        font=("Segoe UI", 9, "bold"),
+        font=("Segoe UI", 10, "bold"),
     )
-    style.configure("Settings.Primary.TButton", font=("Segoe UI", 9, "bold"), padding=(16, 8))
+    style.configure("Settings.Primary.TButton", font=("Segoe UI", 10, "bold"), padding=(16, 9),
+                    background="#1668dc", foreground="#ffffff", borderwidth=0)
+    style.map("Settings.Primary.TButton", background=[("active", "#0d55b8")], foreground=[("!disabled", "#ffffff")])
     style.configure("Settings.TCheckbutton", padding=(0, 5))
 
-    header = tk.Frame(root, background="#ffffff", padx=20, pady=14)
-    header.pack(fill="x")
-    try:
-        logo_image = Image.open(ICON_PATH).resize((38, 38), Image.Resampling.LANCZOS)
-        root._settings_logo = ImageTk.PhotoImage(logo_image)
-        tk.Label(header, image=root._settings_logo, background="#ffffff").pack(side="left")
-    except Exception:
-        pass
-    title_box = tk.Frame(header, background="#ffffff")
-    title_box.pack(side="left", padx=(12, 0))
-    tk.Label(
-        title_box,
-        text="Clipboard Bridge",
-        background="#ffffff",
-        foreground="#17212b",
-        font=("Segoe UI", 13, "bold"),
-    ).pack(anchor="w")
-    tk.Label(
-        title_box,
-        text=f"{t('settings').rstrip('…')} · {t('version_label', version=APP_VERSION)}",
-        background="#ffffff",
-        foreground="#64748b",
-        font=("Segoe UI", 9),
-    ).pack(anchor="w")
+    _window_header(root, f"{t('settings').rstrip('…')} · {t('version_label', version=APP_VERSION)}")
 
     body = ttk.Frame(root, padding=(18, 14, 18, 0))
     body.pack(fill="both", expand=True)
     notebook = ttk.Notebook(body, style="Settings.TNotebook")
     notebook.pack(fill="both", expand=True)
 
-    general_tab = ttk.Frame(notebook, padding=14)
-    connection_tab = ttk.Frame(notebook, padding=14)
-    automation_tab = ttk.Frame(notebook, padding=14)
-    shortcuts_tab = ttk.Frame(notebook, padding=14)
-    notebook.add(general_tab, text=t("tab_general"))
-    notebook.add(connection_tab, text=t("tab_connection"))
-    notebook.add(automation_tab, text=t("tab_automation"))
-    notebook.add(shortcuts_tab, text=t("tab_shortcuts"))
+    general_page, general_tab = _settings_page(notebook)
+    connection_page, connection_tab = _settings_page(notebook)
+    automation_page, automation_tab = _settings_page(notebook)
+    shortcuts_page, shortcuts_tab = _settings_page(notebook)
+    notebook.add(general_page, text=t("tab_general"))
+    notebook.add(connection_page, text=t("tab_connection"))
+    notebook.add(automation_page, text=t("tab_automation"))
+    notebook.add(shortcuts_page, text=t("tab_shortcuts"))
 
     entries = {}
 
@@ -2535,20 +2970,24 @@ def open_settings(icon=None, item=None):
             host_port = int(entries["host_port"].get())
         except ValueError:
             msg.config(text=t("err_numbers"))
-            notebook.select(connection_tab)
+            notebook.select(connection_page)
+            return None
+        if not (1 <= port <= 65535 and 1 <= host_port <= 65535):
+            msg.config(text=t("err_ports"))
+            notebook.select(connection_page)
             return None
         if validate_interval:
             try:
                 interval = int(entries["poll_interval"].get())
             except ValueError:
                 msg.config(text=t("err_numbers"))
-                notebook.select(automation_tab)
+                notebook.select(automation_page)
                 return None
             try:
                 max_history = int(history_limit.get())
             except ValueError:
                 msg.config(text=t("err_numbers"))
-                notebook.select(general_tab)
+                notebook.select(general_page)
                 return None
         else:
             interval = config.get("poll_interval", 3)
@@ -2767,13 +3206,13 @@ def build_menu():
     return Menu(
         MenuItem(lambda i: tray_connection_text(), lambda icon, item: None, enabled=False),
         Menu.SEPARATOR,
-        MenuItem(lambda i: t("send"), lambda icon, item: _run_bg(action_send_clipboard), default=True),
+        MenuItem(lambda i: t("send"), lambda icon, item: _run_bg(action_send_clipboard)),
         MenuItem(lambda i: t("recv"), lambda icon, item: _run_bg(action_get_latest)),
         Menu.SEPARATOR,
         MenuItem(lambda i: t("send_file"), lambda icon, item: _cmd_q.put(action_send_file)),
         MenuItem(lambda i: t("open_recv"), open_received_folder),
         Menu.SEPARATOR,
-        MenuItem(lambda i: t("history"), lambda icon, item: _cmd_q.put(open_history_window)),
+        MenuItem(lambda i: t("history"), lambda icon, item: _cmd_q.put(open_history_window), default=True),
         MenuItem(lambda i: t("language"), Menu(
             MenuItem("English", _set_lang("en"),
                      checked=lambda i: config.get("lang", "en") == "en", radio=True),

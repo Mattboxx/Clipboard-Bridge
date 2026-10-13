@@ -5,7 +5,7 @@
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.8) |
+[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.9) |
 [Server App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Setup guide](GUIDE.md)
 
@@ -64,23 +64,23 @@ the only rule.
 
 | Platform | Download | What it includes |
 |---|---|---|
-| **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
-| **Windows installer** | [Clipboard Bridge Windows 2.0.8 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.8.exe) | Per-user installation; no administrator account required |
-| **Windows portable** | [Clipboard Bridge 2.0.8 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Portable.Windows.x64.V2.0.8.exe) | One executable, no installation |
-| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
-| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
-| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
-| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/clipboard_bridge_windows.py) | Uncompiled Windows client source |
+| **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
+| **Windows installer** | [Clipboard Bridge Windows 2.0.9 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.9.exe) | Per-user installation; no administrator account required |
+| **Windows portable** | [Clipboard Bridge 2.0.9 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Portable.Windows.x64.V2.0.9.exe) | One executable, no installation |
+| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
+| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
+| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
+| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge_windows.py) | Uncompiled Windows client source |
 
 The Android app is currently a public beta. The release contains only ready-to-use
 downloads and the two main Python scripts. Developers can clone the repository for
 documentation, tests, Docker files and complete source code.
 
-**New in 2.0.8:** lighter background polling, automatic retry after temporary
-connection/clipboard failures, and more reliable grouped-file receiving. Windows
-preserves empty files and long Unicode filenames; image formats it cannot paste as
-a bitmap are received as original files. Server 1.0.5 preserves exact line endings
-and supports UTF-32 text and Unicode credentials. Existing iPhone URLs remain valid.
+**New in 2.0.9:** a modern Windows history table with previews, search, type filters
+and pagination, plus redesigned, scrollable Settings. In-flight transfers keep their
+original account even if Settings change. Missing group members and disk-write errors
+are handled safely. Server 1.0.6 adds searchable, paginated web history and protects
+existing files when a save fails. Existing Android and iPhone endpoints remain valid.
 
 > **Windows download warning:** the current Windows executables are not yet signed with
 > a public Authenticode certificate. Defender or Smart App Control can therefore show a
@@ -164,7 +164,7 @@ from the selected Clipboard Bridge server.
 
 ### Install the APK
 
-1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
+1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
 2. Open the downloaded file on the Android device.
 3. If requested, allow the browser or file manager to install apps from that source.
 4. Choose **Install** or **Update**.
@@ -244,6 +244,10 @@ See [android/README.md](android/README.md) for build instructions and technical 
 
 The Windows client runs from the notification area.
 
+![Windows history with search, type filters and selected-item preview](docs/assets/windows-history.png)
+
+*Clipboard Bridge 2.0.9. Real application screens with public sample data.*
+
 <table>
   <tr>
     <td width="50%"><img src="docs/assets/windows-connection.png" alt="Windows connection settings with connected status"></td>
@@ -260,6 +264,7 @@ The Windows client runs from the notification area.
 - Client mode for an external server.
 - Server mode with a built-in HTTP server.
 - Manual send and receive.
+- Left-click the tray icon to open History. Sending uses its menu action or your configured hotkey.
 - Configurable global keyboard shortcuts.
 - Automatic clipboard synchronization.
 - Local clipboard history.
@@ -293,7 +298,7 @@ multiple files without asking which content type is being transferred.
 
 ### Send the current clipboard
 
-Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Load.Clipboard.shortcut)
+Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut)
 and set its request URL to:
 
 ```text
@@ -315,7 +320,7 @@ actions; text continues to use the URL without the filename parameter.
 
 ### Receive the latest item
 
-Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Download.Clipboard.shortcut)
+Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut)
 and set its URL to:
 
 ```text
@@ -434,6 +439,23 @@ See [SECURITY.md](SECURITY.md) before exposing a server beyond a trusted LAN.
 | `docs/` | GitHub Pages website |
 
 ## Build and contribute
+
+### Searchable history
+
+Windows 2.0.9 and server 1.0.6 add history search, type filters and previous/next pages to the
+Windows client and standalone server web page. Search matches text previews and
+filenames, including every member of a grouped upload; it is not full-document search.
+Windows local history has the same search and type filters.
+
+API clients can use `GET /clipboard/history?q=report&type=file&limit=30&offset=0`.
+Available types are `text`, `image`, `file` and `bundle`; omit `type` for all items.
+The response retains `items` and `count`, and adds `total`, `offset` and `has_more`.
+Limits must be 1-1000 and offsets nonnegative. Optional credentials are appended
+as usual. These changes do not alter the iPhone Shortcut upload/receive endpoints.
+
+![Search and type filters in the optional standalone server web interface](docs/assets/server-history.png)
+
+See the [changelog](CHANGELOG.md) for the complete reliability improvements.
 
 - Android build: [android/README.md](android/README.md)
 - Windows packaging: [build and signing guide](CODE_SIGNING.md)
