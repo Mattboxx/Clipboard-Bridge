@@ -2,6 +2,41 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.9 - 2026-10-13
+
+### Added
+
+- Search history previews and filenames, including every member of a file group.
+- Filter history by text, image, file or file group in the Windows client and web page.
+- Paginate server history in both interfaces instead of hiding older entries.
+- Extend the history API with `q`, `offset`, `total` and `has_more` in both server modes.
+- Modern Windows Settings with scrollable tabs, consistent typography and clear controls.
+- A structured Windows history table, selected-item preview and quick send/receive actions.
+- Left-clicking the Windows tray icon opens History; sending remains an explicit menu action or hotkey.
+
+### Fixed
+
+- Do not silently upload only part of a group when a selected file is missing.
+- Re-send text copied again after the Windows clipboard has been cleared.
+- Reject malformed, duplicate or incomplete HTTP request lengths in Windows Server mode.
+- Reject negative file-group member indexes and report missing deleted items consistently.
+- Snapshot embedded-server reads before concurrent history trimming or deletion.
+- Keep existing history files when an index write fails; remove incomplete new uploads.
+- Recover safely from invalid saved Windows settings without erasing valid credentials.
+- Report failed web deletions instead of reloading as though they succeeded.
+- Ignore outdated history-search responses and cancel callbacks when the window closes.
+- Keep the server/account fixed for an entire in-flight upload, receive or file group,
+  even when Settings change; do not assign its response/cache to another account.
+- Remove incomplete received files after a disk-write failure.
+- Prevent older connection checks from overwriting a newer successful check.
+
+## Server 1.0.6 - 2026-10-13
+
+- Added history search, type filters and pagination to the API and optional web page.
+- Preserved existing data when index commits fail and removed partial upload files.
+- Made web deletions report errors instead of appearing to succeed.
+- Kept existing iPhone and Android endpoints and optional authentication compatible.
+
 ## 2.0.8 - 2026-10-03
 
 ### Fixed

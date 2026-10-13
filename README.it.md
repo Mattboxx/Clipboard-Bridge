@@ -5,7 +5,7 @@
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.8) |
+[Download](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.9) |
 [App Store del server](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Guida completa](GUIDE.md)
 
@@ -64,24 +64,24 @@ l'ordine di arrivo.
 
 | Piattaforma | Download | Contenuto |
 |---|---|---|
-| **Android 10+** | [APK Android 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
-| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.8](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.8.exe) | Installazione per l'utente corrente, senza account amministratore |
-| **Portable Windows** | [Clipboard Bridge 2.0.8 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Portable.Windows.x64.V2.0.8.exe) | Un solo eseguibile, nessuna installazione |
-| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
-| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
-| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
-| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
+| **Android 10+** | [APK Android 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | App nativa, destinazione Condividi universale, cronologia server modificabile e pulsanti rapidi |
+| **Installer Windows** | [Installer Clipboard Bridge Windows 2.0.9](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.9.exe) | Installazione per l'utente corrente, senza account amministratore |
+| **Portable Windows** | [Clipboard Bridge 2.0.9 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Portable.Windows.x64.V2.0.9.exe) | Un solo eseguibile, nessuna installazione |
+| **Comando iPhone per inviare** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut) | Invia la clipboard attuale di iOS |
+| **Comando iPhone per ricevere** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut) | Riceve l'ultimo elemento del server |
+| **Server Python** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge-Server.py) | Script server indipendente; dipendenze e file Docker restano nel repository |
+| **Client Windows Python** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/clipboard_bridge_windows.py) | Sorgente non compilato del client Windows |
 
 L'app Android è attualmente una beta pubblica. La release contiene soltanto i download
 pronti all'uso e i due script Python principali. Gli sviluppatori possono clonare il
 repository per documentazione, test, file Docker e sorgenti completi.
 
-**Novità della 2.0.8:** controlli in background più leggeri, nuovi tentativi dopo
-errori temporanei di connessione o clipboard e ricezione più affidabile dei gruppi
-di file. Windows conserva file vuoti e nomi Unicode lunghi; i formati immagine che
-non può incollare come bitmap vengono ricevuti come file originali. Il server
-1.0.5 conserva i ritorni a capo esatti e supporta testo UTF-32 e credenziali Unicode.
-Gli URL iPhone esistenti restano validi.
+**Novità della 2.0.9:** cronologia Windows con tabella moderna, anteprima, ricerca,
+filtri e paginazione; impostazioni ridisegnate e scorrevoli. Gli invii in corso
+mantengono l'account originale anche cambiando le impostazioni. File mancanti nei
+gruppi ed errori di scrittura vengono gestiti senza perdere i dati precedenti.
+Il server 1.0.6 aggiunge ricerca e paginazione web. Gli endpoint Android e iPhone
+esistenti restano validi.
 
 > **Avviso download Windows:** gli eseguibili Windows non sono ancora firmati con un
 > certificato Authenticode pubblico. Defender o Smart App Control potrebbero mostrare un
@@ -166,7 +166,7 @@ direttamente dal server Clipboard Bridge selezionato.
 
 ### Installare l'APK
 
-1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
+1. Scarica l'[APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
 2. Apri il file scaricato sul dispositivo Android.
 3. Se richiesto, consenti al browser o al file manager di installare app da quella fonte.
 4. Scegli **Installa** oppure **Aggiorna**.
@@ -248,6 +248,13 @@ Consulta [android/README.md](android/README.md) per compilazione e dettagli tecn
 
 Il client Windows funziona dall'area di notifica.
 
+Il clic sinistro sull'icona apre la cronologia, senza inviare nulla. Per inviare usa
+la voce del menu oppure la combinazione di tasti configurata nelle impostazioni.
+
+![Cronologia Windows con ricerca, filtri e anteprima dell'elemento selezionato](docs/assets/windows-history.png)
+
+*Clipboard Bridge 2.0.9. Schermate reali con soli dati di esempio pubblici.*
+
 <table>
   <tr>
     <td width="50%"><img src="docs/assets/windows-connection.png" alt="Impostazioni di connessione Windows con stato connesso"></td>
@@ -297,7 +304,7 @@ e file multipli senza chiedere quale tipo di contenuto si sta trasferendo.
 
 ### Inviare la clipboard attuale
 
-Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Load.Clipboard.shortcut)
+Installa [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut)
 e imposta l'URL della richiesta:
 
 ```text
@@ -319,7 +326,7 @@ mostra le azioni necessarie; il testo continua a usare l'URL senza il parametro 
 
 ### Ricevere l'ultimo elemento
 
-Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.8/iPhone.Download.Clipboard.shortcut)
+Installa [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut)
 e imposta:
 
 ```text
@@ -436,6 +443,25 @@ Consulta [SECURITY.md](SECURITY.md) prima di usare il server fuori da una LAN at
 | `docs/` | Sito GitHub Pages |
 
 ## Compilazione e contributi
+
+### Cronologia ricercabile
+
+Windows 2.0.9 e server 1.0.6 aggiungono ricerca, filtri per tipo e pagine precedenti/successive
+alla cronologia del client Windows e alla pagina web del server indipendente.
+La ricerca riguarda anteprime testuali e nomi dei file, inclusi tutti i membri dei
+gruppi; non cerca dentro il contenuto completo dei documenti. Anche la cronologia
+locale Windows dispone di ricerca e filtri.
+
+Per le API: `GET /clipboard/history?q=report&type=file&limit=30&offset=0`.
+I tipi disponibili sono `text`, `image`, `file` e `bundle`; ometti `type` per tutti.
+La risposta mantiene `items` e `count` e aggiunge `total`, `offset` e `has_more`.
+Il limite deve essere tra 1 e 1000 e l'offset non negativo. Le credenziali opzionali
+si aggiungono come prima. Gli endpoint di invio/ricezione dei Comandi rapidi iPhone
+non cambiano.
+
+![Ricerca e filtri nell'interfaccia web opzionale del server indipendente](docs/assets/server-history.png)
+
+Le correzioni complete sono elencate nel [changelog](CHANGELOG.md).
 
 - Compilazione Android: [android/README.md](android/README.md)
 - Pacchetti Windows: [guida build e firma](CODE_SIGNING.md)

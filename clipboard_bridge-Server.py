@@ -34,7 +34,7 @@ from flask import Flask, request, jsonify, Response, send_file, redirect, sessio
 from markupsafe import escape
 from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
 from werkzeug.http import parse_options_header
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlencode
 import base64
 import hmac
 import io
@@ -51,7 +51,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.5"
+SERVER_VERSION = "1.0.6"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -169,6 +169,32 @@ def _same_secret(first, second):
 
 
 # ---------- Index / history management ----------
+def _history_page(items, params):
+    query = (params.get("q") or "").strip()
+    kind = params.get("type") or ""
+    if len(query) > 200 or kind not in ("", "text", "image", "file", "bundle"):
+        raise ValueError("invalid history search or type")
+    try:
+        offset = int(params.get("offset", 0))
+        limit = int(params["limit"]) if "limit" in params else None
+    except (TypeError, ValueError):
+        raise ValueError("invalid history limit or offset") from None
+    if offset < 0 or (limit is not None and not 1 <= limit <= 1000):
+        raise ValueError("history limit must be 1-1000 and offset must be nonnegative")
+    query = query.casefold()
+    filtered = []
+    for item in items:
+        if kind and item.get("type") != kind:
+            continue
+        names = " ".join(member.get("filename") or "" for member in item.get("files", []))
+        searchable = " ".join((item.get("preview") or "", item.get("filename") or "", names))
+        if not query or query in searchable.casefold():
+            filtered.append(item)
+    page = filtered[offset:offset + limit] if limit is not None else filtered[offset:]
+    return {"items": page, "count": len(page), "total": len(filtered),
+            "offset": offset, "has_more": offset + len(page) < len(filtered)}
+
+
 def _load_index():
     index_file = _index_file()
     if os.path.exists(index_file):
@@ -190,9 +216,38 @@ def _save_index(index):
 
 
 def _trim(index):
-    """Keep at most MAX_HISTORY items, deleting the files of the oldest ones."""
-    while len(index) > MAX_HISTORY:
-        _delete_entry_files(index.pop())
+    """Detach expired entries; delete their files only after the index is committed."""
+    expired = index[MAX_HISTORY:]
+    del index[MAX_HISTORY:]
+    return expired
+
+
+def _commit_entry(entry):
+    with _lock:
+        index = _load_index()
+        index.insert(0, entry)
+        expired = _trim(index)
+        try:
+            _save_index(index)
+        except Exception:
+            _delete_entry_files(entry)
+            raise
+        for old in expired:
+            _delete_entry_files(old)
+    return entry
+
+
+def _write_item(filename, payload):
+    path = os.path.join(_items_dir(), filename)
+    try:
+        with open(path, "wb") as stream:
+            stream.write(payload)
+    except Exception:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
 
 
 def _stored_files(entry):
@@ -266,8 +321,7 @@ def _latest_of(types):
 def _add_text(text):
     entry_id = uuid.uuid4().hex[:12]
     fname = entry_id + ".txt"
-    with open(os.path.join(_items_dir(), fname), "w", encoding="utf-8", newline="") as f:
-        f.write(text)
+    _write_item(fname, text.encode("utf-8"))
     entry = {
         "id": entry_id,
         "type": "text",
@@ -279,12 +333,7 @@ def _add_text(text):
         "size": len(text.encode("utf-8")),
         "preview": text[:140],
     }
-    with _lock:
-        index = _load_index()
-        index.insert(0, entry)
-        _trim(index)
-        _save_index(index)
-    return entry
+    return _commit_entry(entry)
 
 
 def _clean_filename(filename):
@@ -320,8 +369,7 @@ def _add_binary(raw, orig_filename=None, mime=None):
     # Extension: from the original filename, otherwise from the mime type
     ext = _storage_extension(orig_filename, mime)
     fname = entry_id + (ext or ".bin")
-    with open(os.path.join(_items_dir(), fname), "wb") as f:
-        f.write(raw)
+    _write_item(fname, raw)
 
     if not mime:
         mime = mimetypes.guess_type(orig_filename or fname)[0] or "application/octet-stream"
@@ -337,12 +385,7 @@ def _add_binary(raw, orig_filename=None, mime=None):
         "size": len(raw),
         "preview": orig_filename or fname,
     }
-    with _lock:
-        index = _load_index()
-        index.insert(0, entry)
-        _trim(index)
-        _save_index(index)
-    return entry
+    return _commit_entry(entry)
 
 
 def _add_bundle(uploaded_files):
@@ -361,8 +404,7 @@ def _add_bundle(uploaded_files):
             if not mime:
                 mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
             internal = f"{entry_id}_{index + 1}{_storage_extension(filename, mime) or '.bin'}"
-            with open(os.path.join(_items_dir(), internal), "wb") as stream:
-                stream.write(raw)
+            _write_item(internal, raw)
             stored.append({
                 "file": internal,
                 "filename": filename,
@@ -393,12 +435,7 @@ def _add_bundle(uploaded_files):
         "size": sum(item["size"] for item in stored),
         "preview": names[:240],
     }
-    with _lock:
-        index = _load_index()
-        index.insert(0, entry)
-        _trim(index)
-        _save_index(index)
-    return entry
+    return _commit_entry(entry)
 
 
 # ---------- Request data extraction ----------
@@ -1020,19 +1057,19 @@ def push_bundle_archive():
 def history():
     if request.method == "DELETE":
         with _lock:
-            for e in _load_index():
-                _delete_entry_files(e)
+            index = _load_index()
             _save_index([])
+            for e in index:
+                _delete_entry_files(e)
         return jsonify({"status": "cleared"})
 
-    index = _load_index()
-    type_filter = request.args.get("type")
-    if type_filter:
-        index = [e for e in index if e["type"] == type_filter]
-    limit = request.args.get("limit", type=int)
-    if limit:
-        index = index[:limit]
-    return jsonify({"items": [_meta(e) for e in index], "count": len(index)})
+    try:
+        with _lock:
+            page = _history_page(_load_index(), request.args)
+            page["items"] = [_meta(e) for e in page["items"]]
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    return jsonify(page)
 
 
 @app.route("/clipboard/item/<item_id>", methods=["GET", "DELETE"])
@@ -1154,9 +1191,10 @@ function copyText(s){var a=document.createElement('textarea');a.value=s;a.style.
 a.style.opacity='0';document.body.appendChild(a);a.focus();a.select();
 try{document.execCommand('copy');}catch(e){}document.body.removeChild(a);toast(T_COPIED);}
 function deleteItem(id){if(!confirm(T_DEL))return;
-fetch('/clipboard/item/'+id+TOKENQS,{method:'DELETE'}).then(function(){location.reload();});}
+fetch('/clipboard/item/'+id+TOKENQS,{method:'DELETE'}).then(checkResult).catch(function(){toast(T_ERROR);});}
 function clearHistory(){if(!confirm(T_CLEAR))return;
-fetch('/clipboard/history'+TOKENQS,{method:'DELETE'}).then(function(){location.reload();});}
+fetch('/clipboard/history'+TOKENQS,{method:'DELETE'}).then(checkResult).catch(function(){toast(T_ERROR);});}
+function checkResult(r){if(!r.ok)throw new Error('Request failed');location.reload();}
 (function(){var z=document.getElementById('drop'),f=document.getElementById('file'),
 fm=document.getElementById('upform');if(!z)return;z.onclick=function(){f.click();};
 function on(e){e.preventDefault();z.classList.add('hover');}
@@ -1207,6 +1245,10 @@ WEB_STRINGS = {
         "h_file": "File", "drop1": "Drop files here", "drop2": "or click to choose them",
         "upload": "Upload",
         "h_history": "History", "refresh": "Refresh", "clear": "Clear",
+        "search": "Search previews and filenames", "search_button": "Search", "all_types": "All types",
+        "text_type": "Text", "image_type": "Images", "file_type": "Files", "bundle_type": "File groups",
+        "previous": "Previous", "next": "Next", "results": "{n} results",
+        "no_results": "No matching items.", "js_error": "Operation failed. Refresh and try again.",
         "download": "Download", "delete": "Delete",
         "files": "files",
         "empty": "Nothing yet. Save some text or upload a file above.",
@@ -1234,6 +1276,10 @@ WEB_STRINGS = {
         "h_file": "File", "drop1": "Trascina qui i file", "drop2": "oppure clicca per sceglierli",
         "upload": "Carica",
         "h_history": "Cronologia", "refresh": "Aggiorna", "clear": "Svuota",
+        "search": "Cerca nelle anteprime e nei nomi dei file", "search_button": "Cerca", "all_types": "Tutti i tipi",
+        "text_type": "Testo", "image_type": "Immagini", "file_type": "File", "bundle_type": "Gruppi di file",
+        "previous": "Precedenti", "next": "Successivi", "results": "{n} risultati",
+        "no_results": "Nessun elemento corrispondente.", "js_error": "Operazione non riuscita. Aggiorna e riprova.",
         "download": "Scarica", "delete": "Elimina",
         "files": "file",
         "empty": "Ancora niente. Salva del testo o carica un file qui sopra.",
@@ -1273,8 +1319,14 @@ def render_home():
     latest_text = _read_text(e) if e else ""
 
     items = _load_index()
+    search_query = request.args.get("q", "")
+    type_filter = request.args.get("type", "")
+    page = _history_page(items, {
+        "q": search_query, "type": type_filter, "limit": "20",
+        "offset": request.args.get("offset", "0"),
+    })
     rows = ""
-    for it in items[:20]:
+    for it in page["items"]:
         tid, kind = it["id"], it["type"]
         prev = escape(it.get("preview") or S["no_preview"])
         label = (f'{len(it.get("files", []))} {S["files"]}'
@@ -1291,7 +1343,21 @@ def render_home():
                  f"<button class=\"btn small ghost\" type=\"button\" onclick=\"deleteItem('{tid}')\">{S['delete']}</button>"
                  f'</div></div>')
     if not rows:
-        rows = f'<div class="empty">{S["empty"]}</div>'
+        rows = f'<div class="empty">{S["no_results"] if search_query or type_filter else S["empty"]}</div>'
+
+    options = ''.join(
+        f'<option value="{kind}"{" selected" if type_filter == kind else ""}>{S[label]}</option>'
+        for kind, label in (("", "all_types"), ("text", "text_type"), ("image", "image_type"),
+                            ("file", "file_type"), ("bundle", "bundle_type"))
+    )
+    navigation = f'<span>{S["results"].format(n=page["total"])}</span>'
+    for offset, label, enabled in ((max(0, page["offset"] - 20), "previous", page["offset"] > 0),
+                                   (page["offset"] + 20, "next", page["has_more"])):
+        if enabled:
+            params = {"lang": lang, "q": search_query, "type": type_filter, "offset": offset}
+            if tok:
+                params["token"] = tok
+            navigation += f'<a class="btn small ghost" href="/?{escape(urlencode(params))}#history">{S[label]}</a>'
 
     nota = f'<div class="nota">{S["auth_optional"]}</div>'
     if tok:
@@ -1322,6 +1388,7 @@ def render_home():
     js_consts = (f"const TOKENQS={json.dumps(tq)};"
                  f"const T_COPIED={json.dumps(S['js_copied'])};"
                  f"const T_DEL={json.dumps(S['js_del'])};"
+                 f"const T_ERROR={json.dumps(S['js_error'])};"
                  f"const T_CLEAR={json.dumps(S['js_clear'])};")
 
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
@@ -1353,9 +1420,17 @@ def render_home():
 </form>
 </div>
 
-<div class="card">
+<div class="card" id="history">
 <h2>{IC_HIST} {S["h_history"]} <span style="margin-left:auto;display:flex;gap:6px"><button class="btn small ghost" type="button" onclick="location.reload()">{S["refresh"]}</button><button class="btn small ghost" type="button" onclick="clearHistory()">{S["clear"]}</button></span></h2>
+<form method="get" action="/#history" class="row" style="margin-bottom:12px">
+<input type="hidden" name="lang" value="{lang}">
+{('<input type="hidden" name="token" value="' + str(escape(tok)) + '">') if tok else ''}
+<input type="search" name="q" value="{escape(search_query)}" placeholder="{S['search']}" aria-label="{S['search']}" maxlength="200" style="flex:1;min-width:140px;padding:8px;border:1px solid #e2e8f0;border-radius:6px">
+<select name="type" aria-label="{S['all_types']}" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">{options}</select>
+<button class="btn small ghost" type="submit">{S['search_button']}</button>
+</form>
 {rows}
+<nav class="row" aria-label="{S['h_history']}" style="align-items:center;font-size:13px">{navigation}</nav>
 </div>
 
 <div class="card">
@@ -1383,7 +1458,12 @@ def render_home():
 
 @app.route("/")
 def home():
-    return Response(render_home(), mimetype="text/html")
+    try:
+        with _lock:
+            content = render_home()
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    return Response(content, mimetype="text/html")
 
 
 @app.route("/ui/text", methods=["POST"])
