@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import time
 import zipfile
+import webbrowser
 from contextlib import contextmanager
 from functools import wraps
 from ctypes import wintypes
@@ -37,7 +38,7 @@ from urllib.parse import parse_qs, quote, unquote
 
 import requests
 import pyperclip
-from PIL import Image, ImageGrab, ImageDraw, ImageTk
+from PIL import Image, ImageGrab, ImageDraw, ImageTk, ImageFont
 from pystray import Icon, MenuItem, Menu
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -153,6 +154,7 @@ _prepare_data_dirs()
 
 DEFAULT_CONFIG = {
     "lang": "en",
+    "appearance": "dark",
     "mode": "client",          # "client" = connect to an external server; "server" = be the server
     "server_ip": "127.0.0.1",  # external server address (client mode)
     "server_port": 5088,
@@ -259,7 +261,7 @@ STRINGS = {
         "choose_files": "Choose the files to send",
         "win_history": "Clipboard Bridge - History",
         "tab_server": "Server",
-        "tab_local": "Local",
+        "tab_local": "This PC",
         "refresh": "Refresh",
         "history_search": "Search previews and filenames",
         "all_types": "All types", "text_type": "Text", "image_type": "Images",
@@ -271,6 +273,12 @@ STRINGS = {
         "column_size": "Size", "preview": "Preview", "preview_empty": "No item selected",
         "send_now": "Send clipboard", "receive_now": "Receive latest",
         "confirm_delete": "Delete this item from server history?",
+        "copy_selected": "Copy", "search_history": "Search history",
+        "no_results": "No matching items", "show_preview": "Preview",
+        "send_short": "Send", "receive_short": "Receive",
+        "lbl_appearance": "Appearance", "light_theme": "Light", "dark_theme": "Dark",
+        "support": "Support on Ko-fi",
+        "support_note": "If Clipboard Bridge is useful to you, a donation helps with maintenance and updates. Thank you for choosing to support the project!",
         "loading": "Loading…",
         "use": "Use",
         "delete": "Delete",
@@ -367,7 +375,7 @@ STRINGS = {
         "choose_files": "Scegli i file da inviare",
         "win_history": "Clipboard Bridge - Cronologia",
         "tab_server": "Server",
-        "tab_local": "Locale",
+        "tab_local": "Questo PC",
         "refresh": "Aggiorna",
         "history_search": "Cerca nelle anteprime e nei nomi dei file",
         "all_types": "Tutti i tipi", "text_type": "Testo", "image_type": "Immagini",
@@ -379,6 +387,12 @@ STRINGS = {
         "column_size": "Dimensione", "preview": "Anteprima", "preview_empty": "Nessun elemento selezionato",
         "send_now": "Invia appunti", "receive_now": "Ricevi ultimo",
         "confirm_delete": "Eliminare questo elemento dalla cronologia server?",
+        "copy_selected": "Copia", "search_history": "Cerca nella cronologia",
+        "no_results": "Nessun risultato", "show_preview": "Anteprima",
+        "send_short": "Invia", "receive_short": "Ricevi",
+        "lbl_appearance": "Aspetto", "light_theme": "Chiaro", "dark_theme": "Scuro",
+        "support": "Supporta su Ko-fi",
+        "support_note": "Se Clipboard Bridge ti è utile, una donazione aiuta a mantenere e aggiornare il progetto. Grazie di cuore se scegli di contribuire!",
         "loading": "Caricamento…",
         "use": "Usa",
         "delete": "Elimina",
@@ -445,6 +459,8 @@ def _normalize_config(values):
         cfg["lang"] = "en"
     if cfg.get("mode") not in ("client", "server"):
         cfg["mode"] = "client"
+    if cfg.get("appearance") not in ("light", "dark"):
+        cfg["appearance"] = "dark"
     return cfg
 
 
@@ -2293,70 +2309,320 @@ def sync_loop():
 
 
 # ---------------------------------------------------------------- history window
-def _modern_window(root):
-    root.configure(background="#f4f6f8")
+_PALETTES = {
+    "light": {
+        "canvas": "#f4f6f8", "panel": "#ffffff", "field": "#ffffff", "soft": "#f2f4f7",
+        "text": "#202830", "muted": "#627084", "border": "#d8dee5", "alternate": "#f8fafc",
+        "selected": "#e8f1ff", "selected_text": "#1357b5", "hover": "#e8edf4",
+        "scroll": "#bbc5d2", "scroll_active": "#8494a7", "disabled": "#99a2af",
+        "primary": "#1668dc", "primary_hover": "#0d55b8", "support": "#9f315e",
+        "connected_bg": "#ecfdf3", "connected_fg": "#15803d",
+        "checking_bg": "#eff6ff", "checking_fg": "#2563eb",
+        "auth_bg": "#fff7ed", "auth_fg": "#c2410c",
+        "offline_bg": "#fef2f2", "offline_fg": "#b91c1c",
+    },
+    "dark": {
+        "canvas": "#17191d", "panel": "#1e2126", "field": "#181b20", "soft": "#2b3038",
+        "text": "#e4e8ef", "muted": "#a8b1bf", "border": "#3a414b", "alternate": "#24282f",
+        "selected": "#253d60", "selected_text": "#b8d5ff", "hover": "#343d49",
+        "scroll": "#667386", "scroll_active": "#9cacc0", "disabled": "#778190",
+        "primary": "#1668dc", "primary_hover": "#0d55b8", "support": "#f5a5c4",
+        "connected_bg": "#203b2c", "connected_fg": "#8be0aa",
+        "checking_bg": "#26374f", "checking_fg": "#a7c8ff",
+        "auth_bg": "#463321", "auth_fg": "#ffd096",
+        "offline_bg": "#43272e", "offline_fg": "#ffa5b0",
+    },
+}
+
+
+def _palette(widget=None):
+    if widget is not None:
+        colors = getattr(widget.winfo_toplevel(), "_colors", None)
+        if colors is not None:
+            return colors
+    appearance = getattr(_root, "_appearance_override", None) or config.get("appearance", "dark")
+    return _PALETTES.get(appearance, _PALETTES["dark"])
+
+
+def _paint(widget, **roles):
+    widget._color_roles = roles
+    widget.configure(**{option: _palette(widget)[role] for option, role in roles.items()})
+    return widget
+
+
+def _modern_window(root, appearance=None):
+    appearance = appearance or getattr(_root, "_appearance_override", None) or config.get("appearance", "dark")
+    colors = _PALETTES.get(appearance, _PALETTES["dark"])
+    root._colors = colors
+    root.configure(background=colors["panel"])
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
-        tkfont.nametofont(name, root=root).configure(family="Segoe UI", size=10)
+        tkfont.nametofont(name, root=root).configure(family="Segoe UI", size=-13)
     style = ttk.Style(root)
     style.theme_use("clam")
-    style.configure(".", font=("Segoe UI", 10), background="#ffffff", foreground="#202830")
-    style.configure("TFrame", background="#ffffff")
-    style.configure("TLabel", background="#ffffff")
-    style.configure("TButton", background="#ffffff", bordercolor="#d8dee5",
-                    lightcolor="#ffffff", darkcolor="#ffffff", padding=(12, 8), relief="flat")
-    style.map("TButton", background=[("active", "#eef3f8"), ("pressed", "#dce8f4")],
-              foreground=[("disabled", "#a0a8b0")])
-    style.configure("Primary.TButton", background="#1668dc", foreground="#ffffff", borderwidth=0)
-    style.map("Primary.TButton", background=[("active", "#0d55b8"), ("pressed", "#084494")],
-              foreground=[("disabled", "#d4dfec"), ("!disabled", "#ffffff")])
-    style.configure("TEntry", fieldbackground="#ffffff", bordercolor="#d8dee5", padding=7)
-    style.configure("TCombobox", fieldbackground="#ffffff", background="#f4f6f8",
-                    bordercolor="#d8dee5", padding=6, arrowsize=14)
-    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")],
-              selectbackground=[("readonly", "#ffffff")], selectforeground=[("readonly", "#202830")])
-    style.configure("TSpinbox", fieldbackground="#ffffff", bordercolor="#d8dee5", padding=6)
-    style.configure("TCheckbutton", padding=(0, 5), background="#ffffff")
-    style.configure("TRadiobutton", padding=(0, 5), background="#ffffff")
-    style.configure("TNotebook", background="#ffffff", borderwidth=0)
-    style.configure("TNotebook.Tab", padding=(18, 10), background="#f4f6f8", borderwidth=0)
-    style.map("TNotebook.Tab", background=[("selected", "#ffffff"), ("active", "#eaf1f8")],
-              foreground=[("selected", "#1668dc")])
-    style.configure("Treeview", rowheight=34, background="#ffffff", fieldbackground="#ffffff",
-                    borderwidth=0, font=("Segoe UI", 10))
-    style.configure("Treeview.Heading", background="#f4f6f8", foreground="#566572",
-                    relief="flat", font=("Segoe UI", 9, "bold"), padding=(10, 9))
-    style.map("Treeview", background=[("selected", "#e8f1ff")], foreground=[("selected", "#134c99")])
-    style.configure("Vertical.TScrollbar", background="#c8d1dc", troughcolor="#f4f6f8",
-                    borderwidth=0, arrowsize=12)
+    style.configure(".", font=("Segoe UI", -13), background=colors["panel"], foreground=colors["text"])
+    style.configure("TFrame", background=colors["panel"])
+    style.configure("TLabel", background=colors["panel"])
+    style.configure("Muted.TLabel", foreground=colors["muted"])
+    style.configure("Error.TLabel", foreground=colors["offline_fg"])
+    style.configure("TButton", background=colors["soft"], bordercolor=colors["soft"],
+                    lightcolor=colors["soft"], darkcolor=colors["soft"], padding=(10, 5), relief="flat", width=0)
+    style.map("TButton", background=[("active", colors["hover"]), ("pressed", colors["selected"])],
+              foreground=[("disabled", colors["disabled"]), ("!disabled", colors["text"])])
+    for name in ("Primary.TButton", "Settings.Primary.TButton"):
+        style.configure(name, background=colors["primary"], foreground="#ffffff", borderwidth=0,
+                        bordercolor=colors["primary"], lightcolor=colors["primary"],
+                        darkcolor=colors["primary"], padding=(12, 6))
+        style.map(name, background=[("active", colors["primary_hover"])],
+                  foreground=[("disabled", "#b9ccea"), ("!disabled", "#ffffff")])
+    style.configure("TEntry", fieldbackground=colors["field"], bordercolor=colors["border"],
+                    lightcolor=colors["field"], darkcolor=colors["field"], padding=5)
+    style.configure("TCombobox", fieldbackground=colors["field"], background=colors["soft"],
+                    bordercolor=colors["border"], lightcolor=colors["field"],
+                    darkcolor=colors["field"], padding=4, arrowsize=12)
+    style.map("TCombobox", fieldbackground=[("readonly", colors["field"])],
+              selectbackground=[("readonly", colors["field"])],
+              selectforeground=[("readonly", colors["text"])],
+              foreground=[("readonly", colors["text"])])
+    root.option_add("*TCombobox*Listbox.background", colors["field"])
+    root.option_add("*TCombobox*Listbox.foreground", colors["text"])
+    root.option_add("*TCombobox*Listbox.selectBackground", colors["selected"])
+    root.option_add("*TCombobox*Listbox.selectForeground", colors["text"])
+    style.configure("TSpinbox", fieldbackground=colors["field"], bordercolor=colors["border"],
+                    lightcolor=colors["field"], darkcolor=colors["field"], padding=4)
+    for kind in ("Checkbutton", "Radiobutton"):
+        style.configure("T" + kind, padding=(0, 5), background=colors["panel"])
+        style.map("T" + kind, background=[("active", colors["panel"])],
+                  foreground=[("disabled", colors["disabled"]), ("!disabled", colors["text"])])
+        if "vista" in style.theme_names():
+            indicator = f"Win.{kind}.indicator"
+            if indicator not in style.element_names():
+                style.element_create(indicator, "from", "vista", f"{kind}.indicator")
+            style.layout("T" + kind, [(f"{kind}.padding", {"sticky": "nswe", "children": [
+                (indicator, {"side": "left", "sticky": "w"}),
+                (f"{kind}.focus", {"side": "left", "sticky": "w", "children": [
+                    (f"{kind}.label", {"sticky": "nswe"}),
+                ]}),
+            ]})])
+    style.configure("Treeview", rowheight=26, background=colors["panel"], fieldbackground=colors["panel"],
+                    borderwidth=0, bordercolor=colors["panel"], lightcolor=colors["panel"],
+                    darkcolor=colors["panel"], font=("Segoe UI", -13))
+    style.configure("Treeview.Heading", background=colors["soft"], foreground=colors["muted"],
+                    relief="flat", bordercolor=colors["soft"], lightcolor=colors["soft"],
+                    darkcolor=colors["soft"], font=("Segoe UI", -12, "bold"), padding=(8, 4))
+    style.map("Treeview", background=[("selected", colors["selected"])],
+              foreground=[("selected", colors["selected_text"])])
+    # Keep Tk's scrollbar bindings, but replace the embossed thumb with a flat image.
+    thumb = f"Bridge.{appearance}.Vertical.Scrollbar.thumb"
+    if thumb not in style.element_names():
+        images = [ImageTk.PhotoImage(Image.new("RGB", (8, 24), colors[role]), master=_root)
+                  for role in ("scroll", "scroll_active")]
+        if not hasattr(_root, "_scroll_images"):
+            _root._scroll_images = {}
+        _root._scroll_images[appearance] = images
+        style.element_create(thumb, "image", images[0], ("active", images[1]), border=2, sticky="nswe")
+    style.layout("Slim.Vertical.TScrollbar", [("Vertical.Scrollbar.trough", {
+        "sticky": "ns", "children": [(thumb, {"sticky": "nswe", "expand": 1})],
+    })])
+    style.configure("Slim.Vertical.TScrollbar", background=colors["scroll"], troughcolor=colors["panel"],
+                    bordercolor=colors["panel"], lightcolor=colors["scroll"], darkcolor=colors["scroll"],
+                    borderwidth=0, width=10, arrowsize=10, relief="flat")
+    style.map("Slim.Vertical.TScrollbar", background=[("active", colors["scroll_active"])])
+    for name in ("Segment.TRadiobutton", "Navigation.TRadiobutton"):
+        style.layout(name, [("Radiobutton.padding", {"sticky": "nswe", "children": [
+            ("Radiobutton.label", {"sticky": "nswe"}),
+        ]})])
+        style.configure(name, padding=(12, 7), anchor="w", background=colors["soft"], foreground=colors["muted"])
+        style.map(name, background=[("selected", colors["selected"]), ("active", colors["hover"])],
+                  foreground=[("selected", colors["selected_text"]), ("active", colors["text"])])
+    style.configure("Icon.TButton", font=("Segoe MDL2 Assets", -18), padding=(8, 6),
+                    width=2, borderwidth=0, background=colors["soft"])
+    style.configure("Command.TButton", padding=(10, 6), borderwidth=0)
+    style.configure("Support.TButton", background=colors["panel"], foreground=colors["support"], borderwidth=0)
+    style.map("Support.TButton", background=[("active", colors["hover"])],
+              foreground=[("!disabled", colors["support"])])
+    style.layout("Preview.Toolbutton", [("Toolbutton.padding", {"sticky": "nswe", "children": [
+        ("Toolbutton.label", {"sticky": "nswe"}),
+    ]})])
+    style.configure("Preview.Toolbutton", font=("Segoe MDL2 Assets", -18), padding=(8, 6),
+                    width=2, borderwidth=0, background=colors["soft"])
+    style.map("Preview.Toolbutton", background=[("selected", colors["selected"]), ("active", colors["hover"])],
+              foreground=[("selected", colors["selected_text"]), ("!selected", colors["text"])])
+    style.configure("Settings.Section.TLabelframe", padding=(0, 10), borderwidth=0, relief="flat",
+                    bordercolor=colors["panel"], lightcolor=colors["panel"], darkcolor=colors["panel"],
+                    background=colors["panel"])
+    style.configure("Settings.Section.TLabelframe.Label", font=("Segoe UI", -13, "bold"))
     return style
 
 
+def _update_appearance(appearance):
+    def repaint(widget):
+        roles = getattr(widget, "_color_roles", None)
+        if roles:
+            _paint(widget, **roles)
+        if isinstance(widget, ttk.Treeview):
+            widget.tag_configure("alternate", background=_palette(widget)["alternate"])
+        if getattr(widget, "_glyph", None):
+            _set_button_icon(widget)
+        for child in widget.winfo_children():
+            repaint(child)
+
+    for window in _root.winfo_children():
+        if getattr(window, "_view_name", None):
+            _modern_window(window, appearance)
+            repaint(window)
+
+
 def _window_header(root, subtitle):
-    header = tk.Frame(root, background="#ffffff", padx=22, pady=16)
+    header = _paint(tk.Frame(root, padx=16, pady=10), background="panel")
     header.pack(fill="x")
     try:
         with Image.open(ICON_PATH) as image:
-            root._header_logo = ImageTk.PhotoImage(image.resize((36, 36), Image.Resampling.LANCZOS))
-        tk.Label(header, image=root._header_logo, background="#ffffff").pack(side="left")
+            root._header_logo = ImageTk.PhotoImage(image.resize((24, 24), Image.Resampling.LANCZOS))
+        _paint(tk.Label(header, image=root._header_logo), background="panel").pack(side="left")
     except OSError:
         pass
-    title = tk.Frame(header, background="#ffffff")
-    title.pack(side="left", padx=(12, 0))
-    tk.Label(title, text="Clipboard Bridge", font=("Segoe UI", 15, "bold"),
-             background="#ffffff", foreground="#202830").pack(anchor="w")
-    tk.Label(title, text=subtitle, font=("Segoe UI", 10),
-             background="#ffffff", foreground="#64748b").pack(anchor="w")
+    title = _paint(tk.Frame(header), background="panel")
+    title.pack(side="left", padx=(8, 0))
+    _paint(tk.Label(title, text="Clipboard Bridge", font=("Segoe UI", -16, "bold")),
+           background="panel", foreground="text").pack(side="left")
+    _paint(tk.Label(title, text=subtitle, font=("Segoe UI", -12), padx=12),
+           background="panel", foreground="muted").pack(side="left")
     return header
+
+
+def _tooltip(widget, text):
+    job = None
+    popup = None
+
+    def hide(_event=None):
+        nonlocal job, popup
+        if job is not None:
+            widget.after_cancel(job)
+            job = None
+        if popup is not None:
+            popup.destroy()
+            popup = None
+
+    def show():
+        nonlocal job, popup
+        job = None
+        if not widget.winfo_exists():
+            return
+        popup = tk.Toplevel(widget)
+        popup.overrideredirect(True)
+        tk.Label(popup, text=widget.ui_label, background="#202830", foreground="#ffffff",
+                 font=("Segoe UI", -12), padx=8, pady=5).pack()
+        popup.update_idletasks()
+        x = min(widget.winfo_rootx(), widget.winfo_screenwidth() - popup.winfo_reqwidth() - 8)
+        y = widget.winfo_rooty() + widget.winfo_height() + 5
+        popup.geometry(f"+{max(0, x)}+{y}")
+
+    def schedule(_event=None):
+        nonlocal job
+        hide()
+        job = widget.after(450, show)
+
+    widget.bind("<Enter>", schedule, add="+")
+    widget.bind("<Leave>", hide, add="+")
+    widget.bind("<ButtonPress>", hide, add="+")
+    widget.bind("<Destroy>", hide, add="+")
+    widget.ui_label = text
+
+
+def _set_button_icon(button):
+    try:
+        font = ImageFont.truetype(os.path.join(os.environ.get("WINDIR", "C:/Windows"),
+                                             "Fonts", "segmdl2.ttf"), 16)
+        images = []
+        for role in (getattr(button, "_glyph_role", "text"), "disabled"):
+            bitmap = Image.new("RGBA", (20, 20))
+            ImageDraw.Draw(bitmap).text((10, 10), button._glyph, font=font,
+                                        fill=_palette(button)[role], anchor="mm")
+            images.append(ImageTk.PhotoImage(bitmap, master=button))
+        button._glyph_images = images
+        button.configure(image=(images[0], "disabled", images[1]))
+    except OSError:
+        pass
+
+
+def _command_button(parent, name, label, glyph, command):
+    button = ttk.Button(parent, name=name, text=label, compound="left", style="Command.TButton", command=command)
+    button._glyph = glyph
+    _set_button_icon(button)
+    _tooltip(button, label)
+    return button
+
+
+def _existing_view(name):
+    for window in _root.winfo_children():
+        if getattr(window, "_view_name", None) == name:
+            window.deiconify()
+            window.lift()
+            window.focus_set()
+            return window
+    return None
+
+
+class _SettingsNavigation(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._pages = []
+        self._selection = tk.StringVar(master=self)
+        self._rail = ttk.Frame(self, width=150)
+        self._rail.pack(side="left", fill="y", padx=(0, 12))
+        self._rail.pack_propagate(False)
+        self._content = ttk.Frame(self)
+        self._content.pack(side="left", fill="both", expand=True)
+        donation = ttk.Frame(self._rail)
+        donation.pack(side="bottom", fill="x", pady=10)
+        self._support_note = ttk.Label(donation, name="support_note", text=t("support_note"),
+                                       style="Muted.TLabel", font=("Segoe UI", -11),
+                                       wraplength=138, justify="left")
+        self._support_note.pack(fill="x", padx=6, pady=(0, 8))
+        support = _command_button(donation, "support", "Ko-fi", "\ueb51",
+                                  lambda: _run_bg(lambda: webbrowser.open("https://ko-fi.com/mattboxx")))
+        support._glyph_role = "support"
+        support.configure(style="Support.TButton")
+        _set_button_icon(support)
+        support.ui_label = t("support")
+        support.pack(anchor="w")
+        self._support_button = support
+
+    def support_language(self, language):
+        self._support_note.configure(text=STRINGS[language]["support_note"])
+        self._support_button.ui_label = STRINGS[language]["support"]
+
+    def add(self, page, *, text):
+        self._pages.append(page)
+        ttk.Radiobutton(self._rail, text=text, value=str(page), variable=self._selection,
+                        style="Navigation.TRadiobutton", command=lambda: self.select(page)).pack(
+                            fill="x", pady=(0, 4))
+        if len(self._pages) == 1:
+            self.select(page)
+
+    def tabs(self):
+        return tuple(str(page) for page in self._pages)
+
+    def select(self, target=None):
+        if target is None:
+            return self._selection.get()
+        if isinstance(target, int):
+            target = self._pages[target]
+        for page in self._pages:
+            page.pack_forget()
+        page = next(page for page in self._pages if str(page) == str(target))
+        page.pack(in_=self._content, fill="both", expand=True)
+        self._selection.set(str(page))
 
 
 def _settings_page(notebook):
     page = ttk.Frame(notebook)
-    canvas = tk.Canvas(page, background="#ffffff", highlightthickness=0, borderwidth=0)
-    scrollbar = ttk.Scrollbar(page, orient="vertical", command=canvas.yview)
+    canvas = _paint(tk.Canvas(page, highlightthickness=0, borderwidth=0), background="panel")
+    scrollbar = ttk.Scrollbar(page, orient="vertical", command=canvas.yview, style="Slim.Vertical.TScrollbar")
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
-    content = ttk.Frame(canvas, padding=18)
+    content = ttk.Frame(canvas, padding=(20, 12))
     window = canvas.create_window((0, 0), window=content, anchor="nw")
     content.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
     canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
@@ -2371,24 +2637,25 @@ def _settings_page(notebook):
         for child in parent.winfo_children():
             bind_scroll(child)
 
-    page.after_idle(lambda: bind_scroll(content))
+    scroll_job = page.after_idle(lambda: bind_scroll(content))
+    page.bind("<Destroy>", lambda event: page.after_cancel(scroll_job) if event.widget == page else None)
     canvas.bind("<MouseWheel>", scroll)
     return page, content
 
 
 def _history_table(parent):
     frame = ttk.Frame(parent)
-    frame.pack(fill="both", expand=True, padx=16, pady=(12, 6))
+    frame.pack(fill="both", expand=True, padx=16)
     tree = ttk.Treeview(frame, columns=("content", "type", "date", "size"),
                         show="headings", selectmode="browse")
     for name, width, minimum, stretch, anchor in (
-        ("content", 400, 210, True, "w"), ("type", 110, 95, False, "w"),
-        ("date", 165, 130, False, "w"), ("size", 85, 75, False, "e"),
+        ("content", 500, 230, True, "w"), ("type", 95, 95, False, "w"),
+        ("date", 125, 125, False, "w"), ("size", 65, 65, False, "e"),
     ):
-        tree.heading(name, text=t("column_" + name))
+        tree.heading(name, text=t("column_" + name), anchor=anchor)
         tree.column(name, width=width, minwidth=minimum, stretch=stretch, anchor=anchor)
-    tree.tag_configure("alternate", background="#f8fafc")
-    scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.tag_configure("alternate", background=_palette(parent)["alternate"])
+    scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview, style="Slim.Vertical.TScrollbar")
     tree.configure(yscrollcommand=scroll.set)
     tree.pack(side="left", fill="both", expand=True)
     scroll.pack(side="right", fill="y")
@@ -2413,283 +2680,344 @@ def _fill_history_table(tree, items):
         ), tags=("alternate",) if index % 2 else ())
 
 
+def _copy_local_item(item):
+    kind = item.get("type")
+    if kind == "text":
+        set_clipboard_text(item.get("text", ""))
+    elif kind == "image" and item.get("file"):
+        with Image.open(os.path.join(LOCAL_DIR, item["file"])) as image:
+            set_clipboard_image(image)
+    elif kind in ("file", "bundle"):
+        paths = item.get("paths", []) if kind == "bundle" else [item.get("path")]
+        if not paths or not all(path and os.path.isfile(path) for path in paths):
+            raise FileNotFoundError(t("unavailable"))
+        set_clipboard_files(paths)
+    else:
+        raise ValueError(t("unavailable"))
+
+
 def open_history_window(icon=None, item=None):
+    if _existing_view("history") is not None:
+        return
     root = tk.Toplevel(_root)
+    root._view_name = "history"
     root.title(t("win_history"))
-    root.geometry("920x640")
-    root.minsize(740, 500)
+    root.geometry("980x660")
+    root.minsize(760, 480)
     _modern_window(root)
     apply_window_icon(root)
-    header = _window_header(root, t("history").rstrip("…"))
-    ttk.Button(header, text=t("receive_now"), style="Primary.TButton",
-               command=lambda: _run_bg(action_get_latest)).pack(side="right")
-    ttk.Button(header, text=t("send_now"),
-               command=lambda: _run_bg(action_send_clipboard)).pack(side="right", padx=(0, 8))
+    header = _window_header(root, t("history").rstrip("\u2026"))
+    _command_button(header, "settings", t("settings").rstrip("\u2026"), "\ue713", open_settings).pack(side="right", padx=(8, 0))
+    receive = ttk.Button(header, text=t("receive_short"), style="Primary.TButton",
+                         command=lambda: _run_bg(action_get_latest))
+    receive.pack(side="right")
+    _tooltip(receive, t("receive_now"))
+    send = ttk.Button(header, text=t("send_short"), command=lambda: _run_bg(action_send_clipboard))
+    send.pack(side="right", padx=(0, 6))
+    _tooltip(send, t("send_now"))
 
-    # UI updates from worker threads are queued and applied on the Tk thread.
     ui_q = queue.Queue()
-    search_job = None
-    pump_job = None
-
-    search_bar = ttk.Frame(root)
-    search_bar.pack(fill="x", padx=20, pady=(16, 4))
-    ttk.Label(search_bar, text=t("history_search"), foreground="#64748b").pack(anchor="w", pady=(0, 5))
-    query = tk.StringVar()
-    search_entry = ttk.Entry(search_bar, textvariable=query)
-    search_entry.pack(side="left", fill="x", expand=True, pady=4)
-    type_codes = ("", "text", "image", "file", "bundle")
-    type_selector = ttk.Combobox(search_bar, state="readonly", width=17,
-        values=[t(key) for key in ("all_types", "text_type", "image_type", "file_type", "bundle_type")])
-    type_selector.current(0)
-    type_selector.pack(side="right", padx=(8, 0))
-
-    def selected_type():
-        return type_codes[max(0, type_selector.current())]
-
-    def _pump():
-        nonlocal pump_job
-        try:
-            while True:
-                ui_q.get_nowait()()
-        except queue.Empty:
-            pass
-        except Exception:
-            pass
-        try:
-            pump_job = root.after(100, _pump)
-        except Exception:
-            pass
-
-    nb = ttk.Notebook(root)
-    nb.pack(fill="both", expand=True, padx=20, pady=(12, 18))
-
-    # ----- server tab -----
-    tab_srv = ttk.Frame(nb)
-    nb.add(tab_srv, text=t("tab_server"))
-    srv_list = _history_table(tab_srv)
-    srv_items = []
-    srv_offset = 0
+    search_job = pump_job = None
     request_generation = 0
-    page_size = 30
-    page_status = tk.StringVar()
-    preview = tk.StringVar(value=t("preview_empty"))
+    offset = 0
+    page_size = 100
+    items = []
+    loaded_source = None
+    source = tk.StringVar(master=root, value="server")
+    query = tk.StringVar(master=root)
+    preview_visible = tk.BooleanVar(master=root, value=False)
+    status = tk.StringVar(master=root)
+    toolbar = ttk.Frame(root)
+    toolbar.pack(fill="x", padx=16, pady=(2, 12))
+    sources = ttk.Frame(toolbar)
+    sources.pack(side="left", padx=(0, 12))
+    for value, key in (("server", "tab_server"), ("local", "tab_local")):
+        ttk.Radiobutton(sources, text=t(key), value=value, variable=source,
+                        style="Segment.TRadiobutton", command=lambda: refresh(reset=True)).pack(side="left")
+    refresh_button = _command_button(toolbar, "refresh", t("refresh"), "\ue72c", lambda: refresh())
+    refresh_button.pack(side="right", padx=(6, 0))
+    kinds = ("", "text", "image", "file", "bundle")
+    kind_selector = ttk.Combobox(toolbar, state="readonly", width=13,
+        values=[t(key) for key in ("all_types", "text_type", "image_type", "file_type", "bundle_type")])
+    kind_selector.current(0)
+    kind_selector.pack(side="right", padx=(8, 0))
+    search_symbol = ttk.Label(toolbar, text="\ue721", font=("Segoe MDL2 Assets", -14))
+    search_symbol.pack(side="left", padx=(0, 6))
+    _tooltip(search_symbol, t("search_history"))
+    search_entry = ttk.Entry(toolbar, textvariable=query)
+    search_entry.pack(side="left", fill="x", expand=True)
+    _tooltip(search_entry, t("history_search"))
 
-    def selected(items, tree):
-        selection = tree.selection()
-        if not selection:
-            return None
-        index = int(selection[0])
-        return items[index] if index < len(items) else None
+    footer = ttk.Frame(root, padding=(16, 10))
+    footer.pack(side="bottom", fill="x")
+    preview_bar = ttk.Frame(root, padding=(16, 8))
+    ttk.Label(preview_bar, text=t("preview"), style="Muted.TLabel").pack(anchor="w")
+    preview_text = _paint(tk.Text(preview_bar, height=3, wrap="word", state="disabled",
+                           font=("Segoe UI", -13), borderwidth=0,
+                           highlightthickness=0, padx=8, pady=6), background="soft", foreground="text",
+                           selectbackground="selected", selectforeground="text", insertbackground="text")
+    preview_scroll = ttk.Scrollbar(preview_bar, orient="vertical", command=preview_text.yview,
+                                   style="Slim.Vertical.TScrollbar")
+    preview_text.configure(yscrollcommand=preview_scroll.set)
+    preview_text.pack(side="left", fill="x", expand=True)
+    preview_scroll.pack(side="right", fill="y")
+    listing = _history_table(root)
+    empty = ttk.Label(listing.master, text=t("no_results"), style="Muted.TLabel")
 
-    def update_preview(*_args):
-        tree, items = (srv_list, srv_items) if nb.index(nb.select()) == 0 else (loc_list, loc_items)
-        item = selected(items, tree)
-        if item is None:
-            preview.set(t("preview_empty"))
-            return
-        members = item.get("files", [])
-        value = "\n".join(member.get("filename", "") for member in members) if members else (
-            item.get("text") or item.get("preview") or item.get("filename") or "")
-        preview.set(value[:1000])
+    def selected():
+        selection = listing.selection()
+        return items[int(selection[0])] if selection and int(selection[0]) < len(items) else None
 
-    def _srv_fill(page, generation, source):
-        if generation != request_generation or not root.winfo_exists():
-            return
-        if source != _sync_source_key():
-            srv_refresh(reset=True)
-            return
-        srv_items.clear()
-        srv_items.extend(page.get("items", []))
-        _fill_history_table(srv_list, srv_items)
-        if srv_items:
-            srv_list.selection_set("0")
-        update_preview()
-        page_status.set(t("history_results", shown=len(srv_items), total=page.get("total", len(srv_items))))
-        previous_button.configure(state="normal" if srv_offset else "disabled")
+    def update_selection(*_args):
+        entry = selected()
+        copy_button.configure(state="normal" if entry else "disabled")
+        delete_button.configure(state="normal" if entry else "disabled")
+        local_send.configure(state="normal" if entry else "disabled")
+        value = t("preview_empty")
+        if entry:
+            members = entry.get("files", [])
+            value = "\n".join(member.get("filename", "") for member in members) if members else (
+                entry.get("text") or entry.get("preview") or entry.get("filename") or "")
+        preview_text.configure(state="normal")
+        preview_text.delete("1.0", "end")
+        preview_text.insert("1.0", value[:4000])
+        preview_text.configure(state="disabled")
+
+    def show_preview():
+        if preview_visible.get():
+            preview_bar.pack(side="bottom", fill="x", before=listing.master)
+        else:
+            preview_bar.pack_forget()
+
+    def fill(page):
+        items[:] = page.get("items", [])
+        _fill_history_table(listing, items)
+        if items:
+            listing.selection_set("0")
+            listing.focus("0")
+            empty.place_forget()
+        else:
+            empty.place(relx=.5, rely=.5, anchor="center")
+        status.set(t("history_results", shown=len(items), total=page.get("total", len(items))))
+        previous_button.configure(state="normal" if offset else "disabled")
         next_button.configure(state="normal" if page.get("has_more") else "disabled")
+        update_selection()
 
-    def srv_refresh(reset=False):
-        nonlocal srv_offset, request_generation
+    def refresh(reset=False):
+        nonlocal request_generation, offset, loaded_source
         if reset:
-            srv_offset = 0
+            offset = 0
         request_generation += 1
         generation = request_generation
-        search, kind, offset = query.get(), selected_type(), srv_offset
-        source = _sync_source_key()
-        srv_list.delete(*srv_list.get_children())
-        srv_items.clear()
-        previous_button.configure(state="disabled")
-        next_button.configure(state="disabled")
-        page_status.set(t("loading"))
+        search, kind = query.get(), kinds[max(0, kind_selector.current())]
+        is_server = source.get() == "server"
+        for button in (previous_button, next_button):
+            button.configure(state="disabled")
+        if is_server:
+            local_send.pack_forget()
+            delete_button.pack(side="left", after=copy_button, padx=4)
+            page_controls.pack(side="right", before=copy_button)
+        else:
+            delete_button.pack_forget()
+            local_send.pack(side="left", after=copy_button, padx=6)
+            page_controls.pack_forget()
+            loaded_source = None
+            fill({"items": _filter_history(_local_load(), search, kind)})
+            return
+        source_key, requested_offset = _sync_source_key(), offset
+        items.clear()
+        listing.delete(*listing.get_children())
+        empty.place_forget()
+        update_selection()
+        status.set(t("loading"))
 
-        def failed():
-            if generation == request_generation:
-                srv_list.delete(*srv_list.get_children())
-                page_status.set(t("history_error"))
+        def deliver(page=None):
+            nonlocal loaded_source
+            if generation != request_generation or not root.winfo_exists():
+                return
+            if source_key != _sync_source_key():
+                refresh(reset=True)
+            elif page is None:
+                status.set(t("history_error"))
+            else:
+                loaded_source = source_key
+                fill(page)
 
         def work():
             try:
                 with _remote_activity_lock:
                     if generation != request_generation:
                         return
-                    page = fetch_history_page(page_size, search, kind, offset)
-                ui_q.put(lambda: _srv_fill(page, generation, source))
+                    page = fetch_history_page(page_size, search, kind, requested_offset)
+                ui_q.put(lambda: deliver(page))
             except Exception:
-                ui_q.put(failed)
+                ui_q.put(deliver)
         threading.Thread(target=work, daemon=True).start()
 
-    def srv_use():
-        it = selected(srv_items, srv_list)
-        if it is None:
+    def copy_item(*_args):
+        entry = selected()
+        if entry is None:
             return
+        is_server, source_key = source.get() == "server", loaded_source
+
+        def work():
+            try:
+                if not is_server:
+                    _copy_local_item(entry)
+                    notify(t("copied"))
+                    return
+                with _remote_operation():
+                    if source_key != _sync_source_key():
+                        ui_q.put(lambda: refresh(reset=True))
+                        return
+                    full = fetch_item(entry["id"])
+                    kind = _copy_remote_item(full, update_latest=False)
+                    if kind in ("file", "bundle"):
+                        full = dict(full, type=kind)
+                        paths = save_remote_files(full)
+                        record_local_files(paths)
+                        notify_received("file", t("files_arrived", n=len(paths)) if len(paths) > 1
+                                        else t("file_arrived", name=os.path.basename(paths[0])),
+                                        action=(lambda: open_received_folder()) if len(paths) > 1
+                                        else (lambda path=paths[0]: reveal_received_file(path)))
+                    elif kind:
+                        notify(t("copied"))
+            except Exception as error:
+                notify(t("recv_err", e=error))
+        _run_bg(work)
+        return "break"
+
+    def send_local():
+        entry = selected()
+        if entry is None or source.get() != "local":
+            return
+
+        def work():
+            try:
+                if entry["type"] == "text":
+                    push_text(entry.get("text", ""))
+                elif entry["type"] == "image" and entry.get("file"):
+                    with Image.open(os.path.join(LOCAL_DIR, entry["file"])) as image:
+                        push_image(image)
+                elif entry["type"] in ("file", "bundle"):
+                    paths = entry.get("paths", []) if entry["type"] == "bundle" else [entry.get("path")]
+                    push_files(paths)
+                else:
+                    raise ValueError(t("unavailable"))
+                notify(t("sent_server"))
+            except Exception as error:
+                notify(t("send_err", e=error))
+        _run_bg(work)
+
+    def delete_item(*_args):
+        entry = selected()
+        if entry is None or source.get() != "server":
+            return
+        if not messagebox.askyesno(t("delete"), t("confirm_delete"), parent=root):
+            return
+        source_key = loaded_source
 
         def work():
             try:
                 with _remote_operation():
-                    full = fetch_item(it["id"])
-                    _copy_remote_item(full, update_latest=False)
-                if full.get("type") == "text":
-                    notify(t("copied"))
-                elif full.get("type") == "image":
-                    notify(t("copied"))
-                elif full.get("type") in ("file", "bundle"):
-                    paths = save_remote_files(full)
-                    record_local_files(paths)
-                    notify_received(
-                        "file",
-                        (
-                            t("files_arrived", n=len(paths)) if len(paths) > 1
-                            else t("file_arrived", name=os.path.basename(paths[0]))
-                        ),
-                        action=(
-                            (lambda: open_received_folder()) if len(paths) > 1
-                            else (lambda path=paths[0]: reveal_received_file(path))
-                        ),
-                    )
-            except Exception as e:
-                notify(t("recv_err", e=e))
-        threading.Thread(target=work, daemon=True).start()
+                    if source_key != _sync_source_key():
+                        ui_q.put(lambda: refresh(reset=True))
+                        return
+                    response = requests.delete(f"{server_url()}/clipboard/item/{entry['id']}",
+                                               headers=auth_headers(), params=auth_params(), timeout=5)
+                    response.raise_for_status()
+                ui_q.put(lambda: refresh())
+            except Exception as error:
+                notify(t("recv_err", e=error))
+        _run_bg(work)
 
-    def srv_delete():
-        it = selected(srv_items, srv_list)
-        if it is None:
-            return
-        if not messagebox.askyesno(t("delete"), t("confirm_delete"), parent=root):
-            return
-        item_id = it["id"]
-
-        def work():
-            try:
-                response = requests.delete(f"{server_url()}/clipboard/item/{item_id}",
-                                           headers=auth_headers(), params=auth_params(), timeout=5)
-                response.raise_for_status()
-                ui_q.put(srv_refresh)
-            except Exception as e:
-                notify(t("recv_err", e=e))
-        threading.Thread(target=work, daemon=True).start()
-
-    b = ttk.Frame(tab_srv)
-    b.pack(side="bottom", fill="x", before=srv_list.master, padx=16, pady=(8, 4))
-    ttk.Button(b, text=t("refresh"), command=srv_refresh).pack(side="left")
-    ttk.Button(b, text=t("use"), command=srv_use, style="Primary.TButton").pack(side="left", padx=8)
-    ttk.Button(b, text=t("delete"), command=srv_delete).pack(side="left")
+    copy_button = ttk.Button(footer, text=t("copy_selected"), style="Primary.TButton", command=copy_item)
+    copy_button.pack(side="left")
+    delete_button = _command_button(footer, "delete", t("delete"), "\ue74d", delete_item)
+    local_send = ttk.Button(footer, text=t("send_to_server"), command=send_local)
+    preview_button = ttk.Checkbutton(footer, name="preview", text=t("show_preview"),
+                                    variable=preview_visible, command=show_preview)
+    preview_button.pack(side="left", padx=(4, 0))
+    _tooltip(preview_button, t("show_preview"))
+    page_controls = ttk.Frame(footer)
 
     def move_page(direction):
-        nonlocal srv_offset
-        srv_offset = max(0, srv_offset + direction * page_size)
-        srv_refresh()
+        nonlocal offset
+        offset = max(0, offset + direction * page_size)
+        refresh()
 
-    previous_button = ttk.Button(b, text=t("previous"), command=lambda: move_page(-1))
-    next_button = ttk.Button(b, text=t("next"), command=lambda: move_page(1))
-    next_button.pack(side="right", padx=4)
-    previous_button.pack(side="right")
-    ttk.Label(tab_srv, textvariable=page_status, foreground="#64748b").pack(
-        side="bottom", fill="x", before=b, padx=16, pady=(2, 12))
+    previous_button = _command_button(page_controls, "previous", t("previous"), "\ue72b", lambda: move_page(-1))
+    previous_button.pack(side="left")
+    next_button = _command_button(page_controls, "next", t("next"), "\ue72a", lambda: move_page(1))
+    next_button.pack(side="left", padx=(4, 0))
+    status_label = ttk.Label(footer, textvariable=status, style="Muted.TLabel", wraplength=340)
+    status_label.pack(side="left", fill="x", expand=True, padx=12)
+    status_label.bind("<Configure>", lambda event: status_label.configure(wraplength=max(80, event.width)))
 
-    # ----- local tab -----
-    tab_loc = ttk.Frame(nb)
-    nb.add(tab_loc, text=t("tab_local"))
-    loc_list = _history_table(tab_loc)
-    loc_items = []
+    menu = tk.Menu(root, tearoff=False)
 
-    def loc_refresh():
-        loc_items.clear()
-        loc_items.extend(_filter_history(_local_load(), query.get(), selected_type()))
-        _fill_history_table(loc_list, loc_items)
-        if loc_items:
-            loc_list.selection_set("0")
-
-    def loc_send():
-        it = selected(loc_items, loc_list)
-        if it is None:
+    def context_menu(event):
+        row = listing.identify_row(event.y)
+        if not row:
             return
+        listing.selection_set(row)
+        menu.delete(0, "end")
+        menu.add_command(label=t("copy_selected"), command=copy_item)
+        menu.add_command(label=t("preview"), command=lambda: (preview_visible.set(True), show_preview()))
+        if source.get() == "server":
+            menu.add_command(label=t("delete"), command=delete_item)
+        else:
+            menu.add_command(label=t("send_to_server"), command=send_local)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
-        def work():
-            try:
-                if it["type"] == "text":
-                    push_text(it.get("text", ""))
-                elif it["type"] == "image" and it.get("file"):
-                    push_image(Image.open(os.path.join(LOCAL_DIR, it["file"])))
-                elif it["type"] == "file" and it.get("path") and os.path.isfile(it["path"]):
-                    push_file(it["path"])
-                elif it["type"] == "bundle":
-                    paths = it.get("paths", [])
-                    if paths:
-                        push_files(paths)
-                    else:
-                        notify(t("unavailable")); return
-                else:
-                    notify(t("unavailable")); return
-                notify(t("sent_server"))
-            except Exception as e:
-                notify(t("send_err", e=e))
-        threading.Thread(target=work, daemon=True).start()
+    def double_click(event):
+        row = listing.identify_row(event.y)
+        if row:
+            listing.selection_set(row)
+            copy_item()
+        return "break"
 
-    b2 = ttk.Frame(tab_loc)
-    b2.pack(side="bottom", fill="x", before=loc_list.master, padx=16, pady=(8, 12))
-    ttk.Button(b2, text=t("refresh"), command=loc_refresh).pack(side="left")
-    ttk.Button(b2, text=t("send_to_server"), command=loc_send, style="Primary.TButton").pack(side="left", padx=8)
+    listing.bind("<<TreeviewSelect>>", update_selection)
+    listing.bind("<Double-1>", double_click)
+    listing.bind("<Return>", copy_item)
+    listing.bind("<Delete>", delete_item)
+    listing.bind("<Button-3>", context_menu)
 
-    preview_bar = tk.Frame(root, background="#ffffff", padx=22, pady=12)
-    preview_bar.pack(side="bottom", fill="x", before=nb)
-    ttk.Label(preview_bar, text=t("preview"), font=("Segoe UI", 9, "bold"), foreground="#64748b").pack(anchor="w")
-    preview_text = tk.Text(preview_bar, height=3, width=40, wrap="word", state="disabled",
-                           background="#ffffff", foreground="#202830", font=("Segoe UI", 10),
-                           borderwidth=0, highlightthickness=0, padx=0, pady=4)
-    preview_scroll = ttk.Scrollbar(preview_bar, orient="vertical", command=preview_text.yview)
-    preview_text.configure(yscrollcommand=preview_scroll.set)
-    preview_text.pack(side="left", fill="x", expand=True)
-    preview_scroll.pack(side="right", fill="y")
-
-    def draw_preview(*_args):
-        preview_text.configure(state="normal")
-        preview_text.delete("1.0", "end")
-        preview_text.insert("1.0", preview.get())
-        preview_text.configure(state="disabled")
-
-    preview.trace_add("write", draw_preview)
-    draw_preview()
-    srv_list.bind("<<TreeviewSelect>>", update_preview)
-    loc_list.bind("<<TreeviewSelect>>", update_preview)
-    nb.bind("<<NotebookTabChanged>>", update_preview)
-
-    def apply_search():
+    def apply_search(*_args):
         nonlocal search_job
         if search_job is not None:
             root.after_cancel(search_job)
         search_job = None
-        srv_refresh(reset=True)
-        loc_refresh()
+        refresh(reset=True)
 
     def schedule_search(*_args):
         nonlocal search_job
         if search_job is not None:
             root.after_cancel(search_job)
-        search_job = root.after(350, apply_search)
+        search_job = root.after(250, apply_search)
 
     query.trace_add("write", schedule_search)
-    type_selector.bind("<<ComboboxSelected>>", schedule_search)
-    search_entry.bind("<Return>", lambda _event: apply_search())
+    kind_selector.bind("<<ComboboxSelected>>", apply_search)
+    search_entry.bind("<Return>", apply_search)
+    def focus_search(_event):
+        search_entry.focus_set()
+        search_entry.selection_range(0, "end")
+        return "break"
+
+    root.bind("<Control-f>", focus_search)
+
+    def pump():
+        nonlocal pump_job
+        try:
+            while True:
+                ui_q.get_nowait()()
+        except queue.Empty:
+            pass
+        if root.winfo_exists():
+            pump_job = root.after(80, pump)
 
     def close_history():
         nonlocal request_generation
@@ -2700,18 +3028,19 @@ def open_history_window(icon=None, item=None):
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", close_history)
-
-    loc_refresh()
-    root.after(0, srv_refresh)   # window draws first, then loads in background
-    pump_job = root.after(100, _pump)
+    root.after(0, refresh)
+    pump_job = root.after(80, pump)
 
 
 # ---------------------------------------------------------------- settings window
 def open_settings(icon=None, item=None):
+    if _existing_view("settings") is not None:
+        return
     root = tk.Toplevel(_root)
+    root._view_name = "settings"
     root.title(t("win_settings"))
-    root.geometry("640x730")
-    root.minsize(580, 600)
+    root.geometry("760x620")
+    root.minsize(700, 520)
     style = _modern_window(root)
     root.attributes("-topmost", True)
     apply_window_icon(root)
@@ -2722,33 +3051,15 @@ def open_settings(icon=None, item=None):
         except tk.TclError:
             pass
 
-    root.after(300, release_topmost)
+    release_job = root.after(300, release_topmost)
 
-    style.configure("Settings.TNotebook", background="#f4f6f8", borderwidth=0)
-    style.configure(
-        "Settings.TNotebook.Tab",
-        font=("Segoe UI", 10),
-        padding=(16, 9),
-    )
-    style.configure(
-        "Settings.Section.TLabelframe",
-        padding=14, borderwidth=1, relief="solid", bordercolor="#e1e6ec",
-        lightcolor="#ffffff", darkcolor="#ffffff", background="#ffffff",
-    )
-    style.configure(
-        "Settings.Section.TLabelframe.Label",
-        font=("Segoe UI", 10, "bold"),
-    )
-    style.configure("Settings.Primary.TButton", font=("Segoe UI", 10, "bold"), padding=(16, 9),
-                    background="#1668dc", foreground="#ffffff", borderwidth=0)
-    style.map("Settings.Primary.TButton", background=[("active", "#0d55b8")], foreground=[("!disabled", "#ffffff")])
     style.configure("Settings.TCheckbutton", padding=(0, 5))
 
     _window_header(root, f"{t('settings').rstrip('…')} · {t('version_label', version=APP_VERSION)}")
 
-    body = ttk.Frame(root, padding=(18, 14, 18, 0))
+    body = ttk.Frame(root, padding=(12, 8, 12, 0))
     body.pack(fill="both", expand=True)
-    notebook = ttk.Notebook(body, style="Settings.TNotebook")
+    notebook = _SettingsNavigation(body)
     notebook.pack(fill="both", expand=True)
 
     general_page, general_tab = _settings_page(notebook)
@@ -2803,6 +3114,9 @@ def open_settings(icon=None, item=None):
     language = tk.StringVar(
         value="Italiano" if config.get("lang", "en") == "it" else "English"
     )
+    root._language_var = language
+    language.trace_add("write", lambda *_args: notebook.support_language(
+        "it" if language.get() == "Italiano" else "en"))
     ttk.Combobox(
         application_box,
         textvariable=language,
@@ -2821,32 +3135,42 @@ def open_settings(icon=None, item=None):
         increment=10,
     ).grid(row=1, column=1, sticky="ew", pady=6)
 
+    appearance = tk.StringVar(master=root, value=config.get("appearance", "dark"))
+
+    def preview_appearance():
+        _root._appearance_override = appearance.get()
+        _update_appearance(appearance.get())
+
+    ttk.Label(application_box, text=t("lbl_appearance")).grid(
+        row=2, column=0, sticky="w", padx=(0, 14), pady=6)
+    appearance_controls = ttk.Frame(application_box)
+    appearance_controls.grid(row=2, column=1, sticky="w", pady=6)
+    for value, key in (("light", "light_theme"), ("dark", "dark_theme")):
+        ttk.Radiobutton(appearance_controls, text=t(key), value=value, variable=appearance,
+                        command=preview_appearance, style="Segment.TRadiobutton").pack(side="left")
+
     status_box = ttk.LabelFrame(
         connection_tab,
         text=t("section_status"),
         style="Settings.Section.TLabelframe",
     )
     status_box.pack(fill="x", pady=(0, 12))
-    status_panel = tk.Frame(status_box, background="#eff6ff", padx=12, pady=10)
+    status_panel = _paint(tk.Frame(status_box, padx=12, pady=10), background="checking_bg")
     status_panel.pack(fill="x")
-    status_dot = tk.Label(
+    status_dot = _paint(tk.Label(
         status_panel,
         text="●",
-        background="#eff6ff",
-        foreground="#2563eb",
-        font=("Segoe UI", 11),
-    )
+        font=("Segoe UI", -13),
+    ), background="checking_bg", foreground="checking_fg")
     status_dot.grid(row=0, column=0, sticky="w", padx=(0, 8))
-    status_label = tk.Label(
+    status_label = _paint(tk.Label(
         status_panel,
         text=settings_connection_status_text(),
-        background="#eff6ff",
-        foreground="#1d4ed8",
-        font=("Segoe UI", 9, "bold"),
+        font=("Segoe UI", -13, "bold"),
         anchor="w",
         justify="left",
         wraplength=300,
-    )
+    ), background="checking_bg", foreground="checking_fg")
     status_label.grid(row=0, column=1, sticky="ew")
     status_panel.grid_columnconfigure(1, weight=1)
 
@@ -2955,13 +3279,10 @@ def open_settings(icon=None, item=None):
     ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
     add_field(shortcuts_box, 1, t("lbl_hk_send"), "hotkey_send")
     add_field(shortcuts_box, 2, t("lbl_hk_recv"), "hotkey_receive")
-    ttk.Label(shortcuts_box, text=t("hint_hk"), foreground="#64748b").grid(
-        row=3, column=0, columnspan=2, sticky="w", pady=(4, 0)
-    )
 
     footer = ttk.Frame(root, padding=(18, 12, 18, 16))
-    footer.pack(fill="x")
-    msg = ttk.Label(footer, text="", foreground="#b91c1c", wraplength=290)
+    footer.pack(side="bottom", fill="x", before=body)
+    msg = ttk.Label(footer, text="", style="Error.TLabel", wraplength=290)
     msg.pack(side="left", fill="x", expand=True)
 
     def pending_connection_values(validate_interval=True):
@@ -2995,6 +3316,7 @@ def open_settings(icon=None, item=None):
         values = dict(config)
         values.update({
             "lang": "it" if language.get() == "Italiano" else "en",
+            "appearance": appearance.get(),
             "mode": mode.get() if mode.get() in ("client", "server") else "client",
             "server_ip": entries["server_ip"].get().strip(),
             "server_port": port,
@@ -3014,20 +3336,11 @@ def open_settings(icon=None, item=None):
             return
         if not exists:
             return
-        colors = {
-            "connected": ("#ecfdf3", "#15803d"),
-            "checking": ("#eff6ff", "#2563eb"),
-            "auth": ("#fff7ed", "#c2410c"),
-            "offline": ("#fef2f2", "#b91c1c"),
-        }
-        background, foreground = colors.get(_connection_state, colors["checking"])
-        status_panel.config(background=background)
-        status_dot.config(background=background, foreground=foreground)
-        status_label.config(
-            text=settings_connection_status_text(),
-            background=background,
-            foreground=foreground,
-        )
+        state = _connection_state if _connection_state in ("connected", "checking", "auth", "offline") else "checking"
+        _paint(status_panel, background=state + "_bg")
+        _paint(status_dot, background=state + "_bg", foreground=state + "_fg")
+        _paint(status_label, background=state + "_bg", foreground=state + "_fg")
+        status_label.config(text=settings_connection_status_text())
         connection_button.config(state="normal")
 
     def test_connection():
@@ -3060,6 +3373,8 @@ def open_settings(icon=None, item=None):
         old_mode = config.get("mode", "client")
         old_host_port = config.get("host_port", 5088)
         config.update(values)
+        _root._appearance_override = None
+        _update_appearance(config["appearance"])
         config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
         config["hotkey_receive"] = entries["hotkey_receive"].get().strip().lower() or "ctrl+alt+v"
         config["auto_sync"] = auto.get()
@@ -3092,20 +3407,28 @@ def open_settings(icon=None, item=None):
                 active_icon.update_menu()
             except Exception:
                 pass
-        root.destroy()
+        close_settings()
         notify(t("settings_saved"))
         _run_bg(check_connection)
 
+    def close_settings():
+        for job in (release_job, connection_job):
+            root.after_cancel(job)
+        _root._appearance_override = None
+        _update_appearance(config.get("appearance", "dark"))
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", close_settings)
     actions = ttk.Frame(footer)
     actions.pack(side="right")
-    ttk.Button(actions, text=t("cancel"), command=root.destroy).pack(side="left", padx=(0, 8))
+    ttk.Button(actions, text=t("cancel"), command=close_settings).pack(side="left", padx=(0, 8))
     ttk.Button(
         actions,
         text=t("save"),
         command=save,
         style="Settings.Primary.TButton",
     ).pack(side="left")
-    root.after(120, test_connection)
+    connection_job = root.after(120, test_connection)
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
@@ -3171,6 +3494,12 @@ def _set_lang(code):
         config["lang"] = code
         save_config(config)
         icon.update_menu()
+        def update_support_language():
+            for window in _root.winfo_children():
+                if getattr(window, "_view_name", None) == "settings":
+                    window._language_var.set("Italiano" if code == "it" else "English")
+        if _root is not None:
+            _cmd_q.put(update_support_language)
     return handler
 
 

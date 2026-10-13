@@ -328,7 +328,7 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_te
         requests_seen.append((query, kind, offset))
         size = 1 if query else limit
         return {"items": [{"id": str(offset + i), "type": kind or "text", "preview": query or f"item {offset + i}"}
-                          for i in range(size)], "total": 65, "has_more": offset + size < 65}
+                          for i in range(size)], "total": 235, "has_more": offset + size < 235}
 
     monkeypatch.setattr(client, "fetch_history_page", fetch)
 
@@ -347,28 +347,44 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_te
     try:
         client.open_history_window()
         window = next(child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel))
-        window.geometry("740x500")
         all_widgets = list(widgets(window))
         listing = next(child for child in all_widgets if isinstance(child, client.ttk.Treeview))
-        until(lambda: len(listing.get_children()) == 30)
+        until(lambda: len(listing.get_children()) == 100)
         app.update()
-        notebook = next(child for child in all_widgets if isinstance(child, client.ttk.Notebook))
-        for tab in notebook.tabs():
-            notebook.select(tab)
-            app.update()
-            for child in widgets(window.nametowidget(tab)):
-                if isinstance(child, client.ttk.Button):
-                    assert child.winfo_ismapped()
-                    assert child.winfo_rooty() + child.winfo_height() <= window.winfo_rooty() + window.winfo_height()
-        notebook.select(0)
+        assert not any(isinstance(child, client.ttk.Notebook) for child in all_widgets)
+        assert sum(bool(listing.bbox(row)) for row in listing.get_children()) >= 17
+        scroll = next(child for child in listing.master.winfo_children() if isinstance(child, client.ttk.Scrollbar))
+        scroll.event_generate("<ButtonPress-1>", x=4, y=12)
+        scroll.event_generate("<B1-Motion>", x=4, y=150)
+        scroll.event_generate("<ButtonRelease-1>", x=4, y=150)
         app.update()
+        assert listing.yview()[0] > 0
+        listing.yview_moveto(0)
+        client.open_history_window()
+        assert len([child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel)]) == 1
+        window.geometry("760x480")
+        app.update()
+        assert sum(bool(listing.bbox(row)) for row in listing.get_children()) >= 10
         preview = next(child for child in all_widgets if isinstance(child, client.tk.Text))
+        assert not preview.winfo_ismapped()
+        preview_toggle = next(child for child in all_widgets if child.winfo_name() == "preview")
+        preview_toggle.invoke()
+        app.update()
         assert preview.winfo_ismapped()
         assert preview.winfo_rooty() + preview.winfo_height() <= window.winfo_rooty() + window.winfo_height()
-        next_button = next(child for child in all_widgets if isinstance(child, client.ttk.Button) and child.cget("text") == client.t("next"))
+        for child in all_widgets:
+            if isinstance(child, client.ttk.Button) and child.winfo_ismapped():
+                assert child.winfo_rooty() + child.winfo_height() <= window.winfo_rooty() + window.winfo_height()
+                assert child.winfo_rootx() + child.winfo_width() <= window.winfo_rootx() + window.winfo_width()
+        next_button = next(child for child in all_widgets if child.winfo_name() == "next")
+        for name, key in (("settings", "settings"), ("delete", "delete"), ("refresh", "refresh"), ("next", "next")):
+            button = next(child for child in all_widgets if child.winfo_name() == name)
+            assert button.cget("text") == client.t(key).rstrip("\u2026")
+            assert button.winfo_width() >= button.winfo_reqwidth()
         next_button.invoke()
-        until(lambda: len(listing.get_children()) == 30 and "item 30" in listing.item("0", "values")[0])
-        entry = next(child for child in all_widgets if isinstance(child, client.ttk.Entry))
+        until(lambda: len(listing.get_children()) == 100 and "item 100" in listing.item("0", "values")[0])
+        entry = next(child for child in all_widgets if isinstance(child, client.ttk.Entry)
+                     and not isinstance(child, client.ttk.Combobox))
         variable = client.tk.StringVar(master=app, name=entry.cget("textvariable"))
         variable.set("report")
         selector = next(child for child in all_widgets if isinstance(child, client.ttk.Combobox))
@@ -377,6 +393,20 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_te
         selector.event_generate("<<ComboboxSelected>>")
         until(lambda: len(listing.get_children()) == 1 and "report" in listing.item("0", "values")[0])
         assert requests_seen[-1] == ("report", "file", 0)
+        monkeypatch.setattr(client, "_local_load", lambda: [{"type": "file", "preview": "local report.pdf"}])
+        local = next(child for child in all_widgets if isinstance(child, client.ttk.Radiobutton)
+                     and child.cget("text") == client.t("tab_local"))
+        local.invoke()
+        app.update()
+        assert len(listing.get_children()) == 1
+        assert listing.item("0", "values")[0] == "local report.pdf"
+        assert not next_button.winfo_ismapped()
+        assert not next(child for child in all_widgets if child.winfo_name() == "delete").winfo_ismapped()
+        scrollbar = next(child for child in all_widgets if isinstance(child, client.ttk.Scrollbar))
+        assert "Slim" in scrollbar.cget("style")
+        assert "uparrow" not in str(client.ttk.Style(app).layout("Slim.Vertical.TScrollbar"))
+        for scroll in (child for child in all_widgets if isinstance(child, client.ttk.Scrollbar) and child.winfo_ismapped()):
+            assert 6 <= scroll.winfo_width() <= 14
         close_command = window.protocol("WM_DELETE_WINDOW")
         app.tk.call(close_command)
         app.update()
@@ -412,10 +442,12 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, t
     try:
         client.open_settings()
         window = next(child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel))
-        window.geometry("580x600")
+        window.geometry("700x520")
         app.update()
         widgets = list(descendants(window))
-        notebook = next(child for child in widgets if isinstance(child, client.ttk.Notebook))
+        notebook = next(child for child in widgets if isinstance(child, client._SettingsNavigation))
+        client.open_settings()
+        assert len([child for child in app.winfo_children() if isinstance(child, client.tk.Toplevel)]) == 1
         for tab in notebook.tabs():
             notebook.select(tab)
             app.update()
@@ -433,9 +465,95 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, t
         app.update()
         assert client.config["server_port"] == client.config["host_port"] == 5088
         assert any(isinstance(child, client.ttk.Label) and child.cget("text") == client.t("err_ports") for child in widgets)
+        assert save.winfo_ismapped()
+        assert save.winfo_rooty() + save.winfo_height() <= window.winfo_rooty() + window.winfo_height()
     finally:
         for child in app.winfo_children():
             child.destroy()
+
+
+def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(appearance="dark", username="alice", password="example-password")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [], "total": 0})
+    monkeypatch.setattr(client, "check_connection", lambda *_args: True)
+    monkeypatch.setattr(client, "_run_bg", lambda action: action())
+    monkeypatch.setattr(client, "register_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "notify", lambda *_args, **_kw: None)
+    opened = []
+    monkeypatch.setattr(client.webbrowser, "open", lambda url: opened.append(url))
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def settings():
+        client.open_settings()
+        tk_test_root.update()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "settings")
+        return window, list(descendants(window))
+
+    try:
+        client.open_history_window()
+        tk_test_root.update()
+        history = next(child for child in tk_test_root.winfo_children()
+                       if getattr(child, "_view_name", None) == "history")
+        window, controls = settings()
+        light = next(child for child in controls if isinstance(child, client.ttk.Radiobutton)
+                     and child.cget("text") == client.t("light_theme"))
+        light.invoke()
+        tk_test_root.update()
+        assert history.cget("background") == client._PALETTES["light"]["panel"]
+        assert client.config["appearance"] == "dark"
+        note = next(child for child in controls if child.winfo_name() == "support_note")
+        support = next(child for child in controls if child.winfo_name() == "support")
+        for value, lang in (("Italiano", "it"), ("English", "en")):
+            window._language_var.set(value)
+            tk_test_root.update()
+            assert note.cget("text") == client.STRINGS[lang]["support_note"]
+            assert support.ui_label == client.STRINGS[lang]["support"]
+        assert opened == []
+        support.invoke()
+        assert opened == ["https://ko-fi.com/mattboxx"]
+        next(child for child in controls if isinstance(child, client.ttk.Button)
+             and child.cget("text") == client.t("cancel")).invoke()
+        tk_test_root.update()
+        assert history.cget("background") == client._PALETTES["dark"]["panel"]
+        window, controls = settings()
+        next(child for child in controls if isinstance(child, client.ttk.Radiobutton)
+             and child.cget("text") == client.t("light_theme")).invoke()
+        next(child for child in controls if isinstance(child, client.ttk.Button)
+             and child.cget("text") == client.t("save")).invoke()
+        tk_test_root.update()
+        saved = json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))
+        assert saved["appearance"] == "light"
+        assert saved["username"] == "alice" and saved["password"] == "example-password"
+        assert history.cget("background") == client._PALETTES["light"]["panel"]
+    finally:
+        tk_test_root._appearance_override = None
+        for child in tk_test_root.winfo_children():
+            if child.winfo_exists():
+                command = child.protocol("WM_DELETE_WINDOW")
+                tk_test_root.tk.call(command) if command else child.destroy()
+
+
+def test_local_restore_never_copies_a_partial_file_group(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    copied = []
+    monkeypatch.setattr(client, "set_clipboard_text", lambda value: copied.append(value))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda paths: copied.append(paths))
+    client._copy_local_item({"type": "text", "text": "old note"})
+    assert copied == ["old note"]
+    first = tmp_path / "first.pdf"
+    first.write_bytes(b"pdf")
+    with pytest.raises(FileNotFoundError):
+        client._copy_local_item({"type": "bundle", "paths": [str(first), str(tmp_path / "missing.pdf")]})
+    assert copied == ["old note"]
+    client._copy_local_item({"type": "bundle", "paths": [str(first)]})
+    assert copied[-1] == [str(first)]
 
 
 def load_client(tmp_path, monkeypatch):
@@ -458,7 +576,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.9"
+    assert client.APP_VERSION == "2.0.10"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

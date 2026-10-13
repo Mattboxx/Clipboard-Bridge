@@ -97,12 +97,12 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 
 ### Option A — Executable
 Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.9` (requires Python,
+Windows packages locally, run `build_windows_release.bat 2.0.10` (requires Python,
 PyInstaller and Inno Setup). No personal configuration is embedded in either package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.9 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.10 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -149,13 +149,20 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **History…**: browse the server and local history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
-In Windows 2.0.9, History also offers a search field, type filter
+In Windows 2.0.10, History also offers a search field, type filter
 and previous/next server pages. Search matches previews and filenames, including all
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
 still clears the entire selected account's history, not just the search results.
-The modern Windows history table includes a selected-item preview and quick
-Send/Receive actions. Settings tabs scroll when the window is too small to show all fields.
+History uses one compact list: choose **Server** or **This PC**, then double-click an
+item or press **Copy**. Local items can also be sent with **Send to server**.
+The **Preview** checkbox opens or closes the optional preview pane. Each server page
+contains up to 100 items; **Previous** and **Next** navigate between pages.
+Settings use sidebar navigation. Choose **General → Appearance → Light / Dark**;
+the preview updates open windows immediately and Cancel restores your saved appearance.
+Dark is the default. Settings sections scroll when needed.
+The optional Ko-fi link is at the bottom of Settings, with a localized explanation
+and thank-you. It opens only when clicked; no reminder or popup is shown automatically.
 - **Connection status**: the tray contains one compact green/red indicator. Settings show
   the detailed result and **Check connection now** after editing the address, token or
   account.
@@ -204,10 +211,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.9 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.9):
+[Clipboard Bridge 2.0.10 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.10):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.9/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:

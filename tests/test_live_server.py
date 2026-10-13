@@ -21,7 +21,7 @@ def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeyp
     shared_before.raise_for_status()
     auth = client.auth_params()
     assert client.check_connection()
-    assert requests.get(base + "/health", timeout=5).json()["version"] == "1.0.6"
+    assert requests.get(base + "/health", timeout=5).json()["version"] == "1.0.7"
     text = "\u96ea\U0001f600\r\n\t \r\nend\r"
     text_id = client.push_text(text)
     assert client.fetch_item(text_id)["text"] == text

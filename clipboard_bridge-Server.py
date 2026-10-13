@@ -51,7 +51,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.6"
+SERVER_VERSION = "1.0.7"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -1178,7 +1178,13 @@ code{background:#eef2ff;padding:2px 6px;border-radius:5px;font-size:13px}
  border-radius:10px;font-size:13px;margin:0 0 10px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;
  padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
-.toast.show{opacity:1}.foot{text-align:center;color:#94a3b8;font-size:12px;margin-top:8px}
+.toast.show{opacity:1}.foot{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:10px;color:#64748b;font-size:12px;margin-top:12px}
+.support-link{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #e2e8f0;
+ border-radius:6px;color:#9f315e;background:#fff;text-decoration:none;font-size:12px;font-weight:600}
+.support-link:hover,.support-link:focus-visible{background:#fff1f5;border-color:#f0b8ce}
+.support-link span{font-size:17px;line-height:1}
+.support-note{max-width:490px;margin:5px 0 0;line-height:1.5}
 .lang{margin-top:6px;font-size:12px}
 .lang a{color:#94a3b8;text-decoration:none;padding:0 3px}
 .lang a.on{color:#4f46e5;font-weight:700}
@@ -1265,6 +1271,8 @@ WEB_STRINGS = {
         "login": "Log in", "logout": "Log out", "shared": "shared",
         "acct_note": "You are in account <b>{name}</b> — these links carry its user &amp; password.",
         "foot": "This page also works from the iPhone browser.",
+        "support": "Support on Ko-fi",
+        "support_note": "If Clipboard Bridge is useful to you, a donation helps with maintenance and updates. Thank you for choosing to support the project!",
         "js_copied": "Copied to the clipboard", "js_del": "Delete this item?",
         "js_clear": "Clear the whole history?",
     },
@@ -1296,6 +1304,8 @@ WEB_STRINGS = {
         "login": "Accedi", "logout": "Esci", "shared": "condiviso",
         "acct_note": "Sei nell'account <b>{name}</b> — questi link includono utente e password.",
         "foot": "Questa pagina funziona anche dal browser dell’iPhone.",
+        "support": "Supporta su Ko-fi",
+        "support_note": "Se Clipboard Bridge ti è utile, una donazione aiuta a mantenere e aggiornare il progetto. Grazie di cuore se scegli di contribuire!",
         "js_copied": "Copiato negli appunti", "js_del": "Eliminare questo elemento?",
         "js_clear": "Svuotare tutta la cronologia?",
     },
@@ -1449,7 +1459,8 @@ def render_home():
 </details>
 </div>
 
-<div class="foot">{S["foot"]}</div>
+<footer class="foot"><div><span>{S["foot"]}</span><p class="support-note">{S["support_note"]}</p></div>
+<a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">&#9825;</span>{S["support"]}</a></footer>
 </div>
 <div id="toast" class="toast"></div>
 <script>{js_consts}{_HOME_JS}</script>
