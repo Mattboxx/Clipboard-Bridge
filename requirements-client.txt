@@ -5,3 +5,4 @@ pystray>=0.19,<1
 pillow>=11,<13
 pypdfium2>=5.13,<6
 keyboard>=0.13,<1
+striprtf==0.0.33

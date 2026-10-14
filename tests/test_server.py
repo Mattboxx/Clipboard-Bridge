@@ -601,7 +601,16 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.7"
+    assert response.get_json()["version"] == "1.0.8"
+
+
+def test_web_session_duration_is_configurable(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLIPBOARD_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("CLIPBOARD_SESSION_DAYS", "90")
+    spec = importlib.util.spec_from_file_location("session_duration_test", SERVER_FILE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.app.permanent_session_lifetime.days == 90
 
 
 @pytest.mark.parametrize("encoding", ["utf-8", "utf-16", "utf-32"])
@@ -613,6 +622,53 @@ def test_unicode_text_and_line_endings_round_trip_exactly(server, encoding):
     assert saved.status_code == 200
     assert client.get("/clipboard/latest/raw?token=shared-token").data == text.encode("utf-8")
     assert client.get("/clipboard/latest?token=shared-token").get_json()["text"] == text
+
+
+@pytest.mark.parametrize("route,mime", [
+    ("/clipboard", "text/rtf"), ("/clipboard", "application/rtf"),
+    ("/clipboard", "application/x-rtf"), ("/clipboard/text", "text/plain"),
+])
+@pytest.mark.parametrize("encoding", ["ascii", "utf-16", "utf-32"])
+def test_rtf_clipboard_is_plain_unicode_in_every_read_endpoint(server, route, mime, encoding):
+    client = server.app.test_client()
+    auth = "?user=alice&password=p%26ss%3Fword"
+    rtf = rb"{\rtf1\ansi\ansicpg1252 Caff\'e8 \b bold\b0  \u-10179?\u-8704?\par\tab fine}"
+    expected = "Caff\u00e8 bold \U0001f600\n\tfine"
+    saved = client.post(route + auth, data=rtf.decode("ascii").encode(encoding), content_type=mime)
+    assert saved.status_code == 200
+    item_id = saved.get_json()["id"]
+    for path in ("/clipboard/latest", f"/clipboard/item/{item_id}"):
+        item = client.get(path + auth).get_json()
+        assert item["type"] == "text" and item["mime"] == "text/plain"
+        assert item["text"] == expected
+        assert item["size"] == len(expected.encode("utf-8"))
+    for path in ("/clipboard/latest/raw", f"/clipboard/item/{item_id}/raw", "/clipboard/text/raw"):
+        received = client.get(path + auth)
+        assert received.data == expected.encode("utf-8")
+        assert received.content_type == "text/plain; charset=utf-8"
+    assert client.get("/clipboard/history" + auth).get_json()["items"][0]["preview"] == expected
+    assert client.get("/clipboard/latest?token=shared-token").get_json()["type"] == "empty"
+
+
+@pytest.mark.parametrize("mode", ["named", "multipart", "explicit", "group"])
+def test_rtf_documents_are_files_not_clipboard_text(server, mode):
+    client = server.app.test_client()
+    raw = rb"{\rtf1\ansi Original \b document\b0 \u-10179?\u-8704?}"
+    auth = "?token=shared-token"
+    if mode == "named":
+        saved = client.post("/clipboard" + auth + "&filename=notes.rtf", data=raw, content_type="text/rtf")
+    elif mode in ("multipart", "group"):
+        files = [(io.BytesIO(raw), "notes.rtf")]
+        if mode == "group":
+            files.append((io.BytesIO(b"pdf"), "other.pdf"))
+        saved = client.post("/clipboard" + auth, data={"files": files}, content_type="multipart/form-data")
+    else:
+        saved = client.post("/clipboard/file" + auth, data=raw, content_type="application/rtf")
+    assert saved.status_code == 200
+    item = client.get("/clipboard/latest" + auth).get_json()
+    assert item["type"] == ("bundle" if mode == "group" else "file")
+    path = f"/clipboard/item/{item['id']}/file/0/raw" if mode == "group" else "/clipboard/latest/raw"
+    assert client.get(path + auth).data == raw
 
 
 def test_unicode_password_and_token_are_supported(server):

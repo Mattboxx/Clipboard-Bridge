@@ -30,10 +30,12 @@ class ApiClient(
         val settings = config.load()
         val base = AppConfig.normalizeServerUrl(settings.serverUrl)
         val builder = Request.Builder().url(buildRequestUrl(base, path, settings))
-        if (settings.accountMode && settings.username.isNotBlank()) {
+        if (settings.accountMode && settings.username.isNotBlank() &&
+            canUseCredentialHeaders(settings.username.trim(), settings.password)) {
             builder.header("X-Clipboard-User", settings.username.trim())
             builder.header("X-Clipboard-Password", settings.password)
-        } else if (settings.token.isNotBlank()) {
+        } else if (!settings.accountMode && settings.token.isNotBlank() &&
+            canUseCredentialHeaders(settings.token.trim())) {
             builder.header("X-Auth-Token", settings.token.trim())
         }
         return builder
@@ -281,6 +283,9 @@ class ApiClient(
     }
 }
 
+internal fun canUseCredentialHeaders(vararg values: String): Boolean =
+    values.all { value -> value == value.trim() && value.all { it in ' '..'~' } }
+
 internal fun buildRequestUrl(
     base: String,
     path: String,
@@ -289,6 +294,8 @@ internal fun buildRequestUrl(
     if (settings.accountMode && settings.username.isNotBlank()) {
         addQueryParameter("user", settings.username.trim())
         addQueryParameter("password", settings.password)
+    } else if (settings.token.isNotBlank() && !canUseCredentialHeaders(settings.token.trim())) {
+        addQueryParameter("token", settings.token.trim())
     }
 }.build()
 
@@ -306,10 +313,15 @@ private fun Throwable.userMessage(): String {
             "Server unreachable. Check its address and the network."
         value.contains("timeout", ignoreCase = true) ->
             "The server did not respond in time."
-        value.isNotBlank() -> value
+        value.isNotBlank() -> redactCredentialUrls(value)
         else -> "Unexpected communication error."
     }
 }
+
+internal fun redactCredentialUrls(message: String): String =
+    Regex("(?i)([?&](?:user|password|token)=)[^&#\\s\"']*").replace(message) {
+        "${it.groupValues[1]}[redacted]"
+    }
 
 fun ContentResolver.displayName(uri: Uri): String {
     query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->

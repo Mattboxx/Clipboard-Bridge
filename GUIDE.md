@@ -105,14 +105,14 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `build_windows_release.bat 2.0.14` (requires x64
+To rebuild x64 packages locally, run `build_windows_release.bat 2.0.15` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.14 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.15 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -169,7 +169,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **History…**: browse the server and local history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
-In Windows 2.0.14, History also offers a search field, type filter
+In Windows 2.0.15, History also offers a search field, type filter
 and previous/next server pages. Search matches previews and filenames, including all
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
@@ -249,10 +249,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.14 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.14):
+[Clipboard Bridge 2.0.15 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.15):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -279,6 +279,10 @@ Apple documents the same procedure in its
 
 ### 5.1 Send (clipboard to server)
 
+Copied text is stored and received as **plain Unicode text**. Server 1.0.8 and
+Windows Server mode 2.0.15 remove RTF formatting without removing emoji or accents.
+Documents sent as files, including `.rtf`, keep their original bytes.
+
 This version automatically handles a single item or a list received from the iOS Share
 Sheet. Enable **Show in Share Sheet** in the Shortcut details and allow **Any** input.
 
@@ -296,8 +300,10 @@ Sheet. Enable **Show in Share Sheet** in the Shortcut details and allow **Any** 
    - Request Body: **File**, using the **Archive** result.
 8. In **Otherwise**, add **Get Item from List** and choose **First Item** from `Transfer`.
 9. Add **Get Type** for the selected item and an **If** action:
-   - when the type is **Text**, POST the selected item as a **File** request body to
-     `http://SERVER_IP:5088/clipboard`;
+   - when the type is **Text** or **Rich Text**, use **Get Text from Input** on the
+     selected item, then POST that text as a **File** request body to
+     `http://SERVER_IP:5088/clipboard`. Set `Content-Type` to
+     `text/plain; charset=utf-8` and do not add a filename for copied text;
    - otherwise, use **Get Details of Files > Name**, URL-encode that name, and POST the
      selected item as a **File** request body to
      `http://SERVER_IP:5088/clipboard?filename=ENCODED_NAME`.
@@ -379,6 +385,10 @@ Opening the page now shows a login form; after you enter the password once, that
 stays logged in for a long time (a persistent session cookie). This applies only to the
 external server's web page (the Windows "server mode" has no web page).
 
+The existing default is 3650 days. Set `CLIPBOARD_SESSION_DAYS=90` or `365` for a
+shorter remembered login; Compose exposes the same setting as `SESSION_DAYS`.
+This setting never adds a login step to Apple Shortcuts.
+
 ### Multiple accounts
 Besides the shared space, you can create separate, **isolated** spaces (each with its own
 history) by listing `user:password` pairs in `CLIPBOARD_ACCOUNTS`:
@@ -397,6 +407,13 @@ account name (leave it empty for the shared space). The shared space is always a
 The URL format remains the recommended option for the two simple iPhone Shortcuts.
 Other API clients can optionally use `X-Clipboard-User` and `X-Clipboard-Password`
 headers instead.
+
+Windows and Android retain the compatible account URL format. Android skips its
+optional duplicate headers when Unicode or whitespace-sensitive values would make
+them invalid. Plain HTTP does not encrypt either transport. **Your existing Apple
+URLs remain valid:** no pairing, interactive login, refresh token or required header
+is introduced. The Windows app currently uses HTTP; use LAN/VPN with it rather than
+assuming it can connect directly to an HTTPS-only reverse proxy.
 
 > The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
 > use the server away from that LAN, put it behind a VPN or an HTTPS reverse proxy.

@@ -19,6 +19,11 @@ The updated **Download Clipboard** Shortcut checks `/clipboard/latest/meta`, ext
 group only when required, and copies every member together. Users never choose a content
 type manually.
 
+Account and token URL parameters remain optional and compatible with the existing
+exports. No interactive login, pairing, token renewal or required HTTP header is
+introduced. Header authentication is an optional alternative, not a new prerequisite.
+Copied RTF text is converted by the updated servers; real `.rtf` documents remain files.
+
 ## Nota in italiano
 
 I file `.shortcut` sono esportazioni firmate da Apple e non possono essere modificati e

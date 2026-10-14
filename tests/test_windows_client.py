@@ -73,6 +73,97 @@ def test_embedded_rejects_invalid_or_incomplete_body(embedded, headers, body):
     assert client._host_load() == []
 
 
+@pytest.mark.parametrize("mime", ["text/rtf", "application/rtf", "application/x-rtf"])
+@pytest.mark.parametrize("encoding", ["ascii", "utf-16", "utf-32"])
+def test_embedded_converts_rtf_clipboard_to_plain_unicode(embedded, mime, encoding):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    raw = rb"{\rtf1\ansi Caff\'e8 \u-10179?\u-8704?\par\tab fine}"
+    expected = "Caff\u00e8 \U0001f600\n\tfine"
+    saved = requests.post(base + "/clipboard", data=raw.decode("ascii").encode(encoding),
+                          headers={"Content-Type": mime}, timeout=5)
+    assert saved.status_code == 200
+    assert saved.json()["type"] == "text"
+    item_id = saved.json()["id"]
+    item = requests.get(base + "/clipboard/latest", timeout=5).json()
+    assert item["text"] == expected and item["mime"] == "text/plain"
+    assert item["size"] == len(expected.encode("utf-8"))
+    for path in ("/clipboard/latest/raw", f"/clipboard/item/{item_id}/raw"):
+        received = requests.get(base + path, timeout=5)
+        assert received.content == expected.encode("utf-8")
+        assert received.headers["Content-Type"] == "text/plain; charset=utf-8"
+    assert requests.get(base + "/clipboard/history", timeout=5).json()["items"][0]["preview"] == expected
+
+
+@pytest.mark.parametrize("mode", ["named", "multipart", "explicit", "group"])
+def test_embedded_keeps_rtf_documents_unchanged(embedded, mode):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    raw = rb"{\rtf1\ansi Original \b document\b0 \u-10179?\u-8704?}"
+    if mode == "named":
+        saved = requests.post(base + "/clipboard?filename=notes.rtf", data=raw,
+                              headers={"Content-Type": "text/rtf"}, timeout=5)
+    elif mode in ("multipart", "group"):
+        parts = [("files", ("notes.rtf", raw, "application/rtf"))]
+        if mode == "group":
+            parts.append(("files", ("other.pdf", b"pdf", "application/pdf")))
+        saved = requests.post(base + "/clipboard", files=parts, timeout=5)
+    else:
+        saved = requests.post(base + "/clipboard/file", data=raw,
+                              headers={"Content-Type": "application/rtf"}, timeout=5)
+    assert saved.status_code == 200
+    item = requests.get(base + "/clipboard/latest", timeout=5).json()
+    assert item["type"] == ("bundle" if mode == "group" else "file")
+    path = f"/clipboard/item/{item['id']}/file/0/raw" if mode == "group" else "/clipboard/latest/raw"
+    assert requests.get(base + path, timeout=5).content == raw
+
+
+def test_windows_converts_text_on_send_and_receive_without_echo(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    rtf = r"{\rtf1\ansi Caff\'e8 \u-10179?\u-8704?}"
+    expected = "Caff\u00e8 \U0001f600"
+    sent, copied = [], []
+    def post(url, **kwargs):
+        sent.append(kwargs["json"]["text"])
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"id": "sent"})
+    monkeypatch.setattr(client.requests, "post", post)
+    monkeypatch.setattr(client.pyperclip, "paste", lambda: expected)
+    monkeypatch.setattr(client.pyperclip, "copy", copied.append)
+    monkeypatch.setattr(client, "_get_clipboard_rtf", lambda: pytest.fail("Unicode is preferred"))
+    assert client.get_clipboard_text() == expected
+    client.push_text(rtf)
+    assert sent == [expected]
+    client._take_local_upload_marker()
+    client._copy_remote_item({"id": "received", "type": "text", "text": rtf})
+    assert copied == [expected]
+    assert client._take_local_upload_marker() == ("text", expected)
+
+
+@pytest.mark.parametrize("unicode_available", [False, True])
+def test_windows_reads_rtf_only_when_unicode_format_is_missing(tmp_path, monkeypatch, unicode_available):
+    client = load_client(tmp_path, monkeypatch)
+    raw = rb"{\rtf1\ansi Caff\'e8 \u-10179?\u-8704?}"
+    buffer = client.ctypes.create_string_buffer(raw)
+    closed, unlocked = [], []
+    user32 = SimpleNamespace(
+        OpenClipboard=lambda handle: True,
+        CloseClipboard=lambda: closed.append(True),
+        IsClipboardFormatAvailable=lambda fmt: unicode_available if fmt == 13 else True,
+        RegisterClipboardFormatW=lambda name: 0xC000,
+        GetClipboardData=lambda fmt: 123,
+    )
+    kernel32 = SimpleNamespace(
+        GlobalSize=lambda handle: len(buffer),
+        GlobalLock=lambda handle: client.ctypes.addressof(buffer),
+        GlobalUnlock=lambda handle: unlocked.append(handle),
+    )
+    monkeypatch.setattr(client.ctypes, "WinDLL", lambda name, **kw: user32 if name == "user32" else kernel32)
+    monkeypatch.setattr(client.pyperclip, "paste", lambda: "")
+    assert client.get_clipboard_text() == ("" if unicode_available else "Caff\u00e8 \U0001f600")
+    assert closed == [True]
+    assert unlocked == ([] if unicode_available else [123])
+
+
 def test_missing_file_does_not_upload_a_partial_group(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     present = tmp_path / "present.pdf"
@@ -140,6 +231,25 @@ def test_client_requests_history_page_in_the_selected_account(tmp_path, monkeypa
                          "user": "alice", "password": "private"}]
     bundle = {"type": "bundle", "preview": "first", "paths": ["other.pdf", "report.pdf"]}
     assert client._filter_history([bundle], "REPORT", "bundle") == [bundle]
+
+
+@pytest.mark.parametrize("password", ["caff\u00e8\u96ea", " leading", "line\r\nbreak"])
+def test_non_header_credentials_keep_compatible_url_encoding(tmp_path, monkeypatch, password):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="alice", password=password, token="ignored")
+    assert client.auth_headers() == {"X-Auth-Token": "ignored"}
+    assert client.auth_params({"limit": 1}) == {"limit": 1, "user": "alice", "password": password}
+    prepared = requests.Request("GET", "http://192.0.2.10/clipboard", params=client.auth_params()).prepare()
+    assert "\r" not in prepared.url and "\n" not in prepared.url
+
+
+def test_crash_log_redacts_url_credentials(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client._log_crash(requests.HTTPError(
+        "GET http://192.0.2.10/clipboard?user=alice&password=private%26value&token=private-token&q=notes"))
+    log = Path(client.ERROR_LOG).read_text(encoding="utf-8")
+    assert "private" not in log and "alice" not in log
+    assert "password=[redacted]" in log and "q=notes" in log
 
 
 def test_failed_embedded_index_commit_keeps_old_files(tmp_path, monkeypatch):
@@ -1017,7 +1127,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.14"
+    assert client.APP_VERSION == "2.0.15"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
