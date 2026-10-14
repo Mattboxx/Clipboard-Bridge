@@ -604,6 +604,9 @@ def test_pdf_preview_local_first_page_and_safe_lifetime(tmp_path, monkeypatch):
     assert len(image.getcolors(100000)) > 1
     assert client._preview_target({"type": "file", "path": str(path)}, False) == str(path)
     assert client._preview_target({"id": "pdf", "type": "file", "mime": "application/pdf"}, True)
+    for mime in ("application/octet-stream", "application/pdf; charset=binary", ""):
+        assert client._preview_target({"id": "pdf", "type": "file", "mime": mime,
+                                       "filename": "document.PDF"}, True) == "/clipboard/item/pdf/raw"
 
 
 @pytest.mark.parametrize("oversized", [False, True])

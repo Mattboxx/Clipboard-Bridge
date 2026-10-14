@@ -2705,8 +2705,10 @@ def _copy_local_item(item):
 def _preview_target(item, is_server):
     """Identify an image or PDF without downloading the entire group."""
     def is_previewable(value):
-        mime = value.get("mime") or mimetypes.guess_type(value.get("filename", ""))[0] or ""
-        return value.get("type") == "image" or mime.startswith("image/") or mime == "application/pdf"
+        mime = str(value.get("mime") or "").partition(";")[0].strip().lower()
+        guessed = mimetypes.guess_type(str(value.get("filename") or ""))[0] or ""
+        return value.get("type") == "image" or any(
+            candidate.startswith("image/") or candidate == "application/pdf" for candidate in (mime, guessed))
 
     if is_server:
         item_id = quote(str(item.get("id", "")), safe="")
