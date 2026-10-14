@@ -96,7 +96,7 @@ unproven one-click claims; test on those systems before producing new adapters.
 
 - [ ] Review the technical audit and final source diff.
 - [ ] Python, Android, frozen Windows and Docker compatibility checks pass.
-- [ ] Native ARM64 candidate packages are verified on the ARM64 runner.
+- [x] Native ARM64 candidate packages are verified on the ARM64 runner.
 - [ ] Complete the device/manual checklist and 3-5-person beginner pilot.
 - [ ] Record a real demo; keep every manual action visible.
 - [ ] Document unsigned Windows binaries clearly; SignPath is not a launch promise.

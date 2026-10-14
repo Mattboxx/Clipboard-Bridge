@@ -99,8 +99,11 @@ was demonstrated by that failure.
 Frozen x64 candidate verification passed: 84 bundled native libraries, parser license,
 startup, local server, Unicode/RTF, history and duplicate-instance handling. The existing
 PC configuration was unchanged and its installed 2.0.14 app was restarted afterwards.
-Native ARM64 candidate verification is pending its runner. Previous public verification passed in
-[run 38604247649](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/38604247649).
+Native ARM64 candidate source tests, portable startup/payload checks and installed
+package/configuration checks passed in
+[run 38636622348](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/38636622348).
+All candidate CI jobs passed in
+[run 38636622219](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/38636622219).
 
 ## CI/repository status at baseline
 
@@ -123,7 +126,7 @@ real VPN routing passed based on tests of HTTP endpoints.
 **P0:** final builds, transfer regressions and preservation checks; keep original Apple URLs.
 
 **P1:** real device/pilot checklist; agree on a release without trusted Windows signing;
-verify native ARM64 candidate; review prepared docs, image and catalog sequencing.
+review prepared docs, image and catalog sequencing.
 
 **P2:** record the demo, useful community posts, directory proposals, and weekly aggregate
 feedback. No mandatory cloud, TLS/login, telemetry, DPAPI migration or new pairing feature.
