@@ -13,6 +13,9 @@ All notable user-facing changes are documented here.
 - Clearer project website with consistent typography, device-based downloads and current screenshots.
 - The top Support me button opens Ko-fi directly instead of scrolling down the page.
 - Documented manual Mac integration through Apple Shortcuts, without claiming a native Mac client.
+- Native Windows 11 ARM64 portable and installer packages, built and tested on an ARM64 runner.
+- Verify every bundled native library, frozen application startup, local server and single-instance behavior before exporting ARM64 builds.
+- Both Windows architectures retain the same application identity and per-user configuration.
 - Standalone server remains 1.0.7; Android and iPhone downloads are unchanged.
 
 ## 2.0.10 - 2026-10-13

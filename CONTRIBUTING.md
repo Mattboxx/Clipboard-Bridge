@@ -6,7 +6,7 @@ compatible with the two supported operating modes.
 ## Development setup
 
 Use Python 3.12 on Windows for the client and any Python 3.12 environment for the
-server.
+server. Native Windows ARM64 builds use ARM64 Python 3.13.
 
 ```powershell
 python -m venv .venv
@@ -26,6 +26,23 @@ Run the Windows client with:
 ```powershell
 python clipboard_bridge_windows.py
 ```
+
+## Windows release builds
+
+`build_windows_release.bat` builds the x64 portable executable and installer.
+It rejects non-x64 Python to avoid incorrectly labeled packages.
+
+For native Windows ARM64, run the **Build Windows ARM64** GitHub Actions workflow.
+It uses a native `windows-11-arm` runner and ARM64 Python, not cross-compilation or
+an x64 executable renamed as ARM64. The workflow runs the client tests, verifies
+the PE architecture of every bundled DLL/PYD (including PDFium), checks the frozen
+application's local server and single-instance behavior, and installs the package
+to verify its payload and configuration preservation. The verified executables
+are available in its `clipboard-bridge-windows-arm64` artifact.
+
+Only publish those executables after the entire workflow succeeds. Keep ARM64 and
+x64 download names distinct. Both installers use the same application identity,
+so changing architecture preserves the existing per-user settings and history.
 
 ## Pull requests
 
