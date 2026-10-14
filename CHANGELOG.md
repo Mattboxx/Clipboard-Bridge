@@ -6,7 +6,7 @@ All notable user-facing changes are documented here.
 
 - Real image thumbnails in the optional Windows History preview pane, for server and local items.
 - PDF first-page thumbnails and page counts, with a bundled PDFium renderer.
-- Preview the first image in a file group without downloading its other members.
+- Preview the first image or PDF in a file group without downloading its other members.
 - Preserve aspect ratio, transparency and camera orientation; keep a stable preview area.
 - Load thumbnails off the UI thread, discard stale selections and retain account isolation.
 - Limit thumbnail memory and download size; report unavailable images without affecting transfers.
