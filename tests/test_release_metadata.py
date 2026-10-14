@@ -1,4 +1,5 @@
 import importlib.util
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -62,3 +63,71 @@ def test_website_support_opens_donation_directly_and_stylesheet_exists():
     assert {"noopener", "noreferrer"} <= set(link["rel"].split())
     assert links.stylesheets == ["site.css"]
     assert (ROOT / "docs/site.css").is_file()
+
+
+def test_website_local_images_and_device_downloads_exist():
+    class Assets(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.images = []
+            self.downloads = set()
+            self.main_ids = []
+
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if tag == "img":
+                self.images.append(values["src"])
+                assert "alt" in values
+            if tag == "a" and "/releases/download/" in values.get("href", ""):
+                self.downloads.add(values["href"].rsplit("/", 1)[1])
+            if tag == "main":
+                self.main_ids.append(values.get("id"))
+
+    assets = Assets()
+    assets.feed((ROOT / "docs/index.html").read_text(encoding="utf-8"))
+    assert assets.main_ids == ["main"]
+    assert assets.images
+    for source in assets.images:
+        assert not source.startswith(("http:", "https:")), "Website assets should work without a CDN"
+        assert (ROOT / "docs" / source).is_file(), source
+    version = load_release_metadata().current_version()
+    for architecture in ("x64", "arm64"):
+        assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
+        assert f"Clipboard.Bridge_windows_client_and_server_setup_{architecture}_V{version}.exe" in assets.downloads
+    assert {"iPhone.Load.Clipboard.shortcut", "iPhone.Download.Clipboard.shortcut"} <= assets.downloads
+    assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk" in assets.downloads
+    assert (ROOT / "docs/assets/icons/LICENSE").is_file()
+
+
+def test_website_highlights_stable_server_and_windows_alternative():
+    class ServerInfo(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.details = 0
+            self.server_visible = False
+            self.command_visible = False
+
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if tag == "details":
+                self.details += 1
+            if values.get("id") == "server":
+                self.server_visible = self.details == 0
+            if values.get("id") == "image-command":
+                self.command_visible = self.details == 0
+
+        def handle_endtag(self, tag):
+            if tag == "details":
+                self.details -= 1
+
+    html = (ROOT / "docs/index.html").read_text(encoding="utf-8")
+    info = ServerInfo()
+    info.feed(html)
+    assert info.server_visible and info.command_visible
+    docker = (ROOT / "DOCKER.md").read_text(encoding="utf-8")
+    stable_image = re.search(r"ghcr.io/mattboxx/clipboard-bridge-server:\d+\.\d+\.\d+", docker).group()
+    assert f"docker pull {stable_image}" in html
+    assert 'href="#server">Get the server' in html
+    assert "Your Windows PC can do the job." in html
+    assert "Server mode" in html
+    assert (ROOT / "docs/site.js").is_file()
