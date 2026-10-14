@@ -304,6 +304,13 @@ STRINGS = {
         "lbl_hk_recv": "Receive hotkey",
         "lbl_hk_history": "Open history hotkey",
         "err_hotkeys": "Choose valid, different shortcuts for Send, Receive and History.",
+        "set_hotkey": "Set keys...",
+        "record_hotkey": "Press the keys...",
+        "hotkeys_active": "Shortcuts active",
+        "hotkeys_disabled": "Shortcuts disabled",
+        "hotkeys_pending": "Changes not saved",
+        "hotkey_unavailable": "Shortcut unavailable: {e}",
+        "hotkey_in_use": "Already used by Windows or another app. Choose different keys.",
         "hint_hk": "(e.g. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Automatic synchronization",
         "chk_auto_files": "Automatically download new files",
@@ -422,6 +429,13 @@ STRINGS = {
         "lbl_hk_recv": "Hotkey ricezione",
         "lbl_hk_history": "Hotkey apertura cronologia",
         "err_hotkeys": "Scegli combinazioni valide e diverse per Invia, Ricevi e Cronologia.",
+        "set_hotkey": "Imposta...",
+        "record_hotkey": "Premi i tasti...",
+        "hotkeys_active": "Scorciatoie attive",
+        "hotkeys_disabled": "Scorciatoie disattivate",
+        "hotkeys_pending": "Modifiche non salvate",
+        "hotkey_unavailable": "Scorciatoia non disponibile: {e}",
+        "hotkey_in_use": "Già usata da Windows o da un'altra app. Scegli altri tasti.",
         "hint_hk": "(es. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Sincronizzazione automatica",
         "chk_auto_files": "Scarica automaticamente i nuovi file",
@@ -3199,6 +3213,94 @@ def open_history_window(icon=None, item=None):
 
 
 # ---------------------------------------------------------------- settings window
+def _captured_hotkey(event):
+    key = event.keysym.lower()
+    if key in ("control_l", "control_r", "alt_l", "alt_r", "shift_l", "shift_r",
+               "super_l", "super_r", "iso_level3_shift"):
+        return None
+    aliases = {"return": "enter", "escape": "esc", "prior": "page up",
+               "next": "page down", "backspace": "backspace", "plus": "plus",
+               "minus": "minus", "kp_enter": "enter", "bracketleft": "[",
+               "bracketright": "]", "asciigrave": "`", "apostrophe": "'",
+               "equal": "=", "kp_add": "num plus", "kp_subtract": "num minus",
+               "kp_multiply": "num multiply", "kp_divide": "num divide",
+               "kp_decimal": "decimal"}
+    if re.fullmatch(r"kp_[0-9]", key):
+        key = "num " + key[-1]
+    key = aliases.get(key, key)
+    modifiers = []
+    if event.state & 4:
+        modifiers.append("ctrl")
+    if event.state & (8 | 0x20000):
+        modifiers.append("alt")
+    if event.state & 1:
+        modifiers.append("shift")
+    combination = "+".join((*modifiers, key))
+    _hotkey_signature(combination)
+    return combination
+
+
+class _HotkeyRecorder:
+    def __init__(self, root, enabled, status):
+        self.root, self.enabled, self.status = root, enabled, status
+        self.target = None
+        self.bindings = []
+        self.pending = None
+
+    def begin(self, key, variable, button):
+        self.finish(restore=False)
+        unregister_hotkeys()
+        self.target = (key, variable, button)
+        self.pending = None
+        button.config(text=t("record_hotkey"))
+        self.status.set(t("record_hotkey"))
+        self.root.focus_force()
+        self.bindings = [
+            ("<KeyPress>", self.root.bind("<KeyPress>", self.press, add="+")),
+            ("<KeyRelease>", self.root.bind("<KeyRelease>", self.release, add="+")),
+            ("<FocusOut>", self.root.bind("<FocusOut>", self.focus_out, add="+")),
+        ]
+
+    def press(self, event):
+        if event.keysym.lower() == "escape":
+            self.finish()
+            return "break"
+        try:
+            combination = _captured_hotkey(event)
+            if combination:
+                self.pending = (event.keysym.lower(), combination)
+                self.status.set(combination.replace("+", " + ").title())
+        except (ValueError, KeyError, TypeError):
+            self.status.set(t("err_hotkeys"))
+        return "break"
+
+    def release(self, event):
+        if self.pending and event.keysym.lower() == self.pending[0]:
+            self.target[1].set(self.pending[1])
+            self.enabled.set(True)
+            self.finish()
+            self.status.set(t("hotkeys_pending"))
+        return "break"
+
+    def focus_out(self, event):
+        if event.widget is self.root:
+            self.finish()
+
+    def finish(self, restore=True):
+        if self.target is None:
+            return
+        self.target[2].config(text=t("set_hotkey"))
+        for sequence, binding in self.bindings:
+            self.root.unbind(sequence, binding)
+        self.bindings = []
+        self.target = None
+        self.pending = None
+        self.status.set(t("hotkeys_active") if config.get("hotkeys_enabled", True)
+                        else t("hotkeys_disabled"))
+        if restore:
+            register_hotkeys()
+
+
 def open_settings(icon=None, item=None):
     if _existing_view("settings") is not None:
         return
@@ -3443,9 +3545,24 @@ def open_settings(icon=None, item=None):
         variable=hk,
         style="Settings.TCheckbutton",
     ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
-    add_field(shortcuts_box, 1, t("lbl_hk_send"), "hotkey_send")
-    add_field(shortcuts_box, 2, t("lbl_hk_recv"), "hotkey_receive")
-    add_field(shortcuts_box, 3, t("lbl_hk_history"), "hotkey_history")
+    shortcut_status = tk.StringVar(value=t("hotkeys_active") if config.get("hotkeys_enabled", True)
+                                  and not _hotkey_errors else t("hotkeys_disabled"))
+    recorder = _HotkeyRecorder(root, hk, shortcut_status)
+    root._hotkey_recorder = recorder
+    for row, key, label in (
+        (1, "hotkey_send", "lbl_hk_send"),
+        (2, "hotkey_receive", "lbl_hk_recv"),
+        (3, "hotkey_history", "lbl_hk_history"),
+    ):
+        add_field(shortcuts_box, row, t(label), key)
+        button = ttk.Button(shortcuts_box, text=t("set_hotkey"), name=key + "_capture")
+        button.config(command=lambda key=key, button=button: recorder.begin(key, entries[key], button))
+        button.grid(row=row, column=2, padx=(8, 0), pady=6)
+    ttk.Label(shortcuts_box, textvariable=shortcut_status, wraplength=390).grid(
+        row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
+    hk.trace_add("write", lambda *_: shortcut_status.set(t("hotkeys_pending")))
+    if _hotkey_errors:
+        shortcut_status.set(t("hotkey_unavailable", e="; ".join(_hotkey_errors)))
 
     footer = ttk.Frame(root, padding=(18, 12, 18, 16))
     footer.pack(side="bottom", fill="x", before=body)
@@ -3534,6 +3651,7 @@ def open_settings(icon=None, item=None):
     connection_button.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
     def save():
+        recorder.finish()
         values = pending_connection_values()
         if values is None:
             return
@@ -3552,9 +3670,8 @@ def open_settings(icon=None, item=None):
         host_port = values["host_port"]
         old_mode = config.get("mode", "client")
         old_host_port = config.get("host_port", 5088)
+        previous_config = dict(config)
         config.update(values)
-        _root._appearance_override = None
-        _update_appearance(config["appearance"])
         config["auto_sync"] = auto.get()
         config["auto_receive_files"] = auto_files.get()
         config["monitor_clipboard"] = mon.get()
@@ -3563,13 +3680,22 @@ def open_settings(icon=None, item=None):
         config["notify_images"] = notify_images.get()
         config["notify_files"] = notify_files.get()
         config["hotkeys_enabled"] = hk.get()
+        if config["hotkeys_enabled"]:
+            errors = register_hotkeys()
+            if errors:
+                config.clear()
+                config.update(previous_config)
+                register_hotkeys()
+                msg.config(text=t("hotkey_unavailable", e="; ".join(errors)))
+                notebook.select(shortcuts_page)
+                return
+        else:
+            unregister_hotkeys()
+        _root._appearance_override = None
+        _update_appearance(config["appearance"])
         save_config(config)
         with _local_history_lock:
             _local_save(_local_load())
-        if config["hotkeys_enabled"]:
-            register_hotkeys()
-        else:
-            unregister_hotkeys()
         if config.get("mode") == "server":
             if old_mode != "server" or host_port != old_host_port:
                 stop_host_server()
@@ -3590,6 +3716,7 @@ def open_settings(icon=None, item=None):
         _run_bg(check_connection)
 
     def close_settings():
+        recorder.finish()
         for job in (release_job, connection_job):
             root.after_cancel(job)
         _root._appearance_override = None
@@ -3610,7 +3737,140 @@ def open_settings(icon=None, item=None):
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
-_hotkeys = []
+_hotkey_worker = None
+_hotkey_errors = []
+
+
+def _native_hotkey_api():
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    signatures = {
+        "RegisterHotKey": ([wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT], wintypes.BOOL),
+        "UnregisterHotKey": ([wintypes.HWND, ctypes.c_int], wintypes.BOOL),
+        "PeekMessageW": ([ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT,
+                          wintypes.UINT, wintypes.UINT], wintypes.BOOL),
+        "GetMessageW": ([ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT,
+                         wintypes.UINT], ctypes.c_int),
+        "PostThreadMessageW": ([wintypes.DWORD, wintypes.UINT, wintypes.WPARAM,
+                                wintypes.LPARAM], wintypes.BOOL),
+        "MapVirtualKeyW": ([wintypes.UINT, wintypes.UINT], wintypes.UINT),
+    }
+    for name, (args, result) in signatures.items():
+        function = getattr(user32, name)
+        function.argtypes, function.restype = args, result
+    kernel32.GetCurrentThreadId.restype = wintypes.DWORD
+    return user32, kernel32
+
+
+def _native_hotkey_parts(hotkey, user32=None):
+    if not isinstance(hotkey, str):
+        raise ValueError("Invalid shortcut")
+    modifiers, primary = 0, []
+    aliases = {"ctrl": 2, "control": 2, "alt": 1, "shift": 4, "win": 8, "windows": 8}
+    for part in hotkey.lower().split("+"):
+        part = re.sub(r"^(left|right) ", "", part.strip())
+        if part in aliases:
+            if modifiers & aliases[part]:
+                raise ValueError("Repeated modifier")
+            modifiers |= aliases[part]
+        else:
+            primary.append(part)
+    if len(primary) != 1 or not primary[0] or "," in primary[0]:
+        raise ValueError("Use one key combination")
+    key = primary[0]
+    function = re.fullmatch(r"f([1-9]|1[0-9]|2[0-4])", key)
+    if not modifiers and not function:
+        raise ValueError("Include Ctrl, Alt or Shift")
+    if key == "f12":
+        raise ValueError("F12 is reserved by Windows")
+    named = {"space": 0x20, "enter": 0x0D, "return": 0x0D, "tab": 9,
+             "esc": 0x1B, "escape": 0x1B, "backspace": 8, "delete": 0x2E,
+             "insert": 0x2D, "home": 0x24, "end": 0x23, "page up": 0x21,
+             "page down": 0x22, "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27}
+    named.update({"decimal": 0x6E, "num plus": 0x6B, "num minus": 0x6D,
+                  "num multiply": 0x6A, "num divide": 0x6F})
+    named.update({f"num {number}": 0x60 + number for number in range(10)})
+    if re.fullmatch(r"[a-z0-9]", key):
+        virtual_key = ord(key.upper())
+    elif function:
+        virtual_key = 0x70 + int(function[1]) - 1
+    elif key in named:
+        virtual_key = named[key]
+    else:
+        if keyboard is None:
+            raise ValueError("Unsupported key")
+        scan_code = keyboard.key_to_scan_codes(key)[0]
+        user32 = user32 or _native_hotkey_api()[0]
+        virtual_key = user32.MapVirtualKeyW(scan_code, 3)
+        if not virtual_key:
+            raise ValueError("Unsupported key")
+    return modifiers, virtual_key
+
+
+class _NativeHotkeys:
+    """Own a Win32 message queue; Tk must not consume WM_HOTKEY thread messages."""
+    def __init__(self, bindings):
+        self.bindings = bindings
+        self.ready = threading.Event()
+        self.stopping = threading.Event()
+        self.thread_id = None
+        self.errors = []
+        self.active = {}
+        self.thread = threading.Thread(target=self.listen, daemon=True)
+
+    def start(self):
+        self.thread.start()
+        if not self.ready.wait(2):
+            self.stop()
+            return ["Shortcut registration timed out"]
+        return list(self.errors)
+
+    def stop(self):
+        self.stopping.set()
+        if self.thread_id is not None:
+            self.user32.PostThreadMessageW(self.thread_id, 0x12, 0, 0)
+        if self.thread.is_alive() and self.thread is not threading.current_thread():
+            self.thread.join(timeout=2)
+
+    def listen(self):
+        try:
+            self.user32, kernel32 = _native_hotkey_api()
+            message = wintypes.MSG()
+            self.user32.PeekMessageW(ctypes.byref(message), None, 0, 0, 0)
+            self.thread_id = kernel32.GetCurrentThreadId()
+            seen = set()
+            for number, (key, hotkey, callback) in enumerate(self.bindings, start=1):
+                try:
+                    combination = _native_hotkey_parts(hotkey, self.user32)
+                    if combination in seen:
+                        raise ValueError(t("err_hotkeys"))
+                    modifiers, virtual_key = combination
+                    if not self.user32.RegisterHotKey(None, number, modifiers | 0x4000, virtual_key):
+                        error = ctypes.get_last_error()
+                        if error == 1409:
+                            raise ValueError(t("hotkey_in_use"))
+                        raise ctypes.WinError(error)
+                    self.active[number] = callback
+                    seen.add(combination)
+                except Exception as error:
+                    self.errors.append(f"{hotkey}: {error}")
+            self.ready.set()
+            while self.active and not self.stopping.is_set():
+                result = self.user32.GetMessageW(ctypes.byref(message), None, 0, 0)
+                if result < 0:
+                    raise ctypes.WinError(ctypes.get_last_error())
+                if result == 0:
+                    break
+                if message.message == 0x312 and message.wParam in self.active:
+                    self.active[message.wParam]()
+        except Exception as error:
+            self.errors.append(str(error))
+        finally:
+            for number in self.active:
+                self.user32.UnregisterHotKey(None, number)
+            self.active.clear()
+            self.thread_id = None
+            self.ready.set()
 
 
 def _run_bg(fn):
@@ -3643,43 +3903,33 @@ def _install_notification_click_handler(icon):
 
 
 def unregister_hotkeys():
-    if keyboard is None:
-        return
-    for h in _hotkeys:
-        try:
-            keyboard.remove_hotkey(h)
-        except Exception:
-            pass
-    _hotkeys.clear()
+    global _hotkey_worker
+    if _hotkey_worker is not None:
+        _hotkey_worker.stop()
+        _hotkey_worker = None
 
 
 def _hotkey_signature(hotkey):
-    if keyboard is None:
-        return hotkey.strip().lower()
-    return tuple(tuple(sorted(tuple(codes) for codes in step))
-                 for step in keyboard.parse_hotkey(hotkey))
+    return _native_hotkey_parts(hotkey)
 
 
 def register_hotkeys():
+    global _hotkey_worker, _hotkey_errors
     unregister_hotkeys()
-    if keyboard is None or not config.get("hotkeys_enabled", True):
-        return
-    seen = set()
+    _hotkey_errors = []
+    if not config.get("hotkeys_enabled", True):
+        return []
     bindings = (
-        ("hotkey_send", lambda: _run_bg(action_send_clipboard), False),
-        ("hotkey_receive", lambda: _run_bg(action_get_latest), False),
-        ("hotkey_history", lambda: _cmd_q.put(open_history_window), True),
+        ("hotkey_send", lambda: _run_bg(action_send_clipboard)),
+        ("hotkey_receive", lambda: _run_bg(action_get_latest)),
+        ("hotkey_history", lambda: _cmd_q.put(open_history_window)),
     )
-    for key, action, on_release in bindings:
-        try:
-            hotkey = config.get(key, DEFAULT_CONFIG[key])
-            signature = _hotkey_signature(hotkey)
-            if signature in seen:
-                raise ValueError(t("err_hotkeys"))
-            _hotkeys.append(keyboard.add_hotkey(hotkey, action, trigger_on_release=on_release))
-            seen.add(signature)
-        except Exception as error:
-            notify(t("hotkey_err", e=error))
+    _hotkey_worker = _NativeHotkeys([(key, config.get(key, DEFAULT_CONFIG[key]), action)
+                                    for key, action in bindings])
+    _hotkey_errors = _hotkey_worker.start()
+    for error in _hotkey_errors:
+        notify(t("hotkey_err", e=error))
+    return list(_hotkey_errors)
 
 
 # ---------------------------------------------------------------- menu actions

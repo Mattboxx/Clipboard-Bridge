@@ -105,14 +105,14 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `build_windows_release.bat 2.0.12` (requires x64
+To rebuild x64 packages locally, run `build_windows_release.bat 2.0.13` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.12 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.13 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -139,6 +139,11 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
    **Open history** (default **Ctrl+Alt+H**). The History shortcut only opens or
    focuses the history window; it never uploads the clipboard. Saved changes take
    effect immediately. Choose different, valid key combinations for each action.
+   Use **Set keys...** to record the combination instead of typing its name:
+   press and release the keys, then click **Save**. Escape cancels recording.
+   Global shortcuts are paused during recording to avoid sending your clipboard.
+   Windows checks that the combination is available; occupied shortcuts leave your
+   previous settings intact. F12 is reserved by Windows and cannot be selected.
 
 ### Daily use
 - **Send clipboard → server**: uploads whatever you copied (text, an image, or files
@@ -163,7 +168,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **History…**: browse the server and local history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
-In Windows 2.0.12, History also offers a search field, type filter
+In Windows 2.0.13, History also offers a search field, type filter
 and previous/next server pages. Search matches previews and filenames, including all
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
@@ -243,10 +248,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.12 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.12):
+[Clipboard Bridge 2.0.13 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.13):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
