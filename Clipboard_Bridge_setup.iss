@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.10"
+  #define MyAppVersion "2.0.11"
 #endif
 
 [Setup]

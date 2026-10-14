@@ -5,7 +5,7 @@
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.10) |
+[Downloads](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.11) |
 [Server App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore) |
 [Setup guide](GUIDE.md)
 
@@ -35,6 +35,7 @@ standalone Python/Docker server on a NAS, Raspberry Pi, home server or Docker ho
 | **Windows 10/11** | Tray application | Clipboard, configurable hotkeys and auto-sync | Manual or automatic, with clickable file notifications | Local history plus server operations |
 | **Android 10+** | Native application | Clipboard, file picker, universal Share target and Quick Settings | Latest item, exact history item or automatic monitoring | Live list with download and per-item deletion |
 | **iPhone/iPad** | Two iOS Shortcuts | Text, photos and files from the clipboard or Share Sheet | Latest text, photo or file | Available through the web interface |
+| **Mac** | Manual Apple Shortcuts workflow (not device-tested) | Same server URL workflow | Run a receive Shortcut | Optional server web page; no native Mac client |
 | **Web browser** | Standalone server page | Paste text or upload files | Copy or download any history item | Browse, refresh and delete |
 
 ### What can be transferred
@@ -64,24 +65,23 @@ the only rule.
 
 | Platform | Download | What it includes |
 |---|---|---|
-| **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
-| **Windows installer** | [Clipboard Bridge Windows 2.0.10 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.10.exe) | Per-user installation; no administrator account required |
-| **Windows portable** | [Clipboard Bridge 2.0.10 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Portable.Windows.x64.V2.0.10.exe) | One executable, no installation |
-| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
-| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
-| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
-| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/clipboard_bridge_windows.py) | Uncompiled Windows client source |
+| **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
+| **Windows installer** | [Clipboard Bridge Windows 2.0.11 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.11.exe) | Per-user installation; no administrator account required |
+| **Windows portable** | [Clipboard Bridge 2.0.11 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Portable.Windows.x64.V2.0.11.exe) | One executable, no installation |
+| **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
+| **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
+| **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
+| **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge_windows.py) | Uncompiled Windows client source |
 
 The Android app is currently a public beta. The release contains only ready-to-use
 downloads and the two main Python scripts. Developers can clone the repository for
 documentation, tests, Docker files and complete source code.
 
-**New in 2.0.10:** a compact Windows history list, flat Server / This PC selection,
-optional previews, double-click to copy and clearly labelled action buttons. Dark mode
-is the default; choose Light or Dark in **Settings → General → Appearance**.
-Settings use sidebar navigation and slim scrollbars without arrow buttons.
-Server 1.0.7 adds a discreet, bilingual Ko-fi support link. Existing accounts, data,
-Android and iPhone endpoints remain compatible.
+**New in 2.0.11:** enable **Preview** in Windows History to see the selected image
+or the first page of a PDF, including local items and file groups. Thumbnails load in the
+background without changing your clipboard or saving extra downloads. The website
+has clearer device downloads and a direct **Support me** link to Ko-fi.
+Server remains 1.0.7; existing accounts and Android/iPhone endpoints are unchanged.
 
 > **Windows download warning:** the current Windows executables are not yet signed with
 > a public Authenticode certificate. Defender or Smart App Control can therefore show a
@@ -165,7 +165,7 @@ from the selected Clipboard Bridge server.
 
 ### Install the APK
 
-1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
+1. Download the [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk).
 2. Open the downloaded file on the Android device.
 3. If requested, allow the browser or file manager to install apps from that source.
 4. Choose **Install** or **Update**.
@@ -247,7 +247,7 @@ The Windows client runs from the notification area.
 
 ![Windows history with search, type filters and selected-item preview](docs/assets/windows-history.png)
 
-*Clipboard Bridge 2.0.10. Real application screens with public sample data.*
+*Clipboard Bridge 2.0.11. Real application screens with public sample data.*
 
 <table>
   <tr>
@@ -299,7 +299,7 @@ multiple files without asking which content type is being transferred.
 
 ### Send the current clipboard
 
-Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Load.Clipboard.shortcut)
+Install [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Load.Clipboard.shortcut)
 and set its request URL to:
 
 ```text
@@ -321,7 +321,7 @@ actions; text continues to use the URL without the filename parameter.
 
 ### Receive the latest item
 
-Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.10/iPhone.Download.Clipboard.shortcut)
+Install [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Download.Clipboard.shortcut)
 and set its URL to:
 
 ```text
@@ -443,7 +443,7 @@ See [SECURITY.md](SECURITY.md) before exposing a server beyond a trusted LAN.
 
 ### Searchable history
 
-Windows 2.0.10 and server 1.0.7 add history search, type filters and previous/next pages to the
+Windows 2.0.11 and server 1.0.7 add history search, type filters and previous/next pages to the
 Windows client and standalone server web page. Search matches text previews and
 filenames, including every member of a grouped upload; it is not full-document search.
 Windows local history has the same search and type filters.

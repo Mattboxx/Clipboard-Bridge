@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.11 - 2026-10-14
+
+- Real image thumbnails in the optional Windows History preview pane, for server and local items.
+- PDF first-page thumbnails and page counts, with a bundled PDFium renderer.
+- Preview the first image in a file group without downloading its other members.
+- Preserve aspect ratio, transparency and camera orientation; keep a stable preview area.
+- Load thumbnails off the UI thread, discard stale selections and retain account isolation.
+- Limit thumbnail memory and download size; report unavailable images without affecting transfers.
+- Clearer project website with consistent typography, device-based downloads and current screenshots.
+- The top Support me button opens Ko-fi directly instead of scrolling down the page.
+- Documented manual Mac integration through Apple Shortcuts, without claiming a native Mac client.
+- Standalone server remains 1.0.7; Android and iPhone downloads are unchanged.
+
 ## 2.0.10 - 2026-10-13
 
 - Compact unified Windows history with at least 17 visible rows at its initial size.
