@@ -4,17 +4,27 @@ Clipboard Bridge publishes its source code and release files from the
 [Mattboxx/Clipboard-Bridge](https://github.com/Mattboxx/Clipboard-Bridge)
 repository.
 
-The project intends to use the following service for trusted Windows
-Authenticode signatures:
+## Verified status
 
-> Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+On 14 October 2026, the four Windows artifacts downloaded from release **2.0.14**
+(x64/ARM64 portable executables and installers) all returned `NotSigned` from
+`Get-AuthenticodeSignature`. Their SHA-256 hashes matched GitHub's asset digests
+and the release notes. A checksum verifies integrity, not publisher identity or trust.
+
+SignPath integration is **deferred by the maintainer**. There is no active signing
+workflow, certificate or signing secret configured in this repository. Do not
+display SignPath credit as though the distributed binaries were certified.
+
+Unsigned builds may trigger SmartScreen or Smart App Control. Do not disable
+Windows security or promise that a checksum removes these warnings.
 
 ## Current release roles
 
 - Committer and reviewer: [Mattboxx](https://github.com/Mattboxx)
 - Release and signing approver: [Mattboxx](https://github.com/Mattboxx)
 
-Only release artifacts built from this repository may be submitted for signing.
+If trusted signing is enabled in the future, only release artifacts built from
+this repository may be submitted for signing.
 The portable Windows executable is signed before it is included in the
 installer, and the completed installer is signed separately.
 

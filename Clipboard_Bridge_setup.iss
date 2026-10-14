@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.14"
+  #define MyAppVersion "2.0.15"
 #endif
 
 #ifndef MyAppArchitecture

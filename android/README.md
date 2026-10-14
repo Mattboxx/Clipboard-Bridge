@@ -3,10 +3,10 @@
 The native Android client connects Android phones and tablets to the same Clipboard
 Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
-**Current public build:** `1.0.0-beta.10`<br>
+**Current public beta:** `1.0.0-beta.11`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk)
+[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk)
 
 ## Features
 
@@ -29,7 +29,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
 ## Install
 
-1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk`.
+1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk`.
 2. Open the APK from Android's browser or file manager.
 3. If Android asks, allow that application to install unknown apps.
 4. Select **Install**.
@@ -49,10 +49,11 @@ http://192.168.1.20:5088
 Do not append `/clipboard` to the Android server address.
 
 Token and account authentication are both optional. Select **Shared space** and leave
-the token empty for an open general clipboard. In account mode Android places `user`
-and `password` in plain text in every request URL; token-based Shortcut URLs similarly
-expose `token`. Plain HTTP does not encrypt URL credentials, so use a trusted LAN,
-private VPN or HTTPS reverse proxy.
+the token empty for an open general clipboard. Account credentials remain in every
+account URL as `?user=...&password=...`. Android also sends compatible headers when
+the values are printable ASCII; it skips them for Unicode or whitespace-sensitive
+secrets instead of rejecting the request. Plain HTTP encrypts neither headers nor
+URLs: use a trusted LAN, private VPN or an optional HTTPS reverse proxy.
 
 ### Shared space
 
@@ -63,10 +64,9 @@ Select **Shared space**. Leave the token empty when the server has no
 
 Select **Account** only when the server administrator has configured that username in
 `CLIPBOARD_ACCOUNTS` or `CLIPBOARD_ACCOUNTS_FILE`. Enter its username and password.
-The app appends the credentials to every API URL as
-`?user=USERNAME&password=PASSWORD`, which selects that account's isolated history.
-It also sends the equivalent authentication headers for compatibility with newer
-server deployments.
+The app keeps `?user=USERNAME&password=PASSWORD` on every account request.
+Compatible `X-Clipboard-User` and `X-Clipboard-Password` headers may also be sent.
+Both select the same isolated history. Older Apple Shortcuts remain compatible.
 
 Use **Test connection**, save, and confirm that the status strip shows
 **Connected - @USERNAME**. If it only shows **Connected**, the app is using the shared
@@ -102,15 +102,19 @@ Android only after Windows uploads them through manual send or automatic synchro
 - **Trash button:** permanently deletes that item from the current server space after
   confirmation. Account credentials are applied to the delete request as well.
 - **Share menu:** accepts text, images, documents and arbitrary file types shared from
-  another Android application. `ACTION_SEND_MULTIPLE` selections are uploaded in order;
-  each file remains available in server history and the last upload becomes the latest
-  clipboard item.
+  another Android application. `ACTION_SEND_MULTIPLE` selections are uploaded together
+  in one ordered server-history group. Receiving that group restores all of its files.
 
 The Share target uses a transparent upload activity. Clipboard Bridge reports the result
 and closes immediately instead of opening and leaving the main application on screen.
 
 The latest item is determined only by arrival order. Text, images and files have equal
 priority.
+
+Copied text is placed in Android's clipboard with `ClipData.newPlainText`. With
+standalone server 1.0.8 or Windows Server mode 2.0.15, incoming RTF clipboard text is
+converted to Unicode text while preserving emoji and accents. Actual `.rtf` documents
+shared as files are not converted.
 
 ## Quick Settings tiles
 

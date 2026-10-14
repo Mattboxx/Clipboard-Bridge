@@ -7,6 +7,8 @@ on:
       - ".github/workflows/windows-arm64.yml"
       - "Clipboard_Bridge_setup.iss"
       - "clipboard_bridge_windows.py"
+      - "clipboard_text.py"
+      - "tests/test_clipboard_text.py"
       - "requirements-client.txt"
       - "scripts/verify_windows_build.py"
       - "tests/test_windows_client.py"
@@ -41,14 +43,14 @@ jobs:
 
       - name: Test Windows client on ARM64
         run: |
-          python -m pytest -q tests/test_windows_client.py tests/test_release_metadata.py
+          python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_release_metadata.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows ARM64 tests failed' }
 
       - name: Build native portable client
         run: |
           python scripts/release_metadata.py --check
           if ($LASTEXITCODE -ne 0) { throw 'Release metadata is inconsistent' }
-          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --hidden-import pystray._win32 --collect-submodules keyboard --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
+          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --hidden-import pystray._win32 --collect-submodules keyboard --copy-metadata striprtf --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
           if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
           python scripts/verify_windows_build.py "dist/Clipboard Bridge.exe" --architecture arm64 --smoke
           if ($LASTEXITCODE -ne 0) { throw 'Native portable verification failed' }

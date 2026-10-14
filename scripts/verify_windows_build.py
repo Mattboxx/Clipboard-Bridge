@@ -36,6 +36,8 @@ def verify_payload(executable, architecture):
     assert libraries, "Missing bundled runtime"
     assert any(name.lower().endswith("pdfium.dll") for name in libraries), "Missing PDF renderer"
     assert any("licenses/" in name.replace("\\", "/").lower() for name in archive.toc), "Missing PDFium license notices"
+    assert any("striprtf" in name.lower() and name.replace("\\", "/").lower().endswith("licenses/license")
+               for name in archive.toc), "Missing RTF parser license"
     for name in libraries:
         assert pe_machine(archive.extract(name)) == machine, f"Wrong native architecture: {name}"
     print(f"Native {architecture} executable and {len(libraries)} bundled libraries: OK")
@@ -80,6 +82,14 @@ def smoke_test(executable):
                 assert response.status in (200, 201)
             with opener.open(base + "/clipboard/latest/raw", timeout=5) as response:
                 assert response.read().decode("utf-8") == text
+            request = urllib.request.Request(
+                base + "/clipboard", data=rb"{\rtf1\ansi Caff\'e8 \u-10179?\u-8704?\par done}",
+                headers={"Content-Type": "application/rtf"},
+            )
+            with opener.open(request, timeout=5) as response:
+                assert json.load(response)["type"] == "text"
+            with opener.open(base + "/clipboard/latest/raw", timeout=5) as response:
+                assert response.read().decode("utf-8") == "Caff\u00e8 \U0001f600\ndone"
             with opener.open(base + "/clipboard/history", timeout=5) as response:
                 assert response.read(), "Missing history"
             duplicate = subprocess.Popen([str(executable)], cwd=root, env=environment)
@@ -89,7 +99,7 @@ def smoke_test(executable):
             finally:
                 if duplicate.poll() is None:
                     subprocess.run(["taskkill", "/PID", str(duplicate.pid), "/T", "/F"], check=False)
-            print("Frozen client startup, local server, Unicode, history and single instance: OK")
+            print("Frozen client startup, local server, Unicode/RTF, history and single instance: OK")
         finally:
             if process.poll() is None:
                 subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], check=True)

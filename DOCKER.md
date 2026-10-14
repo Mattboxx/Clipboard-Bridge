@@ -7,7 +7,7 @@ sidecar. The image supports `linux/amd64` and `linux/arm64`.
 Current stable server image:
 
 ```text
-ghcr.io/mattboxx/clipboard-bridge-server:1.0.7
+ghcr.io/mattboxx/clipboard-bridge-server:1.0.8
 ```
 
 ## Docker Compose
@@ -45,7 +45,7 @@ Umbrel, Runtipi, Docker Compose, Docker Desktop and Dockge.
 1. Push this application repository to GitHub.
 2. Create and push the release tag: `git tag vX.Y.Z` then
    `git push origin vX.Y.Z`.
-3. Wait for the **Build container image** workflow to publish the GHCR image.
+3. Wait for the **Build and publish container** workflow to publish the GHCR image.
 4. Make the GHCR package public in the package settings.
 5. Update the separate `Clipboard-Bridge-AppStore` repository when its manifests
    or installation guides change.
@@ -95,6 +95,12 @@ arbitrary practical number of comma-separated `user:password` pairs. Every
 account has isolated history and files. URL credentials remain supported for
 iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 `X-Clipboard-Password` headers.
+
+Remembered web logins keep the existing 3650-day default for compatibility.
+Set `CLIPBOARD_SESSION_DAYS` to a value from 1 to 3650, for example 90 on a shared
+computer or 365 at home. Add it to the service's environment if using a store
+manifest. Logout or clearing cookies ends that device's session. Shorter expiry
+does not encrypt cookies or provide immediate revocation after a password change.
 
 Query parameters such as `?token=...` and `?user=...&password=...` expose their values
 in plain text in the URL. HTTP also sends them without transport encryption. Do not

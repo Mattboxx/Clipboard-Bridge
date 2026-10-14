@@ -19,7 +19,7 @@ def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
 
-    assert version == "2.0.14"
+    assert version == "2.0.15"
     metadata.validate(version)
 
 
@@ -28,6 +28,18 @@ def test_installer_default_matches_project_version():
     installer = (ROOT / "Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
 
     assert f'#define MyAppVersion "{version}"' in installer
+
+
+def test_docker_context_is_an_explicit_server_only_allowlist():
+    rules = [line.strip() for line in (ROOT / ".dockerignore").read_text().splitlines()
+             if line.strip() and not line.startswith("#")]
+    assert rules[0] == "*"
+    assert set(rules[1:]) == {
+        "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
+        "!clipboard_text.py", "!LICENSE",
+    }
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile
 
 
 def test_installer_supports_native_arm64_without_changing_app_identity():
@@ -95,7 +107,7 @@ def test_website_local_images_and_device_downloads_exist():
         assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
         assert f"Clipboard.Bridge_windows_client_and_server_setup_{architecture}_V{version}.exe" in assets.downloads
     assert {"iPhone.Load.Clipboard.shortcut", "iPhone.Download.Clipboard.shortcut"} <= assets.downloads
-    assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk" in assets.downloads
+    assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk" in assets.downloads
     assert (ROOT / "docs/assets/icons/LICENSE").is_file()
 
 

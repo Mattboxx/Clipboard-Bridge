@@ -41,6 +41,7 @@ echo [2/5] Building the portable Windows executable...
   --add-data "VERSION;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
+  --copy-metadata striprtf ^
   --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 ^
   --exclude-module numpy ^
   --onefile --windowed clipboard_bridge_windows.py
@@ -72,7 +73,7 @@ copy /Y "Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.
 copy /Y "Iphone Shortcuts\Load Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Load.Clipboard.shortcut" >nul
 copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Download.Clipboard.shortcut" >nul
 if exist "android\app\build\outputs\apk\release\app-release.apk" (
-  copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk" >nul
+  copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk" >nul
 )
 if errorlevel 1 exit /b 1
 

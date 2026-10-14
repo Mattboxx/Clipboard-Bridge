@@ -1,26 +1,8 @@
-.git
-.github
-.claude
-.vscode
-.idea
-build
-dist
-Output
-data
-local_history
-__pycache__
-*.pyc
-*.pyo
-*.spec
-*.iss
-*.shortcut
-accounts*.txt
-config.json
-docs
-distribution
-README*
-GUIDE.md
-LICENSE
-clipboard_bridge_windows.py
-build_client.bat
-icon.ico
+# Send only the server sources and public metadata to the Docker builder.
+# Local clipboard data, .env files and Android signing keys are never context.
+*
+!Dockerfile
+!requirements-server.txt
+!clipboard_bridge-Server.py
+!clipboard_text.py
+!LICENSE

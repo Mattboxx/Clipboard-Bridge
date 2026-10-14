@@ -5,7 +5,7 @@ A small tray application that exchanges clipboard content with the server:
 text, images and files of any type. Received files are saved in the user's
 Downloads folder. The interface is available in English (default) and Italian.
 
-Dependencies: requests, pyperclip, pystray, pillow, keyboard.
+Dependencies: see requirements-client.txt, including the PDF and RTF parsers.
 Writing images to the clipboard uses ctypes (no pywin32 required).
 """
 
@@ -44,6 +44,7 @@ from pystray import Icon, MenuItem, Menu
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkinter import font as tkfont
+from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
 
 try:
     import keyboard
@@ -590,9 +591,7 @@ def auth_headers(settings=None):
 
 
 def auth_params(extra=None, settings=None):
-    # When a server account is configured, append ?user=&password= so the
-    # server routes the request to that account (ignored by the shared space
-    # and by the built-in server). Optionally merge extra query params.
+    # Account URLs remain compatible with Apple Shortcuts and older servers.
     p = dict(extra) if extra else {}
     values = settings or _request_settings()
     user = values.get("username", "").strip()
@@ -737,9 +736,52 @@ def apply_window_icon(win):
 # ---------------------------------------------------------------- clipboard: text
 def get_clipboard_text():
     try:
-        return pyperclip.paste()
+        text = pyperclip.paste()
+        return plain_clipboard_text(text) if text else _get_clipboard_rtf()
     except Exception:
         return ""
+
+
+def _get_clipboard_rtf():
+    """Read RTF only when the source app did not provide Unicode plain text."""
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = wintypes.BOOL
+    user32.IsClipboardFormatAvailable.argtypes = [wintypes.UINT]
+    user32.IsClipboardFormatAvailable.restype = wintypes.BOOL
+    user32.RegisterClipboardFormatW.argtypes = [wintypes.LPCWSTR]
+    user32.RegisterClipboardFormatW.restype = wintypes.UINT
+    user32.GetClipboardData.argtypes = [wintypes.UINT]
+    user32.GetClipboardData.restype = wintypes.HANDLE
+    kernel32.GlobalSize.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalSize.restype = ctypes.c_size_t
+    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
+    if not user32.OpenClipboard(None):
+        return ""
+    try:
+        if user32.IsClipboardFormatAvailable(13):  # CF_UNICODETEXT, including empty text
+            return ""
+        format_id = user32.RegisterClipboardFormatW("Rich Text Format")
+        if not format_id or not user32.IsClipboardFormatAvailable(format_id):
+            return ""
+        handle = user32.GetClipboardData(format_id)
+        size = kernel32.GlobalSize(handle) if handle else 0
+        pointer = kernel32.GlobalLock(handle) if size else None
+        if not pointer:
+            return ""
+        try:
+            raw = ctypes.string_at(pointer, size).split(b"\x00", 1)[0]
+        finally:
+            kernel32.GlobalUnlock(handle)
+        return plain_clipboard_text(decode_rtf_bytes(raw) or raw.decode("utf-8", errors="replace"))
+    finally:
+        user32.CloseClipboard()
 
 
 def _clipboard_sequence():
@@ -750,7 +792,7 @@ def _clipboard_sequence():
 
 
 def set_clipboard_text(text):
-    pyperclip.copy(text)
+    pyperclip.copy(plain_clipboard_text(text))
 
 
 # ---------------------------------------------------------------- clipboard: files / images
@@ -967,6 +1009,7 @@ def reveal_received_file(path):
 # ---------------------------------------------------------------- network
 @_in_remote_operation
 def push_text(text):
+    text = plain_clipboard_text(text)
     with _remote_activity_lock:
         r = requests.post(f"{server_url()}/clipboard/text",
                           json={"text": text}, headers=auth_headers(),
@@ -1379,7 +1422,7 @@ def _host_with_content(e):
     path = os.path.join(HOST_ITEMS, e["file"])
     if e["type"] == "text":
         with open(path, "r", encoding="utf-8", newline="") as f:
-            out["text"] = f.read()
+            out["text"] = plain_clipboard_text(f.read())
     else:
         with open(path, "rb") as f:
             out["data"] = base64.b64encode(f.read()).decode()
@@ -1412,6 +1455,9 @@ def _host_header_filename(headers):
 
 
 def _host_decode_text(raw, content_type="", allow_legacy=False):
+    rtf = decode_rtf_bytes(raw)
+    if rtf is not None:
+        return rtf
     message = Message()
     message["Content-Type"] = content_type
     candidates = []
@@ -1539,6 +1585,7 @@ def _host_add(kind, payload, filename=None, mime=None):
     os.makedirs(HOST_ITEMS, exist_ok=True)
     iid = uuid.uuid4().hex[:12]
     if kind == "text":
+        payload = plain_clipboard_text(payload)
         fn = iid + ".txt"
         _host_write_item(fn, payload.encode("utf-8"))
         entry = {"id": iid, "type": "text", "timestamp": _now(), "file": fn, "filename": None,
@@ -1702,7 +1749,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
         path = os.path.join(HOST_ITEMS, e["file"])
         if e["type"] == "text":
             with open(path, "r", encoding="utf-8", newline="") as f:
-                return dict(code=200, body=f.read().encode("utf-8"),
+                return dict(code=200, body=plain_clipboard_text(f.read()).encode("utf-8"),
                             ctype="text/plain; charset=utf-8", item=e)
         else:
             with open(path, "rb") as f:
@@ -1900,9 +1947,12 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                     return self._json({"status": "ok", "id": e["id"], "type": "text"})
 
                 if filename is None and (
-                    ctype.startswith("text/") or (not ctype and body and _host_looks_like_text(body, content_type))
+                    ctype.startswith("text/") or ctype in RTF_MIMES
+                    or (not ctype and body and _host_looks_like_text(body, content_type))
                 ):
-                    text = _host_decode_text(body, content_type, allow_legacy=ctype.startswith("text/"))
+                    text = _host_decode_text(
+                        body, content_type, allow_legacy=ctype.startswith("text/") or ctype in RTF_MIMES
+                    )
                     if text is not None:
                         e = _host_add("text", text)
                         return self._json({"status": "ok", "id": e["id"], "type": "text"})
@@ -2121,7 +2171,7 @@ def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
     """Remember a receive only after Windows actually accepts the clipboard data."""
     kind = data.get("type")
     if kind == "text":
-        value = data.get("text", "")
+        value = plain_clipboard_text(data.get("text", ""))
         set_clipboard_text(value)
         _set_local_upload_marker("text", value)
     elif kind == "image":
@@ -4053,13 +4103,17 @@ def _release_single_instance():
     _instance_mutex = None
 
 
+def _redact_auth_urls(message):
+    return re.sub(r"(?i)([?&](?:user|password|token)=)[^&#\s\"']*", r"\1[redacted]", message)
+
+
 def _log_crash(exc):
     try:
         import traceback
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(ERROR_LOG, "a", encoding="utf-8") as f:
             f.write(f"\n--- {_now()} ---\n")
-            f.write("".join(traceback.format_exception(exc)))
+            f.write(_redact_auth_urls("".join(traceback.format_exception(exc))))
     except Exception:
         pass
 

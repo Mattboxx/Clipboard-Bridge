@@ -3,8 +3,8 @@
 Clipboard Bridge - Server
 =========================
 
-HTTP server (Flask) that acts as a "bridge" for the clipboard between Windows and iPhone
-(through the iOS Shortcuts app).
+HTTP server (Flask) for the clipboard between Windows, Android and Apple devices
+(through Apple Shortcuts).
 
 Features:
   - Text, images and generic files
@@ -13,7 +13,7 @@ Features:
   - Optional token to protect the server (X-Auth-Token header or ?token=...)
 
 Start:
-    pip install flask
+    pip install -r requirements-server.txt
     python clipboard_bridge-Server.py
 
 Configuration via environment variables (all optional):
@@ -22,6 +22,7 @@ Configuration via environment variables (all optional):
     CLIPBOARD_PASSWORD      shared web password      (default: empty)
     CLIPBOARD_ACCOUNTS      extra user:password pairs
     CLIPBOARD_ACCOUNTS_FILE path to an accounts file
+    CLIPBOARD_SESSION_DAYS  remembered web login      (default 3650)
     CLIPBOARD_MAX_HISTORY   max history items        (default 200)
     CLIPBOARD_MAX_UPLOAD_MB max request size in MB   (default 64)
     CLIPBOARD_DATA_DIR      data folder              (default ./clipboard_data)
@@ -47,11 +48,12 @@ import mimetypes
 import threading
 import zipfile
 from datetime import datetime, timedelta
+from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
 
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.7"
+SERVER_VERSION = "1.0.8"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -131,7 +133,8 @@ if os.name != "nt":
         os.chmod(_key_path, 0o600)
     except OSError:
         pass
-app.permanent_session_lifetime = timedelta(days=3650)  # keep the device logged in ~10 years
+SESSION_DAYS = _env_int("CLIPBOARD_SESSION_DAYS", 3650, 1, 3650)
+app.permanent_session_lifetime = timedelta(days=SESSION_DAYS)
 
 _lock = threading.RLock()
 
@@ -292,7 +295,7 @@ def _read_text(entry):
     path = os.path.join(_items_dir(), entry["file"])
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8", newline="") as f:
-            return f.read()
+            return plain_clipboard_text(f.read())
     return ""
 
 
@@ -319,6 +322,7 @@ def _latest_of(types):
 
 
 def _add_text(text):
+    text = plain_clipboard_text(text)
     entry_id = uuid.uuid4().hex[:12]
     fname = entry_id + ".txt"
     _write_item(fname, text.encode("utf-8"))
@@ -439,7 +443,7 @@ def _add_bundle(uploaded_files):
 
 
 # ---------- Request data extraction ----------
-_TEXT_MIMES = {"application/x-www-form-urlencoded"}
+_TEXT_MIMES = {"application/x-www-form-urlencoded"} | RTF_MIMES
 _GENERIC_MIMES = {""}
 _TEXT_FIELDS = ("text", "value", "content", "clipboard", "string")
 
@@ -467,6 +471,9 @@ def _form_text():
 
 def _decode_text_bytes(raw, allow_legacy=False):
     """Decode text from iOS and browsers without altering line endings or Unicode."""
+    rtf = decode_rtf_bytes(raw)
+    if rtf is not None:
+        return rtf
     charset = request.mimetype_params.get("charset")
     candidates = []
     if charset:
