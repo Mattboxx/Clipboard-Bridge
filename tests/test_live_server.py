@@ -45,6 +45,12 @@ def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeyp
     next_id = client.push_text("newest text")
     assert client.poll_latest(group_id)["id"] == next_id
     assert client.poll_latest(next_id).get("text") is None
+    image_id = client.push_image(client.Image.new("RGB", (800, 600), "green"))
+    image_meta = client.poll_latest(next_id)
+    downloads_before = list(Path(client.RECEIVED_DIR).glob("*"))
+    preview = client._load_image_preview(client._preview_target(image_meta, True), True, dict(client.config))
+    assert preview.size == (240, 180)
+    assert list(Path(client.RECEIVED_DIR).glob("*")) == downloads_before
     assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == shared_before.content
-    for item_id in (text_id, group_id, next_id):
+    for item_id in (text_id, group_id, next_id, image_id):
         requests.delete(base + f"/clipboard/item/{item_id}", params=auth, timeout=5).raise_for_status()

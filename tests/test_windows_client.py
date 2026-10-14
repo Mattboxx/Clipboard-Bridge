@@ -556,6 +556,172 @@ def test_local_restore_never_copies_a_partial_file_group(tmp_path, monkeypatch):
     assert copied[-1] == [str(first)]
 
 
+def test_image_preview_local_orientation_and_bounds(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    path = tmp_path / "photo.jpg"
+    image = client.Image.new("RGB", (900, 600), "red")
+    exif = image.getexif()
+    exif[274] = 6
+    image.save(path, exif=exif)
+    preview = client._load_image_preview(str(path), False, {})
+    assert preview.size == (120, 180)
+    assert preview.mode == "RGBA"
+    assert client._preview_target({"type": "file", "path": str(path)}, False) == str(path)
+    assert client._preview_target({"type": "text", "text": "note"}, False) is None
+    path.unlink()
+    with pytest.raises(OSError):
+        client._load_image_preview(str(path), False, {})
+
+
+def sample_pdf():
+    objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
+               b"<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+               b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 400] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+               b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 400] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+               b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    content = b"BT /F1 36 Tf 40 300 Td (Clipboard Bridge) Tj 0 -60 Td /F1 20 Tf (Public sample PDF - first page) Tj ET"
+    objects.append(b"<< /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream")
+    output, offsets = bytearray(b"%PDF-1.4\n"), [0]
+    for index, obj in enumerate(objects, 1):
+        offsets.append(len(output))
+        output.extend(f"{index} 0 obj\n".encode() + obj + b"\nendobj\n")
+    xref = len(output)
+    output.extend(f"xref\n0 {len(offsets)}\n0000000000 65535 f \n".encode())
+    for offset in offsets[1:]:
+        output.extend(f"{offset:010d} 00000 n \n".encode())
+    output.extend(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
+    return bytes(output)
+
+
+def test_pdf_preview_local_first_page_and_safe_lifetime(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    path = tmp_path / "document.pdf"
+    path.write_bytes(sample_pdf())
+    image = client._load_image_preview(str(path), False, {})
+    path.unlink()  # The native document/file handle has been closed.
+    assert image.size == (270, 180)
+    assert image.info["preview_pages"] == 2
+    assert len(image.getcolors(100000)) > 1
+    assert client._preview_target({"type": "file", "path": str(path)}, False) == str(path)
+    assert client._preview_target({"id": "pdf", "type": "file", "mime": "application/pdf"}, True)
+    for mime in ("application/octet-stream", "application/pdf; charset=binary", ""):
+        assert client._preview_target({"id": "pdf", "type": "file", "mime": mime,
+                                       "filename": "document.PDF"}, True) == "/clipboard/item/pdf/raw"
+
+
+@pytest.mark.parametrize("oversized", [False, True])
+@pytest.mark.parametrize("kind", ["image", "pdf"])
+def test_remote_image_preview_uses_snapshot_and_limits(tmp_path, monkeypatch, oversized, kind):
+    client = load_client(tmp_path, monkeypatch)
+    data = io.BytesIO()
+    client.Image.new("RGB", (800, 600), "green").save(data, format="PNG")
+    if kind == "pdf":
+        data = io.BytesIO(sample_pdf())
+    seen = []
+
+    class Response:
+        headers = {"Content-Length": str(33 * 1024 * 1024) if oversized else str(len(data.getvalue()))}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            seen.append("closed")
+
+        def raise_for_status(self):
+            pass
+
+        def iter_content(self, chunk_size):
+            yield data.getvalue()
+
+    def get(url, **options):
+        seen.append((url, options))
+        return Response()
+
+    monkeypatch.setattr(client.requests, "get", get)
+    settings = dict(client.config, server_ip="example.test", username="alice", password="example-password")
+    client.config.update(server_ip="different.test", username="bob")
+    item = {"id": "image", "type": "bundle", "files": [
+        {"index": 0, "filename": "notes.txt"}, {"index": 1, "filename": "photo.png"}]}
+    target = client._preview_target(item, True)
+    assert target == "/clipboard/item/image/file/1/raw"
+    if oversized:
+        with pytest.raises(ValueError):
+            client._load_image_preview(target, True, settings)
+    else:
+        preview = client._load_image_preview(target, True, settings)
+        assert preview.size == ((270, 180) if kind == "pdf" else (240, 180))
+        if kind == "pdf":
+            assert preview.info["preview_pages"] == 2
+    assert seen[0][0].startswith("http://example.test:")
+    assert seen[0][1]["params"]["user"] == "alice"
+    assert seen[-1] == "closed"
+
+
+def test_image_preview_async_selection_and_local_history(tmp_path, monkeypatch, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [
+        {"id": "photo", "type": "image", "filename": "photo.png"},
+        {"id": "note", "type": "text", "preview": "A note"}], "total": 2})
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    calls = []
+
+    def load(target, is_server, settings):
+        calls.append((target, is_server))
+        started.set()
+        release.wait(3)
+        finished.set()
+        return client.Image.new("RGBA", (120, 90), "red")
+
+    monkeypatch.setattr(client, "_load_image_preview", load)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 5
+        while not predicate():
+            assert time.monotonic() < deadline
+            tk_test_root.update()
+            time.sleep(.02)
+
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children() if getattr(child, "_view_name", None) == "history")
+        controls = list(descendants(window))
+        tree = next(child for child in controls if isinstance(child, client.ttk.Treeview))
+        until(lambda: len(tree.get_children()) == 2)
+        assert calls == []  # No image download while Preview is disabled.
+        next(child for child in controls if child.winfo_name() == "preview").invoke()
+        until(started.is_set)
+        tree.selection_set("1")
+        tk_test_root.update()
+        release.set()
+        until(finished.is_set)
+        for _ in range(8):
+            tk_test_root.update()
+            time.sleep(.03)
+        label = next(child for child in controls if child.winfo_name() == "preview_image")
+        assert not label.winfo_ismapped()
+        tree.selection_set("0")
+        until(lambda: bool(label.cget("image")))
+        assert label.image.width() == 120
+        assert label.image.height() == 90
+        monkeypatch.setattr(client, "_local_load", lambda: [{"type": "image", "file": "local.png"}])
+        next(child for child in controls if isinstance(child, client.ttk.Radiobutton)
+             and child.cget("text") == client.t("tab_local")).invoke()
+        until(lambda: calls[-1][1] is False and bool(label.cget("image")))
+        assert calls[-1][0] == str(Path(client.LOCAL_DIR) / "local.png")
+    finally:
+        release.set()
+        for child in tk_test_root.winfo_children():
+            command = child.protocol("WM_DELETE_WINDOW")
+            tk_test_root.tk.call(command) if command else child.destroy()
+
+
 def load_client(tmp_path, monkeypatch):
     local_app_data = tmp_path / "LocalAppData"
     user_profile = tmp_path / "User"
@@ -576,7 +742,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.10"
+    assert client.APP_VERSION == "2.0.11"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

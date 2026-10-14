@@ -39,6 +39,7 @@ echo [2/5] Building the portable Windows executable...
   --add-data "VERSION;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
+  --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 ^
   --exclude-module numpy ^
   --onefile --windowed clipboard_bridge_windows.py
 if errorlevel 1 exit /b 1

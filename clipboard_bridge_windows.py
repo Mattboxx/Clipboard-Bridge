@@ -28,7 +28,7 @@ import subprocess
 import time
 import zipfile
 import webbrowser
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 from functools import wraps
 from ctypes import wintypes
 from email.message import Message
@@ -37,8 +37,9 @@ from email.policy import default as email_policy
 from urllib.parse import parse_qs, quote, unquote
 
 import requests
+import pypdfium2 as pdfium
 import pyperclip
-from PIL import Image, ImageGrab, ImageDraw, ImageTk, ImageFont
+from PIL import Image, ImageGrab, ImageDraw, ImageTk, ImageFont, ImageOps
 from pystray import Icon, MenuItem, Menu
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -187,6 +188,7 @@ _sync_state_lock = threading.Lock()
 _remote_activity_lock = threading.RLock()
 _remote_request_context = threading.local()
 _local_history_lock = threading.RLock()
+_pdf_preview_lock = threading.Lock()
 _local_upload_lock = threading.Lock()
 _local_upload_marker = None
 _connection_lock = threading.Lock()
@@ -275,6 +277,8 @@ STRINGS = {
         "confirm_delete": "Delete this item from server history?",
         "copy_selected": "Copy", "search_history": "Search history",
         "no_results": "No matching items", "show_preview": "Preview",
+        "preview_loading": "Loading preview...", "preview_unavailable": "Preview unavailable",
+        "preview_pdf_page": "PDF - page 1 of {n}",
         "send_short": "Send", "receive_short": "Receive",
         "lbl_appearance": "Appearance", "light_theme": "Light", "dark_theme": "Dark",
         "support": "Support on Ko-fi",
@@ -389,6 +393,8 @@ STRINGS = {
         "confirm_delete": "Eliminare questo elemento dalla cronologia server?",
         "copy_selected": "Copia", "search_history": "Cerca nella cronologia",
         "no_results": "Nessun risultato", "show_preview": "Anteprima",
+        "preview_loading": "Caricamento anteprima...", "preview_unavailable": "Anteprima non disponibile",
+        "preview_pdf_page": "PDF - pagina 1 di {n}",
         "send_short": "Invia", "receive_short": "Ricevi",
         "lbl_appearance": "Aspetto", "light_theme": "Chiaro", "dark_theme": "Scuro",
         "support": "Supporta su Ko-fi",
@@ -551,9 +557,9 @@ def _in_remote_operation(function):
     return call
 
 
-def server_url():
+def server_url(settings=None):
     # In server mode the client talks to its own embedded server on localhost.
-    values = _request_settings()
+    values = settings or _request_settings()
     if values.get("mode") == "server":
         return f"http://127.0.0.1:{values.get('host_port', 5088)}"
     return f"http://{values['server_ip']}:{values['server_port']}"
@@ -2696,6 +2702,77 @@ def _copy_local_item(item):
         raise ValueError(t("unavailable"))
 
 
+def _preview_target(item, is_server):
+    """Identify an image or PDF without downloading the entire group."""
+    def is_previewable(value):
+        mime = str(value.get("mime") or "").partition(";")[0].strip().lower()
+        guessed = mimetypes.guess_type(str(value.get("filename") or ""))[0] or ""
+        return value.get("type") == "image" or any(
+            candidate.startswith("image/") or candidate == "application/pdf" for candidate in (mime, guessed))
+
+    if is_server:
+        item_id = quote(str(item.get("id", "")), safe="")
+        if not item_id:
+            return None
+        if item.get("type") == "bundle":
+            for member in item.get("files", []):
+                if is_previewable(member):
+                    index = member.get("index", 0)
+                    if isinstance(index, int) and index >= 0:
+                        return f"/clipboard/item/{item_id}/file/{index}/raw"
+            return None
+        return f"/clipboard/item/{item_id}/raw" if is_previewable(item) else None
+    if item.get("type") == "image" and item.get("file"):
+        return os.path.join(LOCAL_DIR, os.path.basename(item["file"]))
+    paths = item.get("paths", []) if item.get("type") == "bundle" else [item.get("path")]
+    return next((path for path in paths if path and is_previewable({"filename": path})), None)
+
+
+def _load_image_preview(target, is_server, settings):
+    """Decode a bounded thumbnail off the Tk thread; never save or copy its content."""
+    limit = 32 * 1024 * 1024
+    if is_server:
+        with requests.get(server_url(settings) + target, headers=auth_headers(settings),
+                          params=auth_params(settings=settings), timeout=(5, 10), stream=True) as response:
+            response.raise_for_status()
+            if int(response.headers.get("Content-Length", 0)) > limit:
+                raise ValueError("File is too large to preview")
+            payload = io.BytesIO()
+            for chunk in response.iter_content(64 * 1024):
+                if payload.tell() + len(chunk) > limit:
+                    raise ValueError("File is too large to preview")
+                payload.write(chunk)
+            payload.seek(0)
+    else:
+        if os.path.getsize(target) > limit:
+            raise ValueError("File is too large to preview")
+        payload = open(target, "rb")
+    with payload:
+        if b"%PDF-" in payload.read(1024):
+            payload.seek(0)
+            # PDFium must not be called concurrently, including after closing a window.
+            with _pdf_preview_lock, pdfium.PdfDocument(payload) as document:
+                count = len(document)
+                if not count:
+                    raise ValueError("PDF has no pages")
+                with closing(document[0]) as page:
+                    width, height = page.get_size()
+                    if width <= 0 or height <= 0:
+                        raise ValueError("Invalid PDF page size")
+                    with closing(page.render(scale=min(480 / width, 180 / height))) as bitmap:
+                        image = bitmap.to_pil().convert("RGBA")
+                        image.info["preview_pages"] = count
+                        return image
+        payload.seek(0)
+        with Image.open(payload) as image:
+            if image.width * image.height > 40_000_000:
+                raise ValueError("Image dimensions are too large to preview")
+            image.draft("RGB", (480, 180))
+            image = ImageOps.exif_transpose(image)
+            image.thumbnail((480, 180), Image.Resampling.LANCZOS)
+            return image.convert("RGBA")
+
+
 def open_history_window(icon=None, item=None):
     if _existing_view("history") is not None:
         return
@@ -2717,7 +2794,11 @@ def open_history_window(icon=None, item=None):
     _tooltip(send, t("send_now"))
 
     ui_q = queue.Queue()
-    search_job = pump_job = None
+    search_job = pump_job = preview_job = None
+    preview_generation = 0
+    preview_running = False
+    preview_pending = None
+    preview_cache = {}
     request_generation = 0
     offset = 0
     page_size = 100
@@ -2751,7 +2832,8 @@ def open_history_window(icon=None, item=None):
     footer = ttk.Frame(root, padding=(16, 10))
     footer.pack(side="bottom", fill="x")
     preview_bar = ttk.Frame(root, padding=(16, 8))
-    ttk.Label(preview_bar, text=t("preview"), style="Muted.TLabel").pack(anchor="w")
+    preview_heading = ttk.Label(preview_bar, text=t("preview"), style="Muted.TLabel")
+    preview_heading.pack(anchor="w")
     preview_text = _paint(tk.Text(preview_bar, height=3, wrap="word", state="disabled",
                            font=("Segoe UI", -13), borderwidth=0,
                            highlightthickness=0, padx=8, pady=6), background="soft", foreground="text",
@@ -2761,6 +2843,10 @@ def open_history_window(icon=None, item=None):
     preview_text.configure(yscrollcommand=preview_scroll.set)
     preview_text.pack(side="left", fill="x", expand=True)
     preview_scroll.pack(side="right", fill="y")
+    preview_canvas = ttk.Frame(preview_bar, height=180)
+    preview_canvas.pack_propagate(False)
+    preview_image = ttk.Label(preview_canvas, name="preview_image", anchor="center")
+    preview_image.pack(fill="both", expand=True)
     listing = _history_table(root)
     empty = ttk.Label(listing.master, text=t("no_results"), style="Muted.TLabel")
 
@@ -2769,6 +2855,18 @@ def open_history_window(icon=None, item=None):
         return items[int(selection[0])] if selection and int(selection[0]) < len(items) else None
 
     def update_selection(*_args):
+        nonlocal preview_generation, preview_job, preview_pending
+        preview_generation += 1
+        preview_pending = None
+        if preview_job is not None:
+            root.after_cancel(preview_job)
+            preview_job = None
+        preview_canvas.pack_forget()
+        preview_image.configure(image="", text="")
+        preview_image.image = None
+        preview_heading.configure(text=t("preview"))
+        preview_text.pack(side="left", fill="x", expand=True)
+        preview_scroll.pack(side="right", fill="y")
         entry = selected()
         copy_button.configure(state="normal" if entry else "disabled")
         delete_button.configure(state="normal" if entry else "disabled")
@@ -2782,12 +2880,71 @@ def open_history_window(icon=None, item=None):
         preview_text.delete("1.0", "end")
         preview_text.insert("1.0", value[:4000])
         preview_text.configure(state="disabled")
+        if preview_visible.get() and entry:
+            is_server = source.get() == "server"
+            target = _preview_target(entry, is_server)
+            if target:
+                preview_text.pack_forget()
+                preview_scroll.pack_forget()
+                preview_image.configure(text=t("preview_loading"))
+                preview_canvas.pack(fill="x", pady=4)
+                generation = preview_generation
+                space = loaded_source if is_server else None
+                preview_pending = (generation, target, is_server, space, dict(config))
+                preview_job = root.after(120, start_preview)
+
+    def start_preview():
+        nonlocal preview_job, preview_pending, preview_running
+        preview_job = None
+        if preview_running or preview_pending is None:
+            return
+        request = preview_pending
+        preview_pending = None
+        generation, target, is_server, space, settings = request
+        key = (space, target)
+
+        def deliver(image=None):
+            nonlocal preview_running
+            preview_running = False
+            if generation == preview_generation and preview_visible.get():
+                if is_server and space != _sync_source_key():
+                    refresh(reset=True)
+                elif image is None:
+                    preview_image.configure(text=t("preview_unavailable"))
+                else:
+                    if is_server:
+                        if len(preview_cache) >= 4:
+                            preview_cache.pop(next(iter(preview_cache)))
+                        preview_cache[key] = image
+                    photo = ImageTk.PhotoImage(image, master=root)
+                    preview_image.configure(image=photo, text="")
+                    preview_image.image = photo
+                    count = image.info.get("preview_pages")
+                    preview_heading.configure(text=t("preview_pdf_page", n=count) if count else t("preview"))
+            start_preview()
+
+        if is_server and space != _sync_source_key():
+            refresh(reset=True)
+            return
+        if key in preview_cache:
+            deliver(preview_cache[key])
+            return
+        preview_running = True
+
+        def work():
+            try:
+                image = _load_image_preview(target, is_server, settings)
+            except Exception:
+                image = None
+            ui_q.put(lambda: deliver(image))
+        threading.Thread(target=work, daemon=True).start()
 
     def show_preview():
         if preview_visible.get():
             preview_bar.pack(side="bottom", fill="x", before=listing.master)
         else:
             preview_bar.pack_forget()
+        update_selection()
 
     def fill(page):
         items[:] = page.get("items", [])
@@ -3020,9 +3177,13 @@ def open_history_window(icon=None, item=None):
             pump_job = root.after(80, pump)
 
     def close_history():
-        nonlocal request_generation
+        nonlocal request_generation, preview_generation, preview_pending
         request_generation += 1
-        for job in (search_job, pump_job):
+        preview_generation += 1
+        preview_pending = None
+        preview_cache.clear()
+        preview_image.image = None
+        for job in (search_job, pump_job, preview_job):
             if job is not None:
                 root.after_cancel(job)
         root.destroy()

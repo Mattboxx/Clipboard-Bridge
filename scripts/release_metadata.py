@@ -84,7 +84,7 @@ def validate(version: str) -> None:
         ROOT / "README.it.md": [f"Windows {version}", f"/releases/tag/{version}"],
         ROOT / "GUIDE.md": [f"Clipboard Bridge {version} release"],
         ROOT / "docs" / "index.html": [
-            f"Download Clipboard Bridge {version}",
+            f"Windows version {version}",
             f"/releases/download/{version}/",
         ],
     }
