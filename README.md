@@ -416,6 +416,9 @@ histories and there is no fixed account-count limit. For large installations, us
 
 Clipboard Bridge is designed for private networks.
 
+**Your devices must reach the clipboard host over the same trusted local network
+or a private VPN.** This applies to both the standalone server and Windows Server mode.
+
 - API tokens and isolated accounts are optional; the general clipboard works without
   either one.
 - iPhone and Android account links place `user` and `password` in plain text in the URL.
@@ -431,6 +434,12 @@ With Tailscale, replace the LAN address with the server's private Tailscale addr
 ```text
 http://100.x.y.z:5088
 ```
+
+To keep using the **same local IP and port at home and away**, configure your home
+server/NAS as a **subnet router** for your VPN. With Tailscale, advertise and approve
+the relevant LAN route, allow access and keep the router online. Reserve the server's
+LAN IP. This is a separate network setup, not an automatic Clipboard Bridge feature.
+See the [local network, VPN and subnet-routing guide](GUIDE.md#local-network-vpn-and-subnet-routing).
 
 See [SECURITY.md](SECURITY.md) before exposing a server beyond a trusted LAN.
 

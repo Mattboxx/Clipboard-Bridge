@@ -421,6 +421,9 @@ grandi usa `CLIPBOARD_ACCOUNTS_FILE`.
 
 Clipboard Bridge è progettato per reti private.
 
+**I dispositivi devono raggiungere il server tramite la stessa rete locale attendibile
+oppure una VPN privata.** Vale sia per il server indipendente sia per la Modalità Server Windows.
+
 - Token API e account isolati sono opzionali; la clipboard generale funziona senza
   entrambi.
 - I link account di iPhone e Android contengono `user` e `password` in chiaro nell'URL.
@@ -436,6 +439,12 @@ Con Tailscale sostituisci l'indirizzo LAN con l'indirizzo privato del server:
 ```text
 http://100.x.y.z:5088
 ```
+
+Per mantenere **lo stesso IP locale e la stessa porta in casa e fuori casa**, configura
+il server/NAS di casa come **subnet router** della VPN. Con Tailscale devi pubblicizzare
+e approvare la rotta LAN, consentire l'accesso e lasciare acceso il router. Riserva l'IP
+locale del server. È una configurazione di rete separata, non una funzione automatica
+di Clipboard Bridge. Consulta la [guida a rete locale, VPN e subnet routing](GUIDE.md#local-network-vpn-and-subnet-routing).
 
 Consulta [SECURITY.md](SECURITY.md) prima di usare il server fuori da una LAN attendibile.
 

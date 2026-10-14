@@ -131,3 +131,15 @@ def test_website_highlights_stable_server_and_windows_alternative():
     assert "Your Windows PC can do the job." in html
     assert "Server mode" in html
     assert (ROOT / "docs/site.js").is_file()
+
+
+def test_network_guidance_is_visible_and_links_to_the_guide():
+    html = (ROOT / "docs/index.html").read_text(encoding="utf-8")
+    assert 'id="network"' in html
+    assert "Same local network. Or a private VPN." in html
+    assert "subnet router" in html
+    assert "Clipboard Bridge does not enable it automatically" in html
+    assert "GUIDE.md#local-network-vpn-and-subnet-routing" in html
+    for file in ("README.md", "README.it.md"):
+        assert "GUIDE.md#local-network-vpn-and-subnet-routing" in (ROOT / file).read_text(encoding="utf-8")
+    assert "### Local network, VPN and subnet routing" in (ROOT / "GUIDE.md").read_text(encoding="utf-8")

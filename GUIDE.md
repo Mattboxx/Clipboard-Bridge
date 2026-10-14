@@ -400,6 +400,49 @@ headers instead.
 
 ## 8. Troubleshooting
 
+### Local network, VPN and subnet routing
+
+**Every device must be able to reach the clipboard host.** On a trusted local
+network, use its LAN address. Outside that network, use a private VPN. Tailscale
+is one example, not a requirement. Both Docker/Python hosting and Windows Server
+mode support this approach. Keep the selected host running.
+
+The simplest remote setup installs the VPN on the host and each client, then uses
+the host's VPN address in Windows, Android and both Apple Shortcuts.
+
+#### Keep the same LAN address at home and away
+
+If you have a home server or NAS, it can act as a **subnet router**: a gateway
+from your VPN into the home LAN. This lets the same local clipboard URL work
+remotely without changing every app and Shortcut. It does not change the server's IP.
+
+Example only: if the server is `192.168.50.10` on `192.168.50.0/24`, keep
+`http://192.168.50.10:5088` in each client, at home and away.
+
+1. Reserve the server's LAN IP in your home router, so DHCP does not change it.
+2. Install Tailscale on the always-on gateway; follow its platform-specific
+   [subnet-router setup](https://tailscale.com/docs/features/subnet-routers/how-to/setup).
+   Linux also requires IP forwarding. Configure this on the NAS/host or a dedicated
+   router, not by changing the Clipboard Bridge container.
+3. Advertise the actual home subnet, approve its route in Tailscale and allow the
+   intended clients to access the server port. Route approval and access rules
+   are separate requirements.
+4. Connect the remote phone/PC to the same private VPN and verify that it uses the
+   subnet route. With Tailscale, Windows, Android, iOS and macOS normally accept
+   approved routes automatically; Linux clients may need route acceptance enabled.
+5. Test the same server URL from a phone with home Wi-Fi disabled, using mobile
+   data and the VPN. Keep the gateway and clipboard host online.
+
+**An exit node is not a substitute for a subnet router.** If the remote Wi-Fi
+uses an overlapping LAN range, routing can conflict; use the host's VPN address
+or adjust the LAN plan instead. Do not forward port `5088` to the public internet.
+URL credentials remain plain text, and a VPN does not make every local HTTP hop
+encrypted; use a trusted LAN or HTTPS where needed.
+
+Official reference: [Tailscale subnet routers](https://tailscale.com/docs/features/subnet-routers).
+
+### Common problems
+
 | Problem | Check |
 |---------|-------|
 | The web page won't open | Is the server running? Right `SERVER_IP`? Same network? Port 5088 allowed in the firewall? |
