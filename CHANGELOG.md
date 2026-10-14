@@ -2,6 +2,16 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.14 - 2026-10-14
+
+- The History hotkey now toggles the window: open, close, then reopen.
+- Tray clicks continue to open or focus History without toggling it closed.
+- Close through the normal cleanup handler, cancelling searches, previews and polling.
+- Cancel the initial refresh too, including a rapid open/close before it has run.
+- Keep Settings and the background application running when History closes.
+- Preserve hotkey configuration, credentials and clipboard history.
+- Windows x64 and native ARM64 packages; standalone server, Android and iPhone downloads are unchanged.
+
 ## 2.0.13 - 2026-10-14
 
 - Fix History shortcuts lost by the previous key-release listener.

@@ -38,14 +38,14 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.13 | Android 1.0.0-beta.10 | Server 1.0.7
+**Current releases:** Windows 2.0.14 | Android 1.0.0-beta.10 | Server 1.0.7
 
 | Your device | Ready-to-use downloads |
 |---|---|
-| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.13.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Portable.Windows.x64.V2.0.13.exe) |
-| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.13.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Portable.Windows.arm64.V2.0.13.exe) |
-| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk), currently a public beta |
-| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Download.Clipboard.shortcut) |
+| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.14.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Portable.Windows.x64.V2.0.14.exe) |
+| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.14.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Portable.Windows.arm64.V2.0.14.exe) |
+| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk), currently a public beta |
+| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
 
@@ -58,7 +58,7 @@ app before switching between x64 and ARM64; both architectures share your settin
 > Defender or Smart App Control may block them. Read [CODE_SIGNING.md](CODE_SIGNING.md);
 > do not disable Windows protection to bypass a warning.
 
-All assets, checksums and release notes are in the [2.0.13 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.13).
+All assets, checksums and release notes are in the [2.0.14 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.14).
 Image/PDF previews and native ARM64 packages are included. See [CHANGELOG.md](CHANGELOG.md)
 for the full changes; Android and the standalone server have independent version numbers.
 
@@ -132,7 +132,9 @@ to open History; sending is a separate action. Only one instance runs at a time.
   Click **Set keys...**, press and release your chosen combination, then **Save**.
   Escape cancels recording. Shortcuts pause while recording to prevent accidental transfers.
   Windows reports combinations already used by another app before settings are saved.
-  Opening History never sends your clipboard. Invalid or duplicate shortcuts
+  Press the History hotkey once to open it and again to close it; the next press
+  reopens it. Tray clicks still open or focus History. Neither action sends your clipboard.
+  Invalid or duplicate shortcuts
   are rejected before saving; existing settings are preserved during upgrades.
 - Received files are saved in `Downloads/Clipboard Bridge` and placed in the
   Windows clipboard. Clicking a file notification opens the received-files folder.
@@ -435,7 +437,7 @@ space; latest raw content is an empty response. Retention limits remove old entr
 | Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_release_metadata.py` |
 | Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
-| Windows x64 packaging | `build_windows_release.bat 2.0.13`; requires x64 Python, PyInstaller and Inno Setup |
+| Windows x64 packaging | `build_windows_release.bat 2.0.14`; requires x64 Python, PyInstaller and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
 | Android build | Java 17, Android SDK 35; [Gradle and private signing instructions](android/README.md#build-from-source) |
 | Docker source build | `docker build -t clipboard-bridge-server:dev .` |

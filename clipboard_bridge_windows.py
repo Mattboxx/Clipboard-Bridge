@@ -302,7 +302,7 @@ STRINGS = {
         "lbl_interval": "Clipboard check interval (s)",
         "lbl_hk_send": "Send hotkey",
         "lbl_hk_recv": "Receive hotkey",
-        "lbl_hk_history": "Open history hotkey",
+        "lbl_hk_history": "History hotkey",
         "err_hotkeys": "Choose valid, different shortcuts for Send, Receive and History.",
         "set_hotkey": "Set keys...",
         "record_hotkey": "Press the keys...",
@@ -427,7 +427,7 @@ STRINGS = {
         "lbl_interval": "Intervallo controllo appunti (s)",
         "lbl_hk_send": "Hotkey invio",
         "lbl_hk_recv": "Hotkey ricezione",
-        "lbl_hk_history": "Hotkey apertura cronologia",
+        "lbl_hk_history": "Hotkey cronologia",
         "err_hotkeys": "Scegli combinazioni valide e diverse per Invia, Ricevi e Cronologia.",
         "set_hotkey": "Imposta...",
         "record_hotkey": "Premi i tasti...",
@@ -2792,6 +2792,14 @@ def _load_image_preview(target, is_server, settings):
             return image.convert("RGBA")
 
 
+def toggle_history_window():
+    for window in _root.winfo_children():
+        if getattr(window, "_view_name", None) == "history":
+            window._close_history()
+            return
+    open_history_window()
+
+
 def open_history_window(icon=None, item=None):
     if _existing_view("history") is not None:
         return
@@ -2813,7 +2821,7 @@ def open_history_window(icon=None, item=None):
     _tooltip(send, t("send_now"))
 
     ui_q = queue.Queue()
-    search_job = pump_job = preview_job = None
+    search_job = pump_job = preview_job = initial_refresh_job = None
     preview_generation = 0
     preview_running = False
     preview_pending = None
@@ -3202,13 +3210,14 @@ def open_history_window(icon=None, item=None):
         preview_pending = None
         preview_cache.clear()
         preview_image.image = None
-        for job in (search_job, pump_job, preview_job):
+        for job in (search_job, pump_job, preview_job, initial_refresh_job):
             if job is not None:
                 root.after_cancel(job)
         root.destroy()
 
+    root._close_history = close_history
     root.protocol("WM_DELETE_WINDOW", close_history)
-    root.after(0, refresh)
+    initial_refresh_job = root.after(0, refresh)
     pump_job = root.after(80, pump)
 
 
@@ -3922,7 +3931,7 @@ def register_hotkeys():
     bindings = (
         ("hotkey_send", lambda: _run_bg(action_send_clipboard)),
         ("hotkey_receive", lambda: _run_bg(action_get_latest)),
-        ("hotkey_history", lambda: _cmd_q.put(open_history_window)),
+        ("hotkey_history", lambda: _cmd_q.put(toggle_history_window)),
     )
     _hotkey_worker = _NativeHotkeys([(key, config.get(key, DEFAULT_CONFIG[key]), action)
                                     for key, action in bindings])

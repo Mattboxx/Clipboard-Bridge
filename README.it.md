@@ -39,14 +39,14 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.13 | Android 1.0.0-beta.10 | Server 1.0.7
+**Versioni attuali:** Windows 2.0.14 | Android 1.0.0-beta.10 | Server 1.0.7
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
-| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.13.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Portable.Windows.x64.V2.0.13.exe) |
-| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.13.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Portable.Windows.arm64.V2.0.13.exe) |
-| **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.13/iPhone.Download.Clipboard.shortcut) |
+| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.14.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Portable.Windows.x64.V2.0.14.exe) |
+| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.14.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Portable.Windows.arm64.V2.0.14.exe) |
+| **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk), attualmente una beta pubblica |
+| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.14/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
@@ -60,7 +60,7 @@ le due architetture condividono le impostazioni.
 > Defender o Smart App Control potrebbero bloccarli. Leggi [CODE_SIGNING.md](CODE_SIGNING.md);
 > non disattivare la protezione Windows per aggirare un avviso.
 
-File, checksum e note sono nella [release 2.0.13](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.13).
+File, checksum e note sono nella [release 2.0.14](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.14).
 Sono incluse anteprime immagini/PDF e versioni ARM64 native. Le modifiche complete
 sono nel [CHANGELOG.md](CHANGELOG.md); Android e server hanno versioni indipendenti.
 
@@ -132,7 +132,9 @@ sinistro sull'icona apre la cronologia: l'invio è un'azione separata. Non si av
   dei file in arrivo e notifiche separate per testo, immagini e file.
 - **Scorciatoie:** configura le hotkey globali di Invio, Ricezione e apertura Cronologia.
   La cronologia usa inizialmente **Ctrl+Alt+H**: puoi cambiarla in
-  **Impostazioni > Scorciatoie**. Aprirla non invia la clipboard.
+  **Impostazioni > Scorciatoie**. La prima pressione apre la cronologia, la seconda
+  la chiude e la successiva la riapre. Il clic sull'icona continua ad aprirla o
+  portarla in primo piano. Nessuna di queste azioni invia la clipboard.
   Clicca **Imposta...**, premi e rilascia la combinazione desiderata, poi **Salva**.
   Esc annulla la registrazione. Durante la scelta dei tasti le scorciatoie sono sospese,
   evitando invii involontari. Se una combinazione è già occupata, il programma la segnala
@@ -442,7 +444,7 @@ rimuovono le voci vecchie.
 | Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_release_metadata.py` |
 | Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
-| Pacchetti Windows x64 | `build_windows_release.bat 2.0.13`; richiede Python x64, PyInstaller e Inno Setup |
+| Pacchetti Windows x64 | `build_windows_release.bat 2.0.14`; richiede Python x64, PyInstaller e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
 | Build Android | Java 17, Android SDK 35; [istruzioni Gradle e firma privata](android/README.md#build-from-source) |
 | Build Docker dai sorgenti | `docker build -t clipboard-bridge-server:dev .` |

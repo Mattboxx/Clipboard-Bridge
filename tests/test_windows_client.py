@@ -520,7 +520,7 @@ def test_history_hotkey_queues_gui_and_replaces_existing_bindings(tmp_path, monk
         assert workers[0].registered == [(1, 0x4003, ord("C")), (2, 0x4003, ord("V")),
                                           (3, 0x4003, ord("H"))]
         workers[0].messages.put((0x312, 3))
-        assert client._cmd_q.get(timeout=1) is client.open_history_window
+        assert client._cmd_q.get(timeout=1) is client.toggle_history_window
         client.config["hotkey_history"] = "ctrl+shift+y"
         assert client.register_hotkeys() == []
         assert workers[0].removed == [1, 2, 3]
@@ -531,6 +531,41 @@ def test_history_hotkey_queues_gui_and_replaces_existing_bindings(tmp_path, monk
         assert client._hotkey_worker is None
     finally:
         client.unregister_hotkeys()
+
+
+def test_history_hotkey_toggles_only_history_and_cancels_pending_jobs(tmp_path, monkeypatch, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_: {"items": [], "total": 0})
+    monkeypatch.setattr(client, "_run_bg", lambda *_: pytest.fail("Toggling must not transfer data"))
+    settings = client.tk.Toplevel(tk_test_root)
+    settings._view_name = "settings"
+    baseline = set(tk_test_root.tk.call("after", "info"))
+    try:
+        client.toggle_history_window()
+        history = next(child for child in tk_test_root.winfo_children()
+                       if getattr(child, "_view_name", None) == "history")
+        client.open_history_window()
+        assert len([child for child in tk_test_root.winfo_children()
+                    if getattr(child, "_view_name", None) == "history"]) == 1
+        client.toggle_history_window()
+        assert not history.winfo_exists()
+        assert settings.winfo_exists()
+        assert set(tk_test_root.tk.call("after", "info")) == baseline
+        client.toggle_history_window()
+        tk_test_root.update()
+        reopened = next(child for child in tk_test_root.winfo_children()
+                        if getattr(child, "_view_name", None) == "history")
+        assert reopened is not history
+        client.toggle_history_window()
+        assert not reopened.winfo_exists()
+        assert settings.winfo_exists()
+    finally:
+        for child in tk_test_root.winfo_children():
+            if getattr(child, "_view_name", None) == "history":
+                child._close_history()
+            else:
+                child.destroy()
 
 
 def test_history_hotkey_conflict_preserves_existing_send_and_receive(tmp_path, monkeypatch):
@@ -982,7 +1017,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.13"
+    assert client.APP_VERSION == "2.0.14"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
