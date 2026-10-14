@@ -71,8 +71,6 @@ copy /Y "Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe" "%RELEASE_
 copy /Y "Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe" "%RELEASE_DIR%\" >nul
 copy /Y "Iphone Shortcuts\Load Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Load.Clipboard.shortcut" >nul
 copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Download.Clipboard.shortcut" >nul
-copy /Y "clipboard_bridge-Server.py" "%RELEASE_DIR%\" >nul
-copy /Y "clipboard_bridge_windows.py" "%RELEASE_DIR%\" >nul
 if exist "android\app\build\outputs\apk\release\app-release.apk" (
   copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk" >nul
 )
