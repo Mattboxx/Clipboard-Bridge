@@ -315,8 +315,10 @@ main-branch builds. See [DOCKER.md](DOCKER.md) for deployment and backup details
 ## Developers
 
 The repository contains the complete sources, dependencies, tests and packaging.
-The release also includes [server.py source](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/clipboard_bridge-Server.py)
-and [Windows client source](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/clipboard_bridge_windows.py).
+Browse the [server source](https://github.com/Mattboxx/Clipboard-Bridge/blob/main/clipboard_bridge-Server.py)
+and [Windows client source](https://github.com/Mattboxx/Clipboard-Bridge/blob/main/clipboard_bridge_windows.py)
+in the repository. Release downloads contain ready-to-use apps and iPhone Shortcuts,
+not standalone Python scripts. Clone the repository for development or running from source.
 
 ### Run from source
 

@@ -143,3 +143,17 @@ def test_network_guidance_is_visible_and_links_to_the_guide():
     for file in ("README.md", "README.it.md"):
         assert "GUIDE.md#local-network-vpn-and-subnet-routing" in (ROOT / file).read_text(encoding="utf-8")
     assert "### Local network, VPN and subnet routing" in (ROOT / "GUIDE.md").read_text(encoding="utf-8")
+
+
+def test_python_sources_are_developer_only_not_release_downloads():
+    for filename in ("README.md", "README.it.md", "GUIDE.md", "docs/index.html"):
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert not re.search(r"/releases/download/[^\s\"<>)]*\.py(?:[\"<>)]|\s|$)", text), filename
+    html = (ROOT / "docs/index.html").read_text(encoding="utf-8")
+    assert "For developers:" in html
+    assert "Download Python server" not in html
+    for source in ("clipboard_bridge-Server.py", "clipboard_bridge_windows.py"):
+        assert f"/blob/main/{source}" in html
+    build = (ROOT / "build_windows_release.bat").read_text(encoding="utf-8")
+    attachments = build.split("Preparing the public GitHub release assets...", 1)[1]
+    assert ".py" not in attachments

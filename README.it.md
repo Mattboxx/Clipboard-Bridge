@@ -319,8 +319,11 @@ collaudate di main. Vedi [DOCKER.md](DOCKER.md) per distribuzione e backup.
 ## Sviluppatori
 
 Il repository contiene sorgenti completi, dipendenze, test e strumenti di distribuzione.
-La release include anche il [sorgente server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/clipboard_bridge-Server.py)
-e il [sorgente client Windows](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.12/clipboard_bridge_windows.py).
+Il [sorgente server](https://github.com/Mattboxx/Clipboard-Bridge/blob/main/clipboard_bridge-Server.py)
+e il [sorgente client Windows](https://github.com/Mattboxx/Clipboard-Bridge/blob/main/clipboard_bridge_windows.py)
+sono nella repository. I download delle release contengono app pronte all'uso e
+Comandi Rapidi iPhone, non singoli script Python. Per sviluppare o avviare dai
+sorgenti, clona la repository.
 
 ### Eseguire dai sorgenti
 

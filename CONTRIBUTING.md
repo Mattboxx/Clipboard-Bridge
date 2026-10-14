@@ -29,6 +29,11 @@ python clipboard_bridge_windows.py
 
 ## Windows release builds
 
+Release attachments are for end users: Windows installers/portable executables,
+the signed Android APK and the two signed iPhone Shortcuts. Keep Python scripts
+and other developer sources in the repository, not as release attachments.
+Publish download checksums in the release notes.
+
 `build_windows_release.bat` builds the x64 portable executable and installer.
 It rejects non-x64 Python to avoid incorrectly labeled packages.
 
