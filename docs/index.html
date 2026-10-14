@@ -9,6 +9,7 @@
   <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
   <meta property="og:type" content="website">
   <meta property="og:title" content="Clipboard Bridge - Copy here. Paste there.">
   <meta property="og:description" content="Share text, photos and files between Windows, Android and iPhone. No separate server required.">
@@ -21,34 +22,39 @@
   </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <nav aria-label="Main navigation">
+    <div class="nav-inner">
     <a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a>
     <div class="nav-links">
-      <a href="#download">Download</a><a href="#start">Getting started</a>
-      <a class="support-nav" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">&#9825;</span> Support me</a>
-      <a href="https://github.com/Mattboxx/Clipboard-Bridge">GitHub</a>
+      <a class="nav-download" href="#download">Download</a><a class="server-nav" href="#server">Server</a><a href="#start">Getting started</a>
+      <a class="support-nav" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><img class="icon" src="assets/icons/heart.svg" alt="">Support me</a>
+      <a class="github-nav" href="https://github.com/Mattboxx/Clipboard-Bridge">GitHub<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a>
+    </div>
     </div>
   </nav>
   <header class="hero">
     <div class="hero-inner">
-      <span class="eyebrow">Windows &middot; Android &middot; iPhone &middot; Mac</span>
+      <span class="eyebrow"><span class="release-mark" aria-hidden="true"></span><a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.11">Version 2.0.11 &middot; Now with native Windows ARM64 <span aria-hidden="true">&rarr;</span></a></span>
       <h1>Clipboard Bridge</h1><p class="hero-tagline">Copy here. Paste there.</p>
-      <p class="lead">Copied a link on your phone? Need a photo or PDF on your PC? Move text and files between your devices through your own network.</p>
+      <p class="lead">One shared clipboard for Windows, Android and Apple devices. Text, photos and files on your own network.</p>
       <div class="actions">
-        <a class="button primary" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.11.exe">Download for Windows</a>
-        <a class="button" href="#download">Phone &amp; Mac options</a>
+        <a class="button primary" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.11.exe"><img class="icon" src="assets/icons/download.svg" alt="">Get Windows app</a>
+        <a class="button" href="#server">Get the server<img class="icon" src="assets/icons/arrow-right.svg" alt=""></a>
       </div>
-      <div class="hero-facts"><span>No separate server needed</span><span>No account required</span><span>Free &amp; open source</span></div>
+      <div class="hero-facts"><span><img class="icon" src="assets/icons/check.svg" alt="">No separate server needed</span><span><img class="icon" src="assets/icons/check.svg" alt="">No account required</span><span><img class="icon" src="assets/icons/check.svg" alt="">Free &amp; open source</span></div>
     </div>
+    <div class="hero-visual" role="img" aria-label="Clipboard Bridge Windows app with a shared text and file history and image preview"></div>
+    <span class="hero-caption">Windows &middot; Android &middot; iPhone &amp; iPad &middot; Mac Shortcuts</span>
   </header>
-  <main>
-    <section id="download" class="band">
+  <main id="main">
+    <section id="download">
       <div class="inner">
-        <span class="section-kicker">Choose your device</span><h2>Download Clipboard Bridge</h2>
-        <p class="section-copy">Install it on your PC, then add your phone. Windows version 2.0.11.</p>
+        <div class="section-heading"><div><span class="section-kicker">Made for your devices</span><h2>Download Clipboard Bridge</h2></div><p class="section-copy">Apps for your devices. An always-on server for the full experience, or Windows Server mode without extra hardware.</p></div>
         <div class="grid">
           <article class="item">
-            <h3>Windows</h3><span class="download-version">Start here &middot; Windows x64</span>
+            <span class="platform-icon"><img src="assets/icons/monitor.svg" alt=""></span>
+            <h3>Windows</h3><span class="download-version">Windows version 2.0.11 &middot; x64</span>
             <p>The installer is the easiest option. Prefer not to install? The portable version does the same job.</p>
             <div class="actions">
               <a class="button primary" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.11.exe">Download installer</a>
@@ -57,11 +63,13 @@
             <details class="arm-downloads"><summary>Have a Windows ARM PC?</summary><p>For Windows 11 on Snapdragon and other ARM processors. Same features, including image and PDF previews.</p><div class="actions"><a class="button primary" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.11.exe">ARM64 installer</a><a class="button" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Portable.Windows.arm64.V2.0.11.exe">ARM64 portable</a></div><p>Not sure? Check Settings &gt; System &gt; About &gt; System type.</p></details>
           </article>
           <article class="item">
+            <span class="platform-icon"><img src="assets/icons/smartphone.svg" alt=""></span>
             <h3>Android</h3><span class="download-version">Android 10 or newer &middot; public beta</span>
             <p>Send and receive your clipboard, share files from other apps and browse your shared history.</p>
             <div class="actions"><a class="button android" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk">Download Android app</a></div>
           </article>
           <article class="item">
+            <span class="platform-icon"><img src="assets/icons/command.svg" alt=""></span>
             <h3>iPhone, iPad &amp; Mac</h3><span class="download-version">Uses Apple's Shortcuts app</span>
             <p>Use two Shortcuts: one sends, the other receives. On Mac, use the same workflow; there is no native Mac app.</p>
             <div class="actions">
@@ -71,13 +79,38 @@
             <p class="mac-guide"><a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#mac-compatibility">Mac setup guide</a></p>
           </article>
         </div>
-        <p class="notice"><strong>Windows security:</strong> these downloads are not digitally signed yet. Windows may block them. <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/CODE_SIGNING.md">Read the security information</a>.</p>
+        <div class="notice"><img class="icon" src="assets/icons/info.svg" alt=""><p><strong>Windows security:</strong> these downloads are not digitally signed yet. Windows may block them. <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/CODE_SIGNING.md">Read the security information</a>.</p></div>
         <details class="download-notes"><summary>Windows installation and automatic sharing</summary><p>All Windows packages save your settings and history in your user folder, not beside the program. No package needs administrator privileges to install. Quit the app before switching between x64 and ARM64; your saved settings and history stay available. Automatic sharing can be restricted when you copy from an app running as administrator; in that case, Clipboard Bridge may also need to run as administrator.</p></details>
       </div>
     </section>
-    <section id="start">
+    <section id="server" class="server-band">
       <div class="inner">
-        <span class="section-kicker">Your first connection</span><h2>Three steps. Then start sharing.</h2>
+        <div class="section-heading"><div><span class="section-kicker">The full Clipboard Bridge experience</span><h2>Better with an always-on server.</h2></div><p class="section-copy">A permanent home for your shared clipboard. Recommended when you have a NAS or home server.</p></div>
+        <div class="server-benefits"><span><img class="icon" src="assets/icons/check.svg" alt="">Share while your Windows PC is off</span><span><img class="icon" src="assets/icons/check.svg" alt="">History in your web browser</span><span><img class="icon" src="assets/icons/check.svg" alt="">Separate accounts &amp; histories</span></div>
+        <div class="server-layout">
+          <div class="server-install">
+            <h3><img class="icon" src="assets/icons/server.svg" alt="">Clipboard Bridge Server <span class="server-version">Stable 1.0.7</span></h3>
+            <p class="server-description">Install the ready-made Docker image on your server. Then connect Windows, Android and your Apple Shortcuts to the same address.</p>
+            <div class="command-line"><code id="image-command">docker pull ghcr.io/mattboxx/clipboard-bridge-server:1.0.7</code><button class="copy-button" type="button" data-copy="image-command" aria-label="Copy Docker image command" title="Copy Docker image command"><img class="icon" src="assets/icons/copy.svg" alt=""></button></div>
+            <div class="command-meta"><span>Linux amd64 &amp; arm64</span><span>Port 5088</span><span class="copy-status" role="status" aria-live="polite"></span></div>
+            <div class="actions"><a class="button primary" href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme"><img class="icon" src="assets/icons/download.svg" alt="">Install from an app store</a><a class="button" href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/DOCKER.md">Docker setup guide<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a></div>
+            <p class="store-options">ZimaOS &middot; Portainer &middot; Umbrel &middot; Runtipi &middot; Dockge</p>
+            <div class="server-links"><a href="https://github.com/Mattboxx/Clipboard-Bridge/pkgs/container/clipboard-bridge-server">View Docker image</a><a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge-Server.py">Download Python server</a></div>
+          </div>
+          <aside class="windows-alternative">
+            <span class="mode-label"><img class="icon" src="assets/icons/monitor.svg" alt="">No server? No problem.</span>
+            <h3>Your Windows PC can do the job.</h3>
+            <p>The Windows app includes <strong>Server mode</strong>. Your phone connects directly to it, with the same text, photo and file transfers.</p>
+            <p>No Docker or separate computer is required. Keep Windows and the app running while you share. The browser interface and multiple accounts belong to the standalone server.</p>
+            <a class="text-link" href="#start">Start with Windows<img class="icon" src="assets/icons/arrow-right.svg" alt=""></a>
+          </aside>
+        </div>
+        <details class="server-more"><summary>More installation options and developer files</summary><p>The server runs with Docker or Python. Follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore">App Store guide</a> for the supported stores, or add the permanent <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">ZimaOS JSON source</a>. The Docker guide includes persistent storage, account configuration and updates.</p><p><a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge_windows.py">Windows Python client</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.11">Complete 2.0.11 release</a></p></details>
+      </div>
+    </section>
+    <section id="start" class="band">
+      <div class="inner">
+        <div class="section-heading"><div><span class="section-kicker">A simple place to start</span><h2>Three steps.<br>Then start sharing.</h2></div><p class="section-copy">No Docker. No extra computer.<br>Your Windows PC can host the clipboard.</p></div>
         <div class="steps">
           <article class="step"><h3>Open the Windows app</h3><p>Open Settings and choose <strong>Server mode</strong>. This simply lets your PC host the shared clipboard.</p></article>
           <article class="step"><h3>Connect your phone</h3><p>Use the address shown by the Windows app in the Android settings or your two iPhone Shortcuts.</p></article>
@@ -87,45 +120,38 @@
         <a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md">Follow the step-by-step guide &rarr;</a>
       </div>
     </section>
-    <section id="app-preview" class="band">
+    <section id="app-preview" class="preview-band">
       <div class="inner">
         <span class="section-kicker">Find it again</span><h2>Your shared history, at a glance.</h2>
         <p class="section-copy">Text, photos and files stay together. Search for an older item, preview an image or PDF, then double-click to copy it again.</p>
+        <div class="preview-features"><span><img class="icon" src="assets/icons/file-stack.svg" alt="">Files stay together</span><span><img class="icon" src="assets/icons/monitor.svg" alt="">Image &amp; PDF previews</span><span><img class="icon" src="assets/icons/check.svg" alt="">The latest item always wins</span></div>
         <figure class="app-figure"><img class="visual-explainer" src="assets/windows-history.png" alt="The Windows app showing clipboard history and an image preview" loading="lazy"><figcaption>A real app screen with public sample data. Choose Light or Dark appearance in Settings.</figcaption></figure>
-      </div>
-    </section>
-    <section id="modes">
-      <div class="inner">
-        <span class="section-kicker">Two ways to use it</span><h2>Start with your PC. Add more only if needed.</h2>
-        <div class="modes">
-          <article class="mode server"><h3>Windows hosts the clipboard</h3><p><strong>No separate server.</strong> Your phone connects directly to the Windows app. The simplest place to start.</p><p>Keep your PC switched on while sharing.</p></article>
-          <article class="mode"><h3>An always-on home server</h3><p><strong>Optional.</strong> Use a separate server when you want to share without keeping one Windows PC running.</p><p>Windows uses Client mode. You can also add separate accounts and a web history.</p></article>
-        </div>
-        <details><summary>Server installation options and developer files</summary><p>The optional server runs with Docker or Python. Prepared installation files are available for ZimaOS, Portainer, Umbrel, Runtipi and Dockge.</p><p><a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore">App Store installation guide</a> &middot; <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">ZimaOS JSON store</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/DOCKER.md">Docker guide</a></p><p><a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge-Server.py">Python server</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge_windows.py">Windows Python client</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.11">Complete 2.0.11 release</a></p></details>
       </div>
     </section>
     <section id="shortcuts" class="band">
       <div class="inner">
         <span class="section-kicker">Keep it within reach</span><h2>Two Shortcuts for your Apple devices.</h2>
         <p class="section-copy"><strong>Load Clipboard</strong> sends. <strong>Download Clipboard</strong> receives. Use the same two actions for text, photos and files.</p>
+        <div class="shortcut-actions"><article class="shortcut-action"><h3>Send from your device</h3><p>Your clipboard, a photo or a group of files.</p><a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Load.Clipboard.shortcut">Get Send Shortcut<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a></article><article class="shortcut-action"><h3>Receive the latest item</h3><p>The same action, whatever its file type.</p><a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Download.Clipboard.shortcut">Get Receive Shortcut<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a></article></div>
         <div class="phone-tips"><p><strong>From another app:</strong> enable Show in Share Sheet to send a photo or file directly.</p><p><strong>From iPhone Control Center:</strong> tap Add a Control, choose Shortcut and select each of the two actions.</p><p><strong>Several files together:</strong> follow the grouped-file setup in the guide to keep them in one history item.</p></div>
-        <p class="section-copy"><strong>On Mac:</strong> build the same send/receive actions in Shortcuts using the server URLs in the guide. Run them when needed, or assign a keyboard shortcut. The distributed iPhone files have not yet been tested on a Mac; macOS support is through the workflow, not a native app or continuous background sync.</p>
+        <p class="mac-note"><strong>On Mac:</strong> build the same send/receive actions in Shortcuts using the server URLs in the guide. Run them when needed, or assign a keyboard shortcut. The distributed iPhone files have not yet been tested on a Mac; macOS support is through the workflow, not a native app or continuous background sync.</p>
         <a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md">Set up the iPhone Shortcuts &rarr;</a>
       </div>
     </section>
     <section id="faq">
-      <div class="inner">
-        <h2>A few useful answers.</h2>
+      <div class="inner faq-layout">
+        <div><span class="section-kicker">Good to know</span><h2>A few useful answers.</h2><p class="section-copy">The essentials, before you start.</p></div><div>
         <details><summary>What can I share?</summary><p>Text, links, images, PDFs and other file types. Several selected files can travel as one group. The newest item takes priority, not its file type.</p></details>
         <details><summary>Does sharing happen automatically?</summary><p>Windows can automatically send and receive while the app runs. Android supports incoming notifications and sharing from other apps, but Android restricts background access to the clipboard. iPhone uses the two Shortcuts when you run them.</p></details>
         <details><summary>Can I share when I am away from home?</summary><p>Yes, with a private VPN connecting your devices to the same private network. This also works when Windows hosts the clipboard. The guide includes an example; a VPN is optional for devices already on the same trusted network.</p></details>
         <details><summary>Do I need an account? Is my clipboard private?</summary><p>No account or token is required. Transfers go through your own network, not to the project maintainers. Keep the service on a trusted network, rather than exposing it publicly.</p><p>If you use account or token URLs, the username, password and token are visible in plain text. Plain HTTP does not encrypt them. Use a trusted network, a private VPN or HTTPS.</p></details>
+        </div>
       </div>
     </section>
     <section class="band" id="support">
       <div class="inner">
         <div><span class="section-kicker">Thank you</span><h2>Help keep Clipboard Bridge growing.</h2><p class="section-copy">If it makes your day a little easier, a donation helps with maintenance and updates. Thank you for choosing to support the project!</p></div>
-        <div class="actions"><a class="button support-button" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">&#9825;</span>Support on Ko-fi</a></div>
+        <div class="actions"><a class="button support-button" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><img class="icon" src="assets/icons/heart.svg" alt="">Support on Ko-fi</a></div>
       </div>
     </section>
   </main>

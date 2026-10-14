@@ -1,4 +1,13 @@
-# PDF Preview Dependencies
+# Third-Party Notices
+
+## Website Icons
+
+The website uses original [Lucide](https://lucide.dev/) icons from release 1.57.0.
+They are distributed under the ISC license; some inherited Feather icons have
+MIT license notices. The complete upstream license is included in
+`docs/assets/icons/LICENSE`. Icons are served locally, without a CDN or tracking.
+
+## PDF Preview Dependencies
 
 Windows PDF previews use [pypdfium2](https://github.com/pypdfium2-team/pypdfium2)
 and PDFium. These components have their own licenses, independent of Clipboard
