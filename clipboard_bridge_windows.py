@@ -176,6 +176,7 @@ DEFAULT_CONFIG = {
     "hotkeys_enabled": True,
     "hotkey_send": "ctrl+alt+c",
     "hotkey_receive": "ctrl+alt+v",
+    "hotkey_history": "ctrl+alt+h",
 }
 
 stop_event = threading.Event()
@@ -301,6 +302,8 @@ STRINGS = {
         "lbl_interval": "Clipboard check interval (s)",
         "lbl_hk_send": "Send hotkey",
         "lbl_hk_recv": "Receive hotkey",
+        "lbl_hk_history": "Open history hotkey",
+        "err_hotkeys": "Choose valid, different shortcuts for Send, Receive and History.",
         "hint_hk": "(e.g. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Automatic synchronization",
         "chk_auto_files": "Automatically download new files",
@@ -417,6 +420,8 @@ STRINGS = {
         "lbl_interval": "Intervallo controllo appunti (s)",
         "lbl_hk_send": "Hotkey invio",
         "lbl_hk_recv": "Hotkey ricezione",
+        "lbl_hk_history": "Hotkey apertura cronologia",
+        "err_hotkeys": "Scegli combinazioni valide e diverse per Invia, Ricevi e Cronologia.",
         "hint_hk": "(es. ctrl+alt+c  ·  ctrl+shift+v)",
         "chk_autosync": "Sincronizzazione automatica",
         "chk_auto_files": "Scarica automaticamente i nuovi file",
@@ -3440,6 +3445,7 @@ def open_settings(icon=None, item=None):
     ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
     add_field(shortcuts_box, 1, t("lbl_hk_send"), "hotkey_send")
     add_field(shortcuts_box, 2, t("lbl_hk_recv"), "hotkey_receive")
+    add_field(shortcuts_box, 3, t("lbl_hk_history"), "hotkey_history")
 
     footer = ttk.Frame(root, padding=(18, 12, 18, 16))
     footer.pack(side="bottom", fill="x", before=body)
@@ -3504,12 +3510,13 @@ def open_settings(icon=None, item=None):
         status_label.config(text=settings_connection_status_text())
         connection_button.config(state="normal")
 
-    def test_connection():
+    def test_connection(clear_message=True):
         values = pending_connection_values(validate_interval=False)
         if values is None:
             connection_button.config(state="normal")
             return
-        msg.config(text="")
+        if clear_message:
+            msg.config(text="")
         connection_button.config(state="disabled")
         _set_connection_state("checking")
         show_connection_status()
@@ -3530,14 +3537,24 @@ def open_settings(icon=None, item=None):
         values = pending_connection_values()
         if values is None:
             return
+        hotkey_names = ("hotkey_send", "hotkey_receive", "hotkey_history")
+        for key in hotkey_names:
+            values[key] = entries[key].get().strip().lower() or DEFAULT_CONFIG[key]
+        if hk.get():
+            try:
+                signatures = [_hotkey_signature(values[key]) for key in hotkey_names]
+                if len(set(signatures)) != len(signatures):
+                    raise ValueError("duplicate hotkey")
+            except (ValueError, KeyError, TypeError):
+                msg.config(text=t("err_hotkeys"))
+                notebook.select(shortcuts_page)
+                return
         host_port = values["host_port"]
         old_mode = config.get("mode", "client")
         old_host_port = config.get("host_port", 5088)
         config.update(values)
         _root._appearance_override = None
         _update_appearance(config["appearance"])
-        config["hotkey_send"] = entries["hotkey_send"].get().strip().lower() or "ctrl+alt+c"
-        config["hotkey_receive"] = entries["hotkey_receive"].get().strip().lower() or "ctrl+alt+v"
         config["auto_sync"] = auto.get()
         config["auto_receive_files"] = auto_files.get()
         config["monitor_clipboard"] = mon.get()
@@ -3589,7 +3606,7 @@ def open_settings(icon=None, item=None):
         command=save,
         style="Settings.Primary.TButton",
     ).pack(side="left")
-    connection_job = root.after(120, test_connection)
+    connection_job = root.after(120, lambda: test_connection(clear_message=False))
 
 
 # ---------------------------------------------------------------- keyboard shortcuts
@@ -3636,17 +3653,33 @@ def unregister_hotkeys():
     _hotkeys.clear()
 
 
+def _hotkey_signature(hotkey):
+    if keyboard is None:
+        return hotkey.strip().lower()
+    return tuple(tuple(sorted(tuple(codes) for codes in step))
+                 for step in keyboard.parse_hotkey(hotkey))
+
+
 def register_hotkeys():
+    unregister_hotkeys()
     if keyboard is None or not config.get("hotkeys_enabled", True):
         return
-    unregister_hotkeys()
-    try:
-        _hotkeys.append(keyboard.add_hotkey(config.get("hotkey_send", "ctrl+alt+c"),
-                                            lambda: _run_bg(action_send_clipboard)))
-        _hotkeys.append(keyboard.add_hotkey(config.get("hotkey_receive", "ctrl+alt+v"),
-                                            lambda: _run_bg(action_get_latest)))
-    except Exception as e:
-        notify(t("hotkey_err", e=e))
+    seen = set()
+    bindings = (
+        ("hotkey_send", lambda: _run_bg(action_send_clipboard), False),
+        ("hotkey_receive", lambda: _run_bg(action_get_latest), False),
+        ("hotkey_history", lambda: _cmd_q.put(open_history_window), True),
+    )
+    for key, action, on_release in bindings:
+        try:
+            hotkey = config.get(key, DEFAULT_CONFIG[key])
+            signature = _hotkey_signature(hotkey)
+            if signature in seen:
+                raise ValueError(t("err_hotkeys"))
+            _hotkeys.append(keyboard.add_hotkey(hotkey, action, trigger_on_release=on_release))
+            seen.add(signature)
+        except Exception as error:
+            notify(t("hotkey_err", e=error))
 
 
 # ---------------------------------------------------------------- menu actions
