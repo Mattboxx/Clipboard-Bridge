@@ -114,6 +114,11 @@ h2{font-size:38px;line-height:1.18;letter-spacing:0;font-weight:700;margin:0 0 1
 .windows-alternative p{font-size:14px;color:var(--muted);margin:0 0 18px}
 .windows-alternative strong{color:var(--ink)}
 .server-more{margin-top:32px;border-color:#cadcd0;font-size:13px}
+.network-note{margin-top:34px;padding:28px 0 0;border-top:1px solid #cadcd0;max-width:1000px}
+.network-note h3{font-size:22px;margin:0 0 14px}
+.network-note p{font-size:14px;color:var(--muted);margin:0 0 14px}
+.network-note strong{color:var(--ink)}
+.network-note .network-safety{font-size:12px;margin-bottom:0}
 .shortcuts-heading{max-width:650px}
 .shortcut-actions{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin:34px 0}
 .shortcut-action{padding:24px 0;border-top:1px solid #cdd4df;border-bottom:1px solid #cdd4df}
