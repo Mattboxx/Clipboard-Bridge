@@ -1,5 +1,9 @@
 # Clipboard Bridge App Store
 
+> Release preparation: the manifests in this branch target server 1.0.8.
+> The public catalog and stable image remain 1.0.7 until maintainer approval.
+> Publish and verify the image before merging these catalog changes.
+
 **English** | [Italiano](README.it.md)
 
 This repository contains the one-click installation catalog for
@@ -252,7 +256,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Open **App Store** in Runtipi.
 2. Select **Add custom app**.
 3. Use `clipboard-bridge` as the app ID and `Clipboard Bridge` as its name.
-4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.7`.
+4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`.
 5. Set container port `5088` and expose it through Runtipi.
 6. Add a persistent volume from `/data` in the container to the app data
    directory proposed by Runtipi.

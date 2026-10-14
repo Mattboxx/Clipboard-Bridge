@@ -37,6 +37,7 @@ Thumbs.db
 
 # Android build tools and private signing material
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/**/build/
 android/*.jks

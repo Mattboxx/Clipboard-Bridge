@@ -1,5 +1,9 @@
 # Clipboard Bridge App Store
 
+> Preparazione release: i manifest di questo branch usano il server 1.0.8.
+> Catalogo pubblico e immagine stabile restano alla 1.0.7 fino all'approvazione.
+> Pubblicare e verificare l'immagine prima di integrare questi cambiamenti.
+
 [English](README.md) | **Italiano**
 
 Questa repository contiene il catalogo per installare
@@ -225,7 +229,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Apri **App Store** in Runtipi.
 2. Seleziona **Add custom app**.
 3. Usa `clipboard-bridge` come ID e `Clipboard Bridge` come nome.
-4. Inserisci l’immagine `ghcr.io/mattboxx/clipboard-bridge-server:1.0.7`.
+4. Inserisci l’immagine `ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`.
 5. Imposta la porta del container su `5088` e rendila esponibile.
 6. Aggiungi un volume persistente dalla directory applicativa proposta da
    Runtipi a `/data` nel container.
