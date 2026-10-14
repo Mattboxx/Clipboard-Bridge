@@ -1,7 +1,8 @@
 # Launch preparation, not publication
 
-Status: **draft; maintainer approval required**. No announcements, directory submissions,
-new stable release or app-store update is authorized by this document. SignPath is deferred.
+Status: **promotional drafts only**. The maintainer approved technical publication of
+Windows 2.0.15, server 1.0.8, Android beta.11, catalogs and website on 14 October 2026.
+Announcements and directory submissions still require separate approval. SignPath is deferred.
 
 ## Positioning
 

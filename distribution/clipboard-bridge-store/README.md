@@ -1,9 +1,5 @@
 # Clipboard Bridge App Store
 
-> Release preparation: the manifests in this branch target server 1.0.8.
-> The public catalog and stable image remain 1.0.7 until maintainer approval.
-> Publish and verify the image before merging these catalog changes.
-
 **English** | [Italiano](README.it.md)
 
 This repository contains the one-click installation catalog for

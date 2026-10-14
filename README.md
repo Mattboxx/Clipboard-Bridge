@@ -14,9 +14,6 @@ No mandatory cloud service, online account, subscription or telemetry.
 
 **English** | [Italiano](README.it.md)
 
-> This branch prepares Windows 2.0.15, Android beta.11 and server 1.0.8.
-> Publication is pending approval. The public stable Windows release is still 2.0.14.
-
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
 [Downloads](#download) | [Start here](#start-here) |
 [Full guide](GUIDE.md) | [Developers](#developers)
@@ -43,7 +40,7 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Prepared releases (not published):** Windows 2.0.15 | Android 1.0.0-beta.11 | Server 1.0.8
+**Current releases:** Windows 2.0.15 | Android 1.0.0-beta.11 | Server 1.0.8
 
 | Your device | Ready-to-use downloads |
 |---|---|

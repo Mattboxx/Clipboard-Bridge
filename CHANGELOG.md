@@ -2,7 +2,7 @@
 
 All notable user-facing changes are documented here.
 
-## Unreleased: 2.0.15 / Server 1.0.8 / Android 1.0.0-beta.11
+## 2.0.15 / Server 1.0.8 / Android 1.0.0-beta.11 - 2026-10-14
 
 - Deliver copied RTF as plain Unicode text in both server modes; preserve emoji and visible hyperlink labels.
 - Prefer Windows Unicode clipboard content, falling back to RTF when no plain-text format exists.
@@ -14,7 +14,7 @@ All notable user-facing changes are documented here.
 - Make the remembered web session duration configurable without changing the existing default.
 - Keep authentication and HTTPS optional for trusted LAN/VPN use.
 - Include the History hotkey toggle from 2.0.14.
-- Signing work is deferred; Windows packages remain unsigned. Publication requires maintainer approval.
+- Signing work is deferred; Windows packages remain unsigned.
 
 ## 2.0.14 - 2026-10-14
 
