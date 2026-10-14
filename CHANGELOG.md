@@ -2,6 +2,18 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.12 - 2026-10-14
+
+- Configurable global shortcut to open or focus Windows History, initially Ctrl+Alt+H.
+- Change Send, Receive and History shortcuts in Settings without rebuilding the app.
+- Open History on the GUI thread, without uploading the clipboard or creating another window.
+- Reject invalid or duplicate shortcuts before saving; preserve existing credentials and custom bindings.
+- Keep working Send/Receive bindings if an older configuration conflicts with the new default.
+- Do not let the automatic connection check clear Settings validation errors.
+- Clearer English and Italian READMEs: beginner setup first, expandable device instructions and complete developer/API reference.
+- Optional Ko-fi support link and explanation at the end of both READMEs.
+- Windows x64 and native ARM64 installer/portable packages; standalone server remains 1.0.7, Android and iPhone downloads are unchanged.
+
 ## 2.0.11 - 2026-10-14
 
 - Real image thumbnails in the optional Windows History preview pane, for server and local items.

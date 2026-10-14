@@ -472,6 +472,114 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, t
             child.destroy()
 
 
+def test_history_hotkey_queues_gui_and_replaces_existing_bindings(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    registered, removed = [], []
+
+    def add_hotkey(hotkey, callback, **options):
+        handle = object()
+        registered.append((hotkey, callback, options, handle))
+        return handle
+
+    monkeypatch.setattr(client, "keyboard", SimpleNamespace(
+        parse_hotkey=client.keyboard.parse_hotkey,
+        add_hotkey=add_hotkey, remove_hotkey=removed.append,
+    ))
+    monkeypatch.setattr(client, "_run_bg", lambda *_: pytest.fail("History must not transfer data"))
+    monkeypatch.setattr(client, "notify", lambda *_: pytest.fail("Unexpected hotkey error"))
+    client.register_hotkeys()
+    assert [entry[0] for entry in registered] == ["ctrl+alt+c", "ctrl+alt+v", "ctrl+alt+h"]
+    assert registered[2][2]["trigger_on_release"] is True
+    registered[2][1]()
+    assert client._cmd_q.get_nowait() is client.open_history_window
+    client.config["hotkey_history"] = "ctrl+shift+y"
+    client.register_hotkeys()
+    assert removed == [entry[3] for entry in registered[:3]]
+    assert registered[-1][0] == "ctrl+shift+y"
+    client.config["hotkeys_enabled"] = False
+    client.register_hotkeys()
+    assert removed == [entry[3] for entry in registered]
+    assert client._hotkeys == []
+
+
+def test_history_hotkey_conflict_preserves_existing_send_and_receive(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    registered, errors = [], []
+    monkeypatch.setattr(client, "keyboard", SimpleNamespace(
+        parse_hotkey=client.keyboard.parse_hotkey,
+        add_hotkey=lambda hotkey, *_args, **_kw: registered.append(hotkey),
+        remove_hotkey=lambda *_: None,
+    ))
+    monkeypatch.setattr(client, "notify", errors.append)
+    client.config["hotkey_send"] = "ctrl+alt+h"
+    client.register_hotkeys()
+    assert registered == ["ctrl+alt+h", "ctrl+alt+v"]
+    assert len(errors) == 1
+
+
+def test_old_settings_get_history_hotkey_without_losing_credentials(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.CONFIG_FILE).write_text(json.dumps({
+        "username": "alice", "password": "example-password",
+        "hotkey_send": "ctrl+shift+s", "hotkey_receive": "ctrl+shift+r",
+    }), encoding="utf-8")
+    saved = client.load_config()
+    assert saved["hotkey_history"] == "ctrl+alt+h"
+    assert saved["hotkey_send"] == "ctrl+shift+s"
+    assert saved["hotkey_receive"] == "ctrl+shift+r"
+    assert saved["username"] == "alice" and saved["password"] == "example-password"
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_settings_validate_and_persist_history_hotkey(tmp_path, monkeypatch, lang, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, username="alice", password="example-password")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "check_connection", lambda *_args: True)
+    monkeypatch.setattr(client, "register_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "notify", lambda *_args: None)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    try:
+        client.open_settings()
+        tk_test_root.update()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "settings")
+        controls = list(descendants(window))
+        history = next(child for child in controls if isinstance(child, client.ttk.Entry)
+                       and child.get() == "ctrl+alt+h")
+        save = next(child for child in controls if isinstance(child, client.ttk.Button)
+                    and child.cget("text") == client.t("save"))
+        assert any(isinstance(child, client.ttk.Label)
+                   and child.cget("text") == client.t("lbl_hk_history") for child in controls)
+        for invalid in ("alt+ctrl+c", "ctrl+not-a-real-key"):
+            history.delete(0, "end")
+            history.insert(0, invalid)
+            save.invoke()
+            tk_test_root.update()
+            assert client.config["hotkey_history"] == "ctrl+alt+h"
+            assert window.winfo_exists()
+            assert any(isinstance(child, client.ttk.Label)
+                       and child.cget("text") == client.t("err_hotkeys") for child in controls)
+        history.delete(0, "end")
+        history.insert(0, "CTRL+SHIFT+Y")
+        save.invoke()
+        tk_test_root.update()
+        saved = json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))
+        assert saved["hotkey_history"] == "ctrl+shift+y"
+        assert saved["username"] == "alice" and saved["password"] == "example-password"
+        assert client.load_config()["hotkey_history"] == "ctrl+shift+y"
+    finally:
+        for child in tk_test_root.winfo_children():
+            if child.winfo_exists():
+                command = child.protocol("WM_DELETE_WINDOW")
+                tk_test_root.tk.call(command) if command else child.destroy()
+
+
 def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, tk_test_root):
     client = load_client(tmp_path, monkeypatch)
     client.config.update(appearance="dark", username="alice", password="example-password")
@@ -742,7 +850,7 @@ def load_client(tmp_path, monkeypatch):
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.11"
+    assert client.APP_VERSION == "2.0.12"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
