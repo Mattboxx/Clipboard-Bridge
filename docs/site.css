@@ -53,6 +53,7 @@ h2{font-size:36px;line-height:1.2;letter-spacing:0;margin:0 0 16px}
 #download .item .actions{margin-top:auto;padding-top:24px;align-items:stretch}
 #download .item .button{width:100%}
 .download-version{display:block;color:var(--muted);font-size:13px;margin-bottom:14px}
+.item p.mac-guide{margin-top:14px;font-size:13px}
 .notice{font-size:14px;color:var(--muted);margin:24px 0 0;padding:18px 0;border-top:1px solid var(--line);max-width:900px}
 .modes,.platform-columns{display:grid;grid-template-columns:1fr 1fr;gap:36px}
 .mode{padding:22px 0;border-top:2px solid var(--blue)}
