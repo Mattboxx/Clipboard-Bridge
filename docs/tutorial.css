@@ -1,0 +1,32 @@
+.tutorial-header{max-width:1120px;margin:auto;padding:48px 28px 32px;border-bottom:1px solid var(--line)}
+.tutorial-header h1{font-size:42px;max-width:820px;line-height:1.2;margin:12px 0 18px}
+.tutorial-header p{max-width:760px;color:var(--muted);margin:0 0 16px}
+.tutorial-header .section-kicker{margin:0}
+.tutorial-meta{font-size:13px;color:var(--muted)}
+.tutorial-layout{max-width:1120px;margin:auto;display:grid;grid-template-columns:210px minmax(0,1fr);gap:48px;padding:34px 28px 64px;align-items:start}
+.tutorial-toc{position:sticky;top:98px;font-size:14px;padding:0 20px 0 0;border-right:1px solid var(--line)}
+.tutorial-toc strong{display:block;margin-bottom:12px}
+.tutorial-toc a{display:block;padding:6px 0;color:var(--muted);text-decoration:none}
+.tutorial-toc a:hover{color:var(--blue);text-decoration:underline}
+.tutorial-article{min-width:0}
+.tutorial-article section{padding:0 0 36px;margin:0 0 34px;border-bottom:1px solid var(--line);scroll-margin-top:96px}
+.tutorial-article h2{font-size:28px;line-height:1.25;margin:0 0 16px}
+.tutorial-article h3{font-size:19px;line-height:1.4;margin:24px 0 10px}
+.tutorial-article p,.tutorial-article li{font-size:16px}
+.tutorial-article li{padding:0 0 10px}
+.tutorial-article ul,.tutorial-article ol{padding-left:24px}
+.tutorial-article figure{margin:24px 0}
+.tutorial-article figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6}
+.tutorial-article video{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f5f7fa;border:1px solid var(--line);border-radius:6px}
+.tutorial-article figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
+.tutorial-article code{font-size:14px;overflow-wrap:anywhere}
+.tutorial-article pre{font-size:14px;line-height:1.65;background:var(--surface);padding:18px;border:1px solid var(--line);border-radius:6px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.tutorial-note{border-left:3px solid var(--green);padding:4px 0 4px 18px;margin:20px 0;color:var(--muted)}
+.tutorial-note strong{color:var(--ink)}
+.tutorial-article details{border-bottom:1px solid var(--line);padding:16px 0}
+.tutorial-article summary{font-weight:650;cursor:pointer;line-height:1.5}
+.tutorial-article details p{margin-bottom:0}
+.tutorial-article .actions{margin-bottom:24px}
+.tutorial-end{max-width:1120px;margin:auto;padding:0 28px 32px;color:var(--muted);font-size:13px}
+@media(max-width:800px){.tutorial-layout{grid-template-columns:1fr;gap:28px}.tutorial-toc{position:static;border-right:0;border-bottom:1px solid var(--line);padding:0 0 18px;display:flex;flex-wrap:wrap;gap:6px 20px}.tutorial-toc strong{flex-basis:100%;margin:0}.tutorial-toc a{padding:4px 0}.tutorial-header h1{font-size:34px}}
+@media(max-width:480px){.tutorial-header{padding:32px 22px 20px}.tutorial-header h1{font-size:29px}.tutorial-layout{padding:24px 22px 36px}.tutorial-article h2{font-size:25px}.tutorial-header .button{flex:1 1 100%}.tutorial-article pre{padding:12px}.tutorial-end{padding:0 22px 28px}}

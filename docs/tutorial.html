@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share clipboard between Windows, iPhone and Android | Clipboard Bridge tutorial</title>
+  <meta name="description" content="A step-by-step guide to sharing text, photos and files between Windows, iPhone and Android on your own network. Use Windows as the host or a Docker server.">
+  <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.html">
+  <link rel="alternate" hreflang="en" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.html">
+  <link rel="alternate" hreflang="it" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Share your clipboard between Windows and your phone">
+  <meta property="og:description" content="Start with your Windows PC. Add iPhone Shortcuts or Android, and use a Docker host if you want an always-on clipboard.">
+  <meta property="og:url" content="https://mattboxx.github.io/Clipboard-Bridge/tutorial.html">
+  <meta property="og:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-10-14","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to tutorial</a>
+  <nav aria-label="Main navigation"><div class="nav-inner">
+    <a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a>
+    <div class="nav-links"><a class="nav-download" href="./#download">Download</a><a href="tutorial.it.html" lang="it">Italiano</a></div>
+  </div></nav>
+  <header class="tutorial-header">
+    <span class="section-kicker">Step-by-step setup</span>
+    <h1>Clipboard Bridge tutorial</h1>
+    <p>Copy a link on Windows and use it on your phone. Send a photo or document back to your PC. Your devices share one latest item and a history through a host you control.</p>
+    <p><strong>No home server? Your Windows PC can be the host.</strong> A Docker or NAS server is optional: it keeps the clipboard available when your PC is off and adds browser access and separate accounts.</p>
+    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Watch the web demo</a></div>
+    <div class="tutorial-meta">14 October 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
+  </header>
+  <main class="tutorial-layout">
+    <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Live web demo</a><a href="#help">Troubleshooting</a></aside>
+    <article class="tutorial-article" id="article">
+      <section id="before">
+        <h2>1. Put the devices on the same network</h2>
+        <p>Start with your PC and phone on the same trusted Wi-Fi/LAN. The phone must be able to reach the PC or server. Guest Wi-Fi may block communication between devices.</p>
+        <p>When away from home, a private VPN can connect your devices. Tailscale and WireGuard are examples, not requirements. Use the host's reachable VPN address, or configure subnet routing separately to keep a home LAN address. Follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">network guide</a>.</p>
+        <div class="tutorial-note"><strong>Keep it private.</strong> Do not forward port 5088 to the public Internet. Accounts and tokens are optional; plain HTTP does not encrypt content or credentials, and account/token URL values remain readable.</div>
+      </section>
+      <section id="windows">
+        <h2>2. Let Windows be the host</h2>
+        <ol>
+          <li><a href="./#download">Download the Windows installer</a> for your processor. Most Intel/AMD PCs need x64; Snapdragon Windows 11 PCs need ARM64. A portable EXE is also available.</li>
+          <li>Open Clipboard Bridge. Find its clipboard icon in the system tray; Windows may put it under the hidden-icons arrow.</li>
+          <li>Right-click the icon and open <strong>Settings &gt; General</strong>. Choose <strong>Server mode</strong>, keep port <code>5088</code> and save.</li>
+          <li>Use the <strong>Server</strong> address shown in the tray menu. Click the address to copy it. Allow the app through the Windows firewall on your trusted private network when prompted.</li>
+          <li>Keep the PC and app running. Enter this same address on Android or in your two iPhone Shortcuts below.</li>
+        </ol>
+        <p>A sample address is <code>http://192.168.1.50:5088</code>. <strong>Replace it with the address your PC shows.</strong> Do not use <code>127.0.0.1</code> or <code>localhost</code> on the phone: those refer to the phone itself.</p>
+        <div class="tutorial-note"><strong>Windows Server mode has no web page.</strong> Use the Windows app's History window and your mobile clients. The browser interface belongs to the optional standalone server.</div>
+        <figure><img src="assets/windows-history.png" alt="Windows History window showing sample clipboard items" width="1280" height="760" loading="lazy"><figcaption>The Windows History window. Screenshot uses sample data, not private clipboard contents.</figcaption></figure>
+        <p>Left-click the tray icon to open History. The default History shortcut is <code>Ctrl+Alt+H</code>: press again to close it. Change it in <strong>Settings &gt; Shortcuts</strong>.</p>
+      </section>
+      <section id="iphone">
+        <h2>3. Connect an iPhone or iPad</h2>
+        <p>Apple devices use two user-triggered Shortcuts: one sends the current item, the other receives the newest item. There is no native iOS app or continuous background clipboard synchronization.</p>
+        <ol>
+          <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
+          <li>Edit <strong>Load Clipboard</strong>. In <strong>Get Contents of URL</strong>, replace the entire example URL with your host's address followed by <code>/clipboard</code>. Keep the method <strong>POST</strong>.</li>
+          <li>Edit <strong>Download Clipboard</strong>. Replace its URL with the same host followed by <code>/clipboard/latest/raw</code>. Keep the method <strong>GET</strong>.</li>
+          <li>Leave accounts and tokens empty for an unprotected shared clipboard on a trusted network. If your administrator enabled them, use the <a href="#accounts">account instructions</a> below in both Shortcuts.</li>
+        </ol>
+        <pre><code>Send:    POST http://YOUR_HOST:5088/clipboard
+Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
+        <h3>Try the first transfer</h3>
+        <p>Copy <code>Hello from Windows</code> on the PC and use <strong>Send clipboard</strong> in its tray menu. Run <strong>Download Clipboard</strong> on iPhone, then paste into a blank note. To go back, copy a short message on iPhone, run <strong>Load Clipboard</strong>, then use <strong>Receive latest</strong> on Windows and paste it.</p>
+        <h3>Put both actions in Control Center</h3>
+        <p>On supported iOS versions, open Control Center, tap <strong>+</strong>, then <strong>Add a Control &gt; Shortcut &gt; Choose</strong>. Select Load Clipboard. Repeat for Download Clipboard. See <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">Apple's instructions</a>.</p>
+        <p>For Share Sheet input, original filenames and multiple-file transfers, follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">advanced Shortcut recipe</a>. The signed downloads have not been changed in this release; do not assume they include the newer multi-file recipe. That recipe sends a temporary ZIP to <code>/clipboard/bundle</code> and can extract the returned group after reading <code>/clipboard/latest/meta</code>.</p>
+        <p>Mac can build the same manual workflow in Apple Shortcuts. There is no native Mac client; see the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#mac-compatibility">Mac setup guide</a>.</p>
+      </section>
+      <section id="android">
+        <h2>4. Connect Android</h2>
+        <ol>
+          <li>Install the <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">signed Android APK</a>. It requires Android 10 or newer and is currently a public beta.</li>
+          <li>Open Settings in the app and enter the same host address as Windows or your Docker server. Save. Leave optional credentials empty unless your administrator configured them.</li>
+          <li>Copy a sample message on Android. Open the app and tap <strong>Send clipboard</strong>. Use Receive on Windows to get it.</li>
+          <li>Send another message from Windows, then tap <strong>Receive latest</strong> on Android. Paste the result into a note.</li>
+        </ol>
+        <p>Share a photo or document from another app using <strong>Share &gt; Clipboard Bridge</strong>. Several files selected together travel as one history item. The app reads the selected server/account's history; it is not a separate local-only list.</p>
+        <p>Quick Settings actions, incoming notifications and receiving options are available. <strong>Android restricts background clipboard reading:</strong> do not expect every copy made in another app to be detected while Clipboard Bridge is in the background. Start with manual actions, then enable the optional automation you need.</p>
+        <p>More details: <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/android/README.md">Android guide</a>.</p>
+      </section>
+      <section id="daily">
+        <h2>5. Use text, photos and files</h2>
+        <ul>
+          <li><strong>Text:</strong> copied rich text arrives as ordinary Unicode text, keeping emoji, accents and line breaks but not fonts or colours.</li>
+          <li><strong>Original documents:</strong> a PDF, RTF document or any other file keeps its original bytes. A document is not converted just because its contents are text.</li>
+          <li><strong>Windows files:</strong> copy them in File Explorer and use Send clipboard, or choose Send a file. Received files are saved to <code>Downloads\Clipboard Bridge</code> and placed on the Windows clipboard.</li>
+          <li><strong>Groups:</strong> selecting several files in one operation creates one history item. Windows and Android can restore members together. Generic browser/API downloads return a ZIP; Apple extraction needs the multi-file Shortcut variant.</li>
+          <li><strong>Latest item:</strong> the newest item wins. A newer text message is not hidden behind an older image or file group.</li>
+        </ul>
+        <p>Open Windows History, select an item and enable <strong>Preview</strong> for image thumbnails or a PDF's first page. Use Copy to restore it. In Settings, you can configure Send, Receive and History hotkeys, notifications and optional synchronization.</p>
+        <div class="tutorial-note"><strong>Enable automatic sending deliberately.</strong> It may send sensitive text you copy. Windows must be running; clipboard changes made by elevated apps may not be detected by a standard-user process. This limitation applies to both installer and portable versions.</div>
+      </section>
+      <section id="docker">
+        <h2>Optional: an always-on Docker or NAS host</h2>
+        <p>Use this instead of Windows Server mode if you want shared history while the PC is off, a browser page and optional isolated accounts. It is your own host, not a mandatory cloud service.</p>
+        <p>For compatible custom app stores, follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme">App Store guide</a>. ZimaOS uses the permanent <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">JSON source</a>; these are custom catalogs, not claims of official store acceptance.</p>
+        <p>With Docker and Compose already installed, save this as <code>compose.yaml</code> in an empty project folder:</p>
+        <pre><code>services:
+  clipboard-bridge:
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.8
+    restart: unless-stopped
+    ports:
+      - "5088:5088"
+    environment:
+      CLIPBOARD_DATA_DIR: /data
+    volumes:
+      - ./data:/data</code></pre>
+        <p>Run <code>docker compose up -d</code> in that folder, then <code>docker compose ps</code>. Open <code>http://YOUR_HOST:5088/</code> from a device on the same trusted network.</p>
+        <p>In Windows, select <strong>Client mode</strong> and set the server address in Settings. Put that same host address in Android and both Apple Shortcuts. <code>/health</code> reports the standalone server's version.</p>
+        <h3>Update without losing your history</h3>
+        <p>Back up your data and Compose file. Change the image tag, retaining your existing environment values and the volume mounted at <code>/data</code>. If your image is pinned with an old <code>@sha256</code> digest, update that too or remove the old digest.</p>
+        <pre><code>docker compose pull
+docker compose up -d
+docker compose ps</code></pre>
+        <p>Do not delete the data folder or run <code>docker compose down -v</code> as an update step. Read the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/DOCKER.md">complete Docker guide</a> for accounts, backups and other deployment settings.</p>
+      </section>
+      <section id="accounts">
+        <h2>Optional: separate accounts</h2>
+        <p>The standalone server can provide separate histories. Windows Server mode does not have separate accounts. Adding an account does not remove the general shared clipboard.</p>
+        <p>The administrator can set <code>CLIPBOARD_ACCOUNTS</code> or use the accounts file described in the full guide. Windows and Android then use that account's username and password in Settings. Do not enter the web-page password as the account password unless they actually match.</p>
+        <p>For an Apple account, append the same URL-encoded credentials to <strong>both</strong> action URLs. These are placeholders, not real credentials:</p>
+        <pre><code>http://YOUR_HOST:5088/clipboard?user=alice&amp;password=YOUR_PASSWORD
+http://YOUR_HOST:5088/clipboard/latest/raw?user=alice&amp;password=YOUR_PASSWORD</code></pre>
+        <p>Use <code>&amp;</code> instead of <code>?</code> when the URL already has a query parameter, such as <code>?filename=...</code>. Encode reserved characters in the credential values, not the entire URL. For a protected shared clipboard, use the configured optional token instead. See the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#multiple-accounts">account guide</a>.</p>
+        <div class="tutorial-note"><strong>Credentials remain readable in URLs and HTTP is not encrypted.</strong> Keep these links out of screenshots, posts and shared logs. Use a trusted LAN or private VPN; a VPN does not necessarily encrypt every segment of your LAN.</div>
+      </section>
+      <section id="demo">
+        <h2>Watch the live web demo</h2>
+        <p>This is a recording of the actual standalone server 1.0.8, using a disposable local instance and sample data. It shows saving Unicode text, uploading an image, sending a two-file group and replacing it with newer text.</p>
+        <figure><video controls playsinline preload="metadata" poster="assets/demo/poster.png" aria-label="Live demonstration of Clipboard Bridge's optional web interface"><source src="assets/demo/clipboard-bridge-web-demo.mp4" type="video/mp4"><p><a href="assets/demo/clipboard-bridge-web-demo.mp4">Download the demonstration video</a>.</p></video><figcaption>Actual web UI, with captions added for the recording. Browser actions are automated. Text and original file bytes were checked from an independent HTTP client. This is not a physical iPhone/Android or cross-device clipboard recording.</figcaption></figure>
+        <p><a href="assets/demo/clipboard-bridge-web-demo.mp4" download>Download the MP4</a></p>
+        <details><summary>Read the demo transcript</summary><ol><li>Save text containing an emoji, an accent and a link.</li><li>Read the same text through a separate HTTP client.</li><li>Upload the project's public SVG icon as an image.</li><li>Send sample notes and a checklist together; one two-file history item appears.</li><li>Download the group's ZIP and verify that both original files are unchanged.</li><li>Save newer text: it becomes the latest item while older entries remain in history.</li></ol></details>
+      </section>
+      <section id="help">
+        <h2>If something does not work</h2>
+        <details><summary>My phone cannot reach the host</summary><p>Check that the host is running, both devices are on the same trusted network and the phone uses the host's actual address, not localhost. Check private-network firewall permission, Wi-Fi client isolation and VPN routes. Windows Server mode intentionally has no browser page; do not use a missing page as its connection test.</p></details>
+        <details><summary>I see a different history than expected</summary><p>Check the host address and selected account on every client. With no username you access the general shared space; named accounts have separate histories. Set the same account in both Apple URLs too.</p></details>
+        <details><summary>A file will not paste into another app</summary><p>Not every app accepts file clipboard items. Open the received file from Downloads or use that app's file picker/Share command. A browser receives a group as ZIP; Apple needs the extraction variant to restore its members.</p></details>
+        <details><summary>Windows warns about the download</summary><p>The Windows packages are not digitally signed yet. Do not disable Windows protection. Read <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/CODE_SIGNING.md">CODE_SIGNING.md</a> and the release notes before proceeding.</p></details>
+        <details><summary>What has actually been tested?</summary><p>Automated Python/Android tests, native Windows x64/ARM64 packaging and Docker upgrade/persistence checks passed for this release. The web demo was recorded and its HTTP transfers verified. Physical phone, NAS GUI and real VPN acceptance checks remain pending.</p></details>
+        <p>Report a reproducible problem in <a href="https://github.com/Mattboxx/Clipboard-Bridge/issues">GitHub Issues</a>, including versions, host mode and steps. Do not attach passwords, token URLs, private clipboard contents or unredacted logs.</p>
+      </section>
+    </article>
+  </main>
+  <footer class="tutorial-end"><a href="./">Back to Clipboard Bridge</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge">MIT-licensed source</a> &middot; <a href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer">Support ongoing maintenance</a></footer>
+</body>
+</html>

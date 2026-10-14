@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Condividere clipboard tra Windows, iPhone e Android | Tutorial Clipboard Bridge</title>
+  <meta name="description" content="Guida passo passo per condividere testo, foto e file tra Windows, iPhone e Android sulla tua rete. Usa il PC come server oppure un host Docker.">
+  <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html">
+  <link rel="alternate" hreflang="en" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.html">
+  <link rel="alternate" hreflang="it" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Condividi la clipboard tra Windows e il tuo telefono">
+  <meta property="og:description" content="Parti dal PC Windows, collega iPhone o Android e scegli Docker se desideri una clipboard sempre disponibile.">
+  <meta property="og:url" content="https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html">
+  <meta property="og:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Condividere clipboard tra Windows, iPhone e Android","description":"Configura il tuo PC o Docker come host della clipboard e collega il telefono.","datePublished":"2026-10-14","dateModified":"2026-10-14","inLanguage":"it","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html","image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#article">Vai alla guida</a>
+  <nav aria-label="Navigazione principale"><div class="nav-inner">
+    <a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a>
+    <div class="nav-links"><a class="nav-download" href="./#download">Download</a><a href="tutorial.html" lang="en">English</a></div>
+  </div></nav>
+  <header class="tutorial-header">
+    <span class="section-kicker">Configurazione passo passo</span>
+    <h1>Tutorial Clipboard Bridge</h1>
+    <p>Copia un link sul PC e usalo sul telefono. Invia una foto o un documento al computer. Tutti i dispositivi accedono allo stesso ultimo elemento e alla sua cronologia, tramite un host gestito da te.</p>
+    <p><strong>Non hai un server? Basta il PC Windows.</strong> Docker o un NAS sono facoltativi: mantengono la clipboard disponibile quando il PC &egrave; spento e aggiungono pagina web e account separati.</p>
+    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Guarda la demo web</a></div>
+    <div class="tutorial-meta">14 ottobre 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
+  </header>
+  <main class="tutorial-layout">
+    <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Demo web reale</a><a href="#help">Problemi comuni</a></aside>
+    <article class="tutorial-article" id="article">
+      <section id="before">
+        <h2>1. Collega i dispositivi alla stessa rete</h2>
+        <p>Per la prima prova, collega PC e telefono allo stesso Wi-Fi o LAN fidata. Il telefono deve poter raggiungere il PC o il server. Alcune reti ospiti impediscono ai dispositivi di comunicare tra loro.</p>
+        <p>Fuori casa puoi usare una VPN privata. Tailscale e WireGuard sono esempi, non requisiti. Usa l'indirizzo VPN raggiungibile dell'host oppure configura separatamente il subnet routing per continuare a usare l'indirizzo locale. Consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">guida alla rete</a>.</p>
+        <div class="tutorial-note"><strong>Non esporlo su Internet.</strong> Non aprire la porta 5088 del router verso Internet. Account e token sono opzionali; HTTP non cifra contenuti o credenziali, che restano leggibili negli URL degli account.</div>
+      </section>
+      <section id="windows">
+        <h2>2. Usa Windows come server</h2>
+        <ol>
+          <li><a href="./#download">Scarica l'installer Windows</a> adatto al processore. Per PC Intel/AMD scegli x64; per Windows 11 su Snapdragon scegli ARM64. Puoi anche usare l'EXE portable.</li>
+          <li>Avvia Clipboard Bridge e cerca l'icona della clipboard accanto all'orologio, eventualmente sotto la freccia delle icone nascoste.</li>
+          <li>Clic destro sull'icona, poi <strong>Impostazioni &gt; Generale</strong>. Seleziona <strong>Modalit&agrave; server</strong>, lascia la porta <code>5088</code> e salva.</li>
+          <li>Usa l'indirizzo <strong>Server</strong> mostrato nel menu dell'icona. Cliccandolo puoi copiarlo. Quando richiesto, consenti l'app nel firewall Windows sulla tua rete privata fidata.</li>
+          <li>Tieni PC e programma accesi. Inserisci lo stesso indirizzo su Android o nei due Comandi Rapidi iPhone descritti sotto.</li>
+        </ol>
+        <p>Un esempio &egrave; <code>http://192.168.1.50:5088</code>: <strong>sostituiscilo con quello mostrato dal tuo PC.</strong> Sul telefono non usare <code>127.0.0.1</code> o <code>localhost</code>, che indicano il telefono stesso.</p>
+        <div class="tutorial-note"><strong>La modalit&agrave; server Windows non ha una pagina web.</strong> Usa la cronologia dell'app Windows e i client mobili. La pagina browser appartiene al server autonomo facoltativo.</div>
+        <figure><img src="assets/windows-history.png" alt="Cronologia dell'app Windows con elementi di esempio" width="1280" height="760" loading="lazy"><figcaption>La cronologia Windows. La schermata contiene dati dimostrativi, non clipboard private.</figcaption></figure>
+        <p>Clic sinistro sull'icona per aprire la cronologia. La combinazione predefinita &egrave; <code>Ctrl+Alt+H</code>; premila di nuovo per chiuderla. Puoi modificarla in <strong>Impostazioni &gt; Scorciatoie</strong>.</p>
+      </section>
+      <section id="iphone">
+        <h2>3. Collega iPhone o iPad</h2>
+        <p>Bastano due Comandi Rapidi: uno invia l'elemento corrente, l'altro riceve il pi&ugrave; recente. Si eseguono quando li avvii: non esiste una sincronizzazione continua in background su iPhone.</p>
+        <ol>
+          <li>Dall'iPhone scarica e apri <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> e <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Aggiungili all'app Comandi Rapidi di Apple.</li>
+          <li>Modifica <strong>Load Clipboard</strong>: in <strong>Ottieni contenuti dell'URL</strong> sostituisci l'intero URL di esempio con l'indirizzo del tuo host seguito da <code>/clipboard</code>. Mantieni <strong>POST</strong>.</li>
+          <li>Modifica <strong>Download Clipboard</strong>: inserisci lo stesso host seguito da <code>/clipboard/latest/raw</code>. Mantieni <strong>GET</strong>.</li>
+          <li>Per la clipboard generale non protetta su rete fidata, lascia vuoti token e account. Se l'amministratore li ha impostati, segui le <a href="#accounts">istruzioni sugli account</a> in entrambi i comandi.</li>
+        </ol>
+        <pre><code>Invio:     POST http://TUO_HOST:5088/clipboard
+Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
+        <h3>Fai la prima prova</h3>
+        <p>Copia <code>Ciao da Windows</code> sul PC e usa <strong>Invia clipboard</strong> dal menu dell'app. Esegui <strong>Download Clipboard</strong> su iPhone, poi incolla in una nota vuota. Per il percorso opposto, copia un messaggio su iPhone, esegui <strong>Load Clipboard</strong> e usa <strong>Ricevi ultimo</strong> su Windows prima di incollarlo.</p>
+        <h3>Aggiungili al Centro di Controllo</h3>
+        <p>Nelle versioni iOS che lo supportano, apri il Centro di Controllo, tocca <strong>+</strong>, poi <strong>Aggiungi un controllo &gt; Comando rapido &gt; Scegli</strong>. Seleziona Load Clipboard e ripeti per Download Clipboard. Consulta le <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">istruzioni Apple</a>.</p>
+        <p>Per il menu Condividi, i nomi originali e pi&ugrave; file insieme, segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">variante avanzata dei Comandi Rapidi</a>. I file firmati della release non sono cambiati: non presumere che includano gi&agrave; la nuova variante multi-file. Questa invia uno ZIP temporaneo a <code>/clipboard/bundle</code> e pu&ograve; estrarre il gruppo ricevuto leggendo prima <code>/clipboard/latest/meta</code>.</p>
+        <p>Su Mac puoi creare lo stesso flusso manuale in Comandi Rapidi. Non c'&egrave; un client Mac nativo: consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#mac-compatibility">guida Mac</a>.</p>
+      </section>
+      <section id="android">
+        <h2>4. Collega Android</h2>
+        <ol>
+          <li>Installa l'<a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">APK Android firmato</a>. Richiede Android 10 o successivo ed &egrave; una beta pubblica.</li>
+          <li>Apri le impostazioni dell'app, inserisci l'indirizzo del PC o del server Docker e salva. Lascia vuote le credenziali facoltative, salvo che siano state configurate sul server.</li>
+          <li>Copia un messaggio di esempio, apri l'app e premi <strong>Invia clipboard</strong>. Ricevilo da Windows.</li>
+          <li>Invia un altro messaggio da Windows e premi <strong>Ricevi ultimo</strong> su Android. Incolla il risultato in una nota.</li>
+        </ol>
+        <p>Da altre app puoi inviare foto e documenti con <strong>Condividi &gt; Clipboard Bridge</strong>. Pi&ugrave; file selezionati insieme rimangono nello stesso elemento. La cronologia &egrave; quella del server e dell'account selezionato, non una lista solo locale.</p>
+        <p>Sono disponibili comandi nella tendina Android, notifiche e opzioni di ricezione. <strong>Android limita la lettura della clipboard in background:</strong> non aspettarti che ogni copia in un'altra app venga rilevata a programma non visibile. Parti da invio e ricezione manuali, poi abilita le opzioni automatiche necessarie.</p>
+        <p>Dettagli nella <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/android/README.md">guida Android</a>.</p>
+      </section>
+      <section id="daily">
+        <h2>5. Testo, immagini e file</h2>
+        <ul>
+          <li><strong>Testo:</strong> quello formattato arriva come testo Unicode normale, conservando emoji, accenti e righe, senza font o colori.</li>
+          <li><strong>Documenti originali:</strong> PDF, file RTF e altri file mantengono i byte originali. Un documento non viene convertito solo perch&eacute; contiene testo.</li>
+          <li><strong>File Windows:</strong> copiali in Esplora file e usa Invia clipboard, oppure Invia un file. I ricevuti vengono salvati in <code>Downloads\Clipboard Bridge</code> e copiati nella clipboard Windows.</li>
+          <li><strong>Gruppi:</strong> pi&ugrave; file inviati in una volta diventano un solo elemento. Windows e Android possono ripristinarli insieme. Il browser riceve uno ZIP; per estrarlo su Apple serve la variante multi-file del comando.</li>
+          <li><strong>Ordine:</strong> vince l'elemento pi&ugrave; recente. Un vecchio file non nasconde un messaggio nuovo.</li>
+        </ul>
+        <p>Nella cronologia Windows seleziona un elemento e abilita <strong>Anteprima</strong> per immagini o prima pagina dei PDF. Usa Copia per ripristinarlo. Le impostazioni permettono di scegliere hotkey, notifiche e sincronizzazione opzionale.</p>
+        <div class="tutorial-note"><strong>Attiva l'invio automatico consapevolmente.</strong> Pu&ograve; trasmettere anche contenuti sensibili che copi. Il programma deve essere attivo; una versione eseguita come utente normale pu&ograve; non rilevare copie da app avviate come amministratore. Vale sia per installer sia per portable.</div>
+      </section>
+      <section id="docker">
+        <h2>Facoltativo: server Docker o NAS sempre acceso</h2>
+        <p>Ti permette di usare la clipboard anche a PC spento, avere la pagina web e separare gli account. Il server rimane tuo: non &egrave; un servizio cloud obbligatorio.</p>
+        <p>Per i cataloghi personalizzati consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme">guida App Store</a>. ZimaOS usa la <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">sorgente JSON permanente</a>. Non si tratta di un'approvazione negli store ufficiali.</p>
+        <p>Con Docker e Compose gi&agrave; installati, salva questo file come <code>compose.yaml</code> in una cartella di progetto vuota:</p>
+        <pre><code>services:
+  clipboard-bridge:
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.8
+    restart: unless-stopped
+    ports:
+      - "5088:5088"
+    environment:
+      CLIPBOARD_DATA_DIR: /data
+    volumes:
+      - ./data:/data</code></pre>
+        <p>Esegui <code>docker compose up -d</code> nella cartella e verifica con <code>docker compose ps</code>. Apri <code>http://TUO_HOST:5088/</code> da un dispositivo della rete fidata.</p>
+        <p>Su Windows seleziona <strong>Modalit&agrave; client</strong> e inserisci l'indirizzo del server nelle impostazioni. Usa lo stesso host su Android e nei due Comandi Rapidi. L'endpoint <code>/health</code> mostra la versione del server autonomo.</p>
+        <h3>Aggiornamento senza perdere i dati</h3>
+        <p>Fai una copia dei dati e del Compose. Cambia il tag dell'immagine mantenendo variabili, account e volume montato su <code>/data</code>. Se c'&egrave; un vecchio digest <code>@sha256</code>, devi cambiarlo o rimuoverlo insieme al vecchio tag.</p>
+        <pre><code>docker compose pull
+docker compose up -d
+docker compose ps</code></pre>
+        <p>Non cancellare la cartella dati e non usare <code>docker compose down -v</code> per aggiornare. Consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/DOCKER.md">guida Docker completa</a> per account, backup e configurazioni aggiuntive.</p>
+      </section>
+      <section id="accounts">
+        <h2>Facoltativo: account separati</h2>
+        <p>Il server autonomo pu&ograve; isolare le cronologie. La modalit&agrave; server Windows non ha account distinti. La clipboard generale resta disponibile anche aggiungendo nuovi utenti.</p>
+        <p>L'amministratore configura <code>CLIPBOARD_ACCOUNTS</code> o il file account descritto nella guida. Windows e Android usano nome e password dell'account nelle impostazioni. La password della pagina web non &egrave; necessariamente la stessa dell'account.</p>
+        <p>Su Apple aggiungi le stesse credenziali, codificate per URL, a <strong>entrambi</strong> gli indirizzi. Questi sono segnaposto, non credenziali reali:</p>
+        <pre><code>http://TUO_HOST:5088/clipboard?user=alice&amp;password=TUA_PASSWORD
+http://TUO_HOST:5088/clipboard/latest/raw?user=alice&amp;password=TUA_PASSWORD</code></pre>
+        <p>Se l'URL contiene gi&agrave; un parametro come <code>?filename=...</code>, aggiungi l'account con <code>&amp;</code> anzich&eacute; <code>?</code>. Codifica i caratteri riservati nei valori, non l'intero URL. Per la clipboard generale protetta usa invece il token configurato. Dettagli nella <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#multiple-accounts">guida agli account</a>.</p>
+        <div class="tutorial-note"><strong>Le credenziali restano leggibili negli URL e HTTP non cifra i dati.</strong> Non includerle in screenshot, post o log condivisi. Usa rete fidata o VPN privata; la VPN non cifra necessariamente ogni tratto della LAN.</div>
+      </section>
+      <section id="demo">
+        <h2>Guarda la demo web reale</h2>
+        <p>La registrazione usa il server autonomo 1.0.8, in un'istanza locale temporanea con soli dati di esempio. Mostra testo Unicode, un'immagine, un gruppo di due file e un nuovo testo che diventa l'ultimo elemento.</p>
+        <figure><video controls playsinline preload="metadata" poster="assets/demo/poster.png" aria-label="Demo reale della pagina web facoltativa di Clipboard Bridge"><source src="assets/demo/clipboard-bridge-web-demo.mp4" type="video/mp4"><p><a href="assets/demo/clipboard-bridge-web-demo.mp4">Scarica il video della demo</a>.</p></video><figcaption>Interfaccia web reale, con didascalie aggiunte alla registrazione e azioni browser automatizzate. Testo e byte dei file sono stati verificati da un client HTTP indipendente. Non &egrave; una prova su iPhone/Android fisici o della clipboard tra dispositivi.</figcaption></figure>
+        <p><a href="assets/demo/clipboard-bridge-web-demo.mp4" download>Scarica il video MP4</a></p>
+        <details><summary>Leggi la descrizione della demo</summary><ol><li>Salva un testo con emoji, accento e link.</li><li>Leggi lo stesso testo tramite un client HTTP separato.</li><li>Carica l'icona SVG pubblica del progetto come immagine.</li><li>Invia insieme note e checklist: appare un elemento con due file.</li><li>Scarica lo ZIP e verifica che i file originali non siano cambiati.</li><li>Salva un testo pi&ugrave; recente: diventa l'ultimo elemento, mantenendo i precedenti in cronologia.</li></ol></details>
+      </section>
+      <section id="help">
+        <h2>Se qualcosa non funziona</h2>
+        <details><summary>Il telefono non raggiunge l'host</summary><p>Verifica host acceso, rete fidata comune e indirizzo corretto, non localhost. Controlla firewall su rete privata, isolamento Wi-Fi e rotte VPN. La modalit&agrave; server Windows non ha una pagina browser: la sua assenza non indica da sola un errore.</p></details>
+        <details><summary>Vedo una cronologia diversa da quella attesa</summary><p>Controlla indirizzo e account su ogni client. Senza username accedi alla clipboard generale; gli account nominativi hanno cronologie separate. Usa lo stesso account anche in entrambi gli URL Apple.</p></details>
+        <details><summary>Un file non si incolla in un'altra app</summary><p>Non tutte le app accettano file dalla clipboard. Aprilo da Downloads o usa il selettore file/Condividi dell'app destinataria. Il browser riceve i gruppi come ZIP; Apple richiede la variante di estrazione per ripristinarne i membri.</p></details>
+        <details><summary>Windows mostra un avviso sul download</summary><p>I pacchetti Windows non sono ancora firmati digitalmente. Non disabilitare le protezioni. Leggi <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/CODE_SIGNING.md">CODE_SIGNING.md</a> e le note della release.</p></details>
+        <details><summary>Quali prove sono state completate?</summary><p>Sono passati i test automatici Python/Android, le verifiche dei pacchetti Windows x64/ARM64 e l'aggiornamento Docker con persistenza. La demo web &egrave; registrata e i trasferimenti HTTP sono verificati. Restano da fare prove fisiche sui telefoni, installazione dalla GUI NAS e routing VPN reale.</p></details>
+        <p>Segnala problemi riproducibili nelle <a href="https://github.com/Mattboxx/Clipboard-Bridge/issues">Issue GitHub</a> con versioni, modalit&agrave; host e passaggi. Non allegare password, URL con token, clipboard private o log non ripuliti.</p>
+      </section>
+    </article>
+  </main>
+  <footer class="tutorial-end"><a href="./">Torna a Clipboard Bridge</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge">Sorgenti con licenza MIT</a> &middot; <a href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer">Sostieni la manutenzione del progetto</a></footer>
+</body>
+</html>
