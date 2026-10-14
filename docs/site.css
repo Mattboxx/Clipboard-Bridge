@@ -48,7 +48,7 @@ h2{font-size:36px;line-height:1.2;letter-spacing:0;margin:0 0 16px}
 .item p,.step p{margin:0;color:var(--muted);font-size:15px}
 .item .actions{margin-top:22px}
 #download{background:var(--surface)}
-#download .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#download .grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
 #download .item{display:flex;flex-direction:column}
 #download .item .actions{margin-top:auto;padding-top:24px;align-items:stretch}
 #download .item .button{width:100%}
