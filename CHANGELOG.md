@@ -2,6 +2,18 @@
 
 All notable user-facing changes are documented here.
 
+## 2.0.13 - 2026-10-14
+
+- Fix History shortcuts lost by the previous key-release listener.
+- Register global shortcuts with Win32 RegisterHotKey and a dedicated message loop, independent of Tk focus and key-release timing.
+- Use MOD_NOREPEAT to avoid repeated actions when keys are held down.
+- Set any shortcut by clicking Set keys and pressing a combination; Escape cancels recording.
+- Pause shortcuts during recording so assigning Send cannot upload the clipboard accidentally.
+- Detect system/other-app conflicts and restore the old bindings without saving invalid settings.
+- Preserve credentials, custom key combinations, notification settings and history on upgrade.
+- Windows x64 and native ARM64 installer/portable packages; source files stay in the developer repository, not release attachments.
+- Standalone server remains 1.0.7; Android and iPhone downloads are unchanged.
+
 ## 2.0.12 - 2026-10-14
 
 - Configurable global shortcut to open or focus Windows History, initially Ctrl+Alt+H.
