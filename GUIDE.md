@@ -96,9 +96,19 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 ## 4. Set up the Windows client
 
 ### Option A — Executable
-Download the installer or portable EXE from the GitHub Release. To rebuild both universal
-Windows packages locally, run `build_windows_release.bat 2.0.11` (requires Python,
-PyInstaller and Inno Setup). No personal configuration is embedded in either package.
+Download the installer or portable EXE from the GitHub Release. Choose **x64** for
+Intel/AMD PCs, or the native **ARM64** downloads for Windows 11 ARM devices, such as
+Snapdragon PCs and ARM-based Surface models. To identify your device, open **Settings >
+System > About > System type**. The ARM64 version has the same functions, including
+image and PDF previews.
+
+Both architectures share settings and history. Quit Clipboard Bridge before switching
+architectures, then install the other package normally; do not delete your data folder.
+
+To rebuild x64 packages locally, run `build_windows_release.bat 2.0.11` (requires x64
+Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
+GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
+No personal configuration is embedded in any package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 

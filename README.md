@@ -68,10 +68,16 @@ the only rule.
 | **Android 10+** | [Android APK 1.0.0-beta.10](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Android.universal.V1.0.0-beta.10.apk) | Native app, universal Share target, editable server history and Quick Settings tiles |
 | **Windows installer** | [Clipboard Bridge Windows 2.0.11 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.11.exe) | Per-user installation; no administrator account required |
 | **Windows portable** | [Clipboard Bridge 2.0.11 portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Portable.Windows.x64.V2.0.11.exe) | One executable, no installation |
+| **Windows ARM64 installer** | [Native ARM64 installer 2.0.11](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.11.exe) | Windows 11 ARM devices, such as Snapdragon PCs and ARM-based Surface models |
+| **Windows ARM64 portable** | [Native ARM64 portable 2.0.11](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/Clipboard.Bridge.Portable.Windows.arm64.V2.0.11.exe) | The same features, including image/PDF previews; no installation |
 | **iPhone Send Shortcut** | [iPhone Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Load.Clipboard.shortcut) | Sends the current iOS clipboard |
 | **iPhone Receive Shortcut** | [iPhone Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/iPhone.Download.Clipboard.shortcut) | Receives the latest server item |
 | **Python server** | [clipboard_bridge-Server.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge-Server.py) | Standalone server script; dependencies and Docker files remain in the repository |
 | **Windows Python client** | [clipboard_bridge_windows.py](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.11/clipboard_bridge_windows.py) | Uncompiled Windows client source |
+
+**Which Windows download?** Choose **x64** for Intel/AMD PCs, or **ARM64** for
+Windows 11 ARM devices. Check **Settings > System > About > System type** if unsure.
+Both architectures use the same settings and history; quit the app before switching.
 
 The Android app is currently a public beta. The release contains only ready-to-use
 downloads and the two main Python scripts. Developers can clone the repository for
@@ -82,6 +88,7 @@ or the first page of a PDF, including local items and file groups. Thumbnails lo
 background without changing your clipboard or saving extra downloads. The website
 has clearer device downloads and a direct **Support me** link to Ko-fi.
 Server remains 1.0.7; existing accounts and Android/iPhone endpoints are unchanged.
+Native ARM64 installer and portable packages are also available in this release.
 
 > **Windows download warning:** the current Windows executables are not yet signed with
 > a public Authenticode certificate. Defender or Smart App Control can therefore show a

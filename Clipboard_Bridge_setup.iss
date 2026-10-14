@@ -6,6 +6,13 @@
   #define MyAppVersion "2.0.11"
 #endif
 
+#ifndef MyAppArchitecture
+  #define MyAppArchitecture "x64"
+#endif
+#if MyAppArchitecture != "x64" && MyAppArchitecture != "arm64"
+  #error Unsupported Windows architecture
+#endif
+
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
@@ -23,12 +30,17 @@ AppUpdatesURL=https://github.com/Mattboxx/Clipboard-Bridge/releases/latest
 DefaultDirName={localappdata}\Programs\Clipboard Bridge
 UsePreviousAppDir=no
 UninstallDisplayIcon={app}\Clipboard Bridge.exe
-; The bundled executable is built for x64 Windows and Windows 11 on Arm.
+; Native Arm64 and x64 installers share the same application identity and data.
+#if MyAppArchitecture == "arm64"
+ArchitecturesAllowed=arm64
+MinVersion=10.0.22000
+#else
 ArchitecturesAllowed=x64compatible
+#endif
 DisableProgramGroupPage=yes
 ; Per-user installation avoids UAC and never writes application data in Program Files.
 PrivilegesRequired=lowest
-OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_x64_V{#MyAppVersion}
+OutputBaseFilename=Clipboard.Bridge_windows_client_and_server_setup_{#MyAppArchitecture}_V{#MyAppVersion}
 SetupIconFile=icon.ico
 CloseApplications=yes
 RestartApplications=no

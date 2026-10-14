@@ -23,6 +23,8 @@ if errorlevel 1 (
 )
 
 echo Preparing version metadata...
+"%PYTHON_EXE%" -c "import platform; assert platform.machine().lower() in ('amd64', 'x86_64'), 'This script builds x64 packages. Use the Build Windows ARM64 workflow for native ARM64 packages.'"
+if errorlevel 1 exit /b 1
 "%PYTHON_EXE%" scripts\release_metadata.py --write
 if errorlevel 1 exit /b 1
 

@@ -29,6 +29,16 @@ def test_installer_default_matches_project_version():
     assert f'#define MyAppVersion "{version}"' in installer
 
 
+def test_installer_supports_native_arm64_without_changing_app_identity():
+    installer = (ROOT / "Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
+    assert '#define MyAppArchitecture "x64"' in installer
+    assert '#if MyAppArchitecture == "arm64"' in installer
+    assert "ArchitecturesAllowed=arm64" in installer
+    assert "ArchitecturesAllowed=x64compatible" in installer
+    assert "setup_{#MyAppArchitecture}_V{#MyAppVersion}" in installer
+    assert installer.count("AppId=") == 1
+
+
 def test_website_support_opens_donation_directly_and_stylesheet_exists():
     class Links(HTMLParser):
         def __init__(self):
