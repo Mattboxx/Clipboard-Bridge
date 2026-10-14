@@ -18,6 +18,8 @@ No mandatory cloud service, online account, subscription or telemetry.
 [Downloads](#download) | [Start here](#start-here) |
 [Full guide](GUIDE.md) | [Developers](#developers)
 
+New here? Follow the [illustrated setup tutorial and live web demo](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html).
+
 [![Tests](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
 
