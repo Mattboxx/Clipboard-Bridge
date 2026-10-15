@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share clipboard between Windows and iPhone | Clipboard Bridge</title>
+  <meta name="description" content="Copy and paste between Windows and iPhone without iCloud. Send and receive from iPhone Control Center, or send photos and files from the Share Sheet.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Copy on Windows. Receive on iPhone. And back again.">
+  <meta property="og:description" content="Two iPhone Shortcuts, accessible from Control Center and the Share Sheet. Your Windows PC can host the shared clipboard: no separate server needed.">
+  <meta property="og:url" content="https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html">
+  <meta property="og:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Share clipboard between Windows and iPhone","description":"Set up two iPhone Shortcuts for text, photos and files, with Windows as the host.","datePublished":"2026-10-15","dateModified":"2026-10-15","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Clipboard Bridge","item":"https://mattboxx.github.io/Clipboard-Bridge/"},{"@type":"ListItem","position":2,"name":"Windows and iPhone clipboard","item":"https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html"}]}]}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to guide</a>
+  <nav aria-label="Main navigation"><div class="nav-inner"><a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a><div class="nav-links"><a class="nav-download" href="./#download">Download</a><a href="tutorial.html">Full tutorial</a></div></div></nav>
+  <header class="tutorial-header">
+    <p class="tutorial-meta"><a href="./">Clipboard Bridge</a> / Windows and iPhone</p>
+    <h1>Share your clipboard between Windows and iPhone</h1>
+    <p>Copy a link on your PC and paste it on iPhone. Send a photo or document back to Windows. Clipboard Bridge connects the devices through your own network, without an iCloud account or a separate server.</p>
+    <p><strong>On iPhone, keep both actions in Control Center.</strong> Swipe down, tap Send or Receive, and carry on. You can also send a photo, file or selected content directly from another app's <strong>Share</strong> menu.</p>
+    <div class="actions"><a class="button primary" href="./#download">Get the apps and Shortcuts</a><a class="button" href="#setup">Set it up</a></div>
+    <div class="tutorial-meta">Updated 15 October 2026 &middot; Free and open source</div>
+  </header>
+  <main class="tutorial-layout">
+    <aside class="tutorial-toc" aria-label="Guide sections"><strong>On this page</strong><a href="#setup">First-time setup</a><a href="#iphone">Control Center and Share</a><a href="#transfer">Copy and paste both ways</a><a href="#files">Photos and files</a><a href="#limits">Network and automation</a><a href="#help">Troubleshooting</a></aside>
+    <article class="tutorial-article" id="article">
+      <section id="setup">
+        <h2>Start with the Windows PC you already have</h2>
+        <p>You need a Windows PC, an iPhone or iPad with Apple's Shortcuts app, and a trusted network that lets the devices reach each other.</p>
+        <ol>
+          <li><a href="./#download">Download Clipboard Bridge for Windows</a>. Choose x64 for most Intel/AMD PCs, or ARM64 for Windows 11 ARM devices. Installer and portable editions have the same sharing features.</li>
+          <li>Open the app. Right-click its system tray icon, open <strong>Settings &gt; General</strong>, select <strong>Server mode</strong> and save.</li>
+          <li>Copy the server address shown in the tray menu. Allow access through the Windows firewall on your trusted private network. Keep the PC and app running.</li>
+          <li>On iPhone, import <a href="./#shortcuts">Load Clipboard and Download Clipboard</a>. In each Shortcut, edit <strong>Get Contents of URL</strong> to use your host address and the appropriate path below.</li>
+        </ol>
+        <pre><code>Send:    POST http://YOUR_HOST:5088/clipboard
+Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
+        <p><code>YOUR_HOST</code> means the address shown by your Windows app, not that literal text. Do not enter <code>localhost</code> or <code>127.0.0.1</code> on the phone. Start with accounts and tokens empty unless your chosen standalone server requires them.</p>
+        <p>Windows Server mode has no browser interface. For an always-on host, a web page and separate optional accounts, use the <a href="./#server">standalone Docker server</a> instead. Both choices use the same two basic Shortcut endpoints.</p>
+      </section>
+      <section id="iphone">
+        <h2>Send and receive without opening the Shortcuts app</h2>
+        <h3>Add both actions to Control Center</h3>
+        <p>On supported iOS versions, open <strong>Control Center &gt; + &gt; Add a Control &gt; Shortcut &gt; Choose</strong>. Select Load Clipboard, then repeat for Download Clipboard. After that first setup, swipe to Control Center and tap the action you need. See <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">Apple's Control Center instructions</a>.</p>
+        <h3>Send directly from the Share Sheet</h3>
+        <p>Open the Send Shortcut's details in Shortcuts and enable <strong>Show in Share Sheet</strong>. When another app offers a photo, document or other supported input, tap <strong>Share &gt; Load Clipboard</strong>. The Send Shortcut must use its Shortcut Input when present, and fall back to the clipboard otherwise: follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">Share Sheet and file recipe</a>.</p>
+        <p>These are quick, user-triggered actions, not continuous iOS background synchronization. You do not need to reopen the Shortcuts editor for each transfer.</p>
+      </section>
+      <section id="transfer">
+        <h2>Copy and paste in either direction</h2>
+        <h3>Windows to iPhone</h3>
+        <ol><li>Copy text on Windows and choose <strong>Send clipboard</strong>, or use your configured Send hotkey.</li><li>On iPhone, tap <strong>Download Clipboard</strong> in Control Center.</li><li>Paste into Notes, Messages or the app where you need the text.</li></ol>
+        <h3>iPhone to Windows</h3>
+        <ol><li>Copy text on iPhone and run <strong>Load Clipboard</strong> from Control Center.</li><li>Choose <strong>Receive latest</strong> on Windows, or enable automatic receiving in Settings.</li><li>Paste normally. Optional incoming-text and file notifications can be configured separately.</li></ol>
+        <p>Copied formatted text becomes plain Unicode text, retaining emoji, accents and line breaks rather than fonts and colours. The newest upload wins, whether it is text, an image or a document.</p>
+        <figure><img src="assets/windows-history.png" alt="Clipboard Bridge Windows history with sample text, files and an image preview" width="1280" height="760" loading="lazy"><figcaption>The real Windows History window with sample data. Open it by left-clicking the tray icon, or use the configurable History hotkey.</figcaption></figure>
+      </section>
+      <section id="files">
+        <h2>Share photos, PDFs and groups of files</h2>
+        <p>Use the iPhone Share Sheet to send photos or documents. On Windows, copy files in File Explorer and send the clipboard, or use Send a file. Original documents keep their contents; an actual RTF file is not converted to plain text.</p>
+        <p>Windows saves received files to <code>Downloads\Clipboard Bridge</code> and places them on its clipboard. Not every destination app accepts a pasted file: use that app's file picker or open the download when needed.</p>
+        <p>Several selected files can stay in one history entry. On Apple devices, follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">multi-file Shortcut recipe</a> to package a group and extract it on receipt. The downloadable signed Shortcuts are a starting point; they have not been updated to include every advanced recipe.</p>
+      </section>
+      <section id="limits">
+        <h2>What about iCloud, automatic sync and using it away from home?</h2>
+        <p>Apple's built-in <a href="https://support.apple.com/en-us/102430">Universal Clipboard</a> connects supported Apple devices. Clipboard Bridge offers a separate workflow for Windows, Android and Apple devices; it does not extend Apple's Handoff service or require the same Apple Account.</p>
+        <p>Windows can send and receive automatically while running. On iPhone, run the two Shortcuts from Control Center or the Send action from Share. There is no native iOS client or always-on background clipboard watcher.</p>
+        <p>On a trusted local network, no VPN is required. Away from home, use a private VPN such as Tailscale or WireGuard. This works with either Windows Server mode or a Docker host. A separately configured subnet router can keep the same home-network host address; see the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">network guide</a>.</p>
+        <div class="tutorial-note"><strong>Do not expose port 5088 publicly.</strong> Accounts and tokens are optional. When used in URLs they are readable, and plain HTTP does not encrypt clipboard data or credentials. Keep the service on a trusted network or private VPN.</div>
+      </section>
+      <section id="help">
+        <h2>If a transfer does not arrive</h2>
+        <ul><li><strong>Connection:</strong> keep the host awake, check its address and private-network firewall permissions, and avoid guest Wi-Fi isolation.</li><li><strong>Wrong history:</strong> use the same host and account on every device. If using optional standalone-server accounts, add the same <code>?user=NAME&amp;password=PASSWORD</code> to both Shortcut URLs, with values URL-encoded. The <a href="tutorial.html#accounts">account tutorial</a> explains general versus named spaces.</li><li><strong>Share item missing:</strong> enable Show in Share Sheet and check the Shortcut Input configuration, not only its clipboard action.</li></ul>
+        <p>Continue with the <a href="tutorial.html">complete setup tutorial</a>, or read about <a href="apple-android-clipboard.html">sharing a clipboard between Apple and Android devices</a>.</p>
+      </section>
+    </article>
+  </main>
+  <footer class="tutorial-end"><a href="./">Clipboard Bridge</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge">Source and issue reports</a> &middot; <a href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer">Support the project</a></footer>
+</body>
+</html>

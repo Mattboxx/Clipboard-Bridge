@@ -12,6 +12,10 @@ tramite rete locale o VPN privata. Un account Clipboard Bridge è opzionale.
 
 Nessun cloud, account online, abbonamento o telemetria obbligatori.
 
+**Su iPhone bastano pochi gesti:** aggiungi Invia e Ricevi al **Centro di Controllo**,
+oppure avvia il comando di invio dal menu **Condividi** di un'altra app. Dopo la
+configurazione non devi riaprire l'editor di Comandi Rapidi a ogni trasferimento.
+
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
@@ -19,6 +23,9 @@ Nessun cloud, account online, abbonamento o telemetria obbligatori.
 [Guida completa](GUIDE.md) | [Sviluppatori](#sviluppatori)
 
 Prima configurazione? Segui il [tutorial passo passo](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html).
+
+Guide specifiche in inglese: [clipboard tra Windows e iPhone](https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html)
+e [clipboard tra dispositivi Apple e Android](https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html).
 
 [![Test](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![Licenza MIT](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)
