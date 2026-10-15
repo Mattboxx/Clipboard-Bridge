@@ -18,11 +18,7 @@ No mandatory cloud service, online account, subscription or telemetry.
 [Downloads](#download) | [Start here](#start-here) |
 [Full guide](GUIDE.md) | [Developers](#developers)
 
-New here? Follow the [setup tutorial and Windows/iPhone walkthrough](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html#demo).
-
-[![Windows sends a link; iPhone runs Receive and pastes it; an iPhone photo returns to Windows](docs/assets/demo/windows-iphone-workflow-en.gif)](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html#demo)
-
-*Illustrated workflow with a real Windows screenshot, not a phone recording. Apple Shortcuts run manually. This example needs no separate server: Windows is the host.*
+New here? Follow the [step-by-step setup tutorial](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html).
 
 [![Tests](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-555)](LICENSE)

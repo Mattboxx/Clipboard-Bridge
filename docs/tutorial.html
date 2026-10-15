@@ -135,10 +135,9 @@ http://YOUR_HOST:5088/clipboard/latest/raw?user=alice&amp;password=YOUR_PASSWORD
         <div class="tutorial-note"><strong>Credentials remain readable in URLs and HTTP is not encrypted.</strong> Keep these links out of screenshots, posts and shared logs. Use a trusted LAN or private VPN; a VPN does not necessarily encrypt every segment of your LAN.</div>
       </section>
       <section id="demo">
-        <h2>Windows to iPhone. And back.</h2>
-        <p>Copy and send on Windows, run Receive on iPhone, then paste. To go back, share a photo with the Send Shortcut and receive it in Windows. This example uses Windows Server mode: no separate server is required.</p>
-        <figure><video class="workflow-video" controls playsinline preload="metadata" poster="assets/demo/windows-iphone-workflow-en.png" aria-label="Illustrated Windows and iPhone send and receive workflow"><source src="assets/demo/windows-iphone-workflow-en.mp4" type="video/mp4"><p><a href="assets/demo/windows-iphone-workflow-en.gif">View the illustrated GIF</a>.</p></video><figcaption>Illustrated walkthrough with a real sample-data Windows screenshot. The iPhone side shows instructions, not a device recording. Apple Shortcuts are triggered manually; this is not automatic iPhone synchronization.</figcaption></figure>
-        <p><a href="assets/demo/windows-iphone-workflow-en.gif">Open the GIF</a> &middot; <a href="assets/demo/windows-iphone-workflow-en.mp4" download>Download the illustrated video</a></p>
+        <h2>Try a Windows and iPhone transfer</h2>
+        <ol><li>Copy <code>Hello from Windows</code> on your PC and choose <strong>Send clipboard</strong>.</li><li>Run <strong>Download Clipboard</strong> on iPhone, then paste into a blank note.</li><li>For the other direction, copy text on iPhone and run <strong>Load Clipboard</strong>.</li><li>Choose <strong>Receive latest</strong> in Windows, then paste into a document.</li></ol>
+        <p>These are instructions to try on your devices, not a recorded phone test. This setup can use Windows Server mode without a separate server.</p>
         <p>An optional Docker/NAS host can replace the Windows host and keep the clipboard available when the PC is off. Android connects to the same chosen host. All devices must reach it over a trusted LAN or private VPN.</p>
         <details><summary>Technical check: optional standalone server web recording</summary>
         <p>This is a recording of the actual standalone server 1.0.8, using a disposable local instance and sample data. It shows saving Unicode text, uploading an image, sending a two-file group and replacing it with newer text.</p>
