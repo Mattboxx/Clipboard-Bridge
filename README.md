@@ -137,6 +137,23 @@ The tray app supports manual sharing, configurable hotkeys, optional auto-sync,
 image/PDF previews, local history and automatic receiving. Left-click its icon
 to open History; sending is a separate action. Only one instance runs at a time.
 
+**Quick actions, next to the clock:** right-click the tray icon to send your
+clipboard, receive the latest item or open History. Left-click opens History directly.
+
+**Windows can sync automatically:** enable **Automatic synchronization** in
+**Settings > Automation** to send copied content and receive new shared items
+without pressing Send or Receive each time. Keep the app running and leave
+**Automatically download new files** enabled to receive files automatically too.
+Only enable auto-sync if you want copied content to be shared, including sensitive text.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
+  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Real English Windows tray menu: Send clipboard, Receive latest and History" width="620" height="660">
+</picture>
+
+Real Windows capture, cropped for privacy. [Replay the GIF](docs/assets/demo/windows-tray-menu.gif)
+or [watch the short video](docs/assets/demo/windows-tray-menu.mp4).
+
 <details>
 <summary>Windows settings, notifications and history</summary>
 
@@ -320,8 +337,11 @@ main-branch builds. See [DOCKER.md](DOCKER.md) for deployment and backup details
 ## Network and security
 
 - Devices need the **same trusted local network or a private VPN**, for either server mode.
-- A VPN such as [Tailscale](https://tailscale.com/) is an example, not a requirement.
-  Install it on the clipboard host and remote devices; use the host's VPN address.
+- **Away from home or on untrusted Wi-Fi, we recommend [Tailscale](https://tailscale.com/).**
+  Install it on the clipboard host and your devices, join the same private Tailscale
+  network and use the host's Tailscale address in every client and Apple Shortcut.
+  It works with Docker/Python hosting and **Windows Server mode**. Tailscale is
+  optional; another private VPN can work too, and a trusted LAN needs no VPN.
 - To keep the **same LAN IP and port at home and away**, configure an always-on
   home server/NAS as a subnet router. Advertise and approve the LAN route, allow access
   and reserve the host's IP. Clipboard Bridge does not configure routing automatically.

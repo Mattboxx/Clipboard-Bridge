@@ -45,7 +45,7 @@
       <section id="before">
         <h2>1. Put the devices on the same network</h2>
         <p>Start with your PC and phone on the same trusted Wi-Fi/LAN. The phone must be able to reach the PC or server. Guest Wi-Fi may block communication between devices.</p>
-        <p>When away from home, a private VPN can connect your devices. Tailscale and WireGuard are examples, not requirements. Use the host's reachable VPN address, or configure subnet routing separately to keep a home LAN address. Follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">network guide</a>.</p>
+        <p><strong>Away from home or on untrusted Wi-Fi, we recommend <a href="https://tailscale.com/">Tailscale</a>.</strong> Connect your devices and clipboard host to the same private Tailscale network, then use the host's Tailscale address in the apps and both Apple Shortcuts. This also works with Windows Server mode. Tailscale is optional: another private VPN can work too. Follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">network guide</a> for setup, firewall precautions and optional subnet routing.</p>
         <div class="tutorial-note"><strong>Keep it private.</strong> Do not forward port 5088 to the public Internet. Accounts and tokens are optional; plain HTTP does not encrypt content or credentials, and account/token URL values remain readable.</div>
       </section>
       <section id="windows">

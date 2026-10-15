@@ -140,6 +140,24 @@ L'app nell'area di notifica offre invio manuale, hotkey configurabili, sincroniz
 opzionale, anteprime immagini/PDF, cronologia locale e ricezione automatica. Il clic
 sinistro sull'icona apre la cronologia: l'invio è un'azione separata. Non si avviano istanze multiple.
 
+**Comandi rapidi accanto all'orologio:** clic destro sull'icona per inviare la
+clipboard, ricevere l'ultimo elemento o aprire la cronologia. Il clic sinistro apre direttamente la cronologia.
+
+**Su Windows la sincronizzazione può essere automatica:** attiva **Sincronizzazione
+automatica** in **Impostazioni > Automazione** per inviare ciò che copi e ricevere
+i nuovi elementi condivisi senza premere ogni volta Invia o Ricevi. Lascia l'app
+in esecuzione e attiva **Scarica automaticamente i nuovi file** per ricevere
+automaticamente anche i file. Abilitala solo se vuoi condividere ciò che copi,
+anche quando contiene informazioni sensibili.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
+  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Menu Windows reale in inglese: invio clipboard, ricezione e cronologia" width="620" height="660">
+</picture>
+
+Registrazione reale di Windows, ritagliata per la privacy. [Rivedi la GIF](docs/assets/demo/windows-tray-menu.gif)
+oppure [guarda il breve video](docs/assets/demo/windows-tray-menu.mp4).
+
 <details>
 <summary>Impostazioni Windows, notifiche e cronologia</summary>
 
@@ -325,8 +343,11 @@ collaudate di main. Vedi [DOCKER.md](DOCKER.md) per distribuzione e backup.
 ## Rete e sicurezza
 
 - Serve **la stessa rete locale attendibile oppure una VPN privata**, per entrambe le modalità server.
-- Una VPN come [Tailscale](https://tailscale.com/) è un esempio, non un requisito.
-  Installala sull'host clipboard e sui dispositivi remoti; usa l'indirizzo VPN dell'host.
+- **Fuori casa o su Wi-Fi non fidate consigliamo [Tailscale](https://tailscale.com/).**
+  Installala sull'host clipboard e sui dispositivi, collegali alla stessa rete
+  privata Tailscale e usa l'indirizzo Tailscale dell'host in ogni client e comando Apple.
+  Funziona con il server Docker/Python e con **Windows in modalità server**.
+  Resta facoltativa: puoi usare un'altra VPN privata e su una LAN fidata non serve.
 - Per mantenere **lo stesso IP LAN e la stessa porta in casa e fuori casa**, configura
   il server/NAS sempre acceso come subnet router. Pubblicizza e approva la rotta LAN,
   consenti l'accesso e riserva l'IP. Clipboard Bridge non attiva automaticamente il routing.

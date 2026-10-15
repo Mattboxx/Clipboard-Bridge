@@ -45,7 +45,7 @@
       <section id="before">
         <h2>1. Collega i dispositivi alla stessa rete</h2>
         <p>Per la prima prova, collega PC e telefono allo stesso Wi-Fi o LAN fidata. Il telefono deve poter raggiungere il PC o il server. Alcune reti ospiti impediscono ai dispositivi di comunicare tra loro.</p>
-        <p>Fuori casa puoi usare una VPN privata. Tailscale e WireGuard sono esempi, non requisiti. Usa l'indirizzo VPN raggiungibile dell'host oppure configura separatamente il subnet routing per continuare a usare l'indirizzo locale. Consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">guida alla rete</a>.</p>
+        <p><strong>Fuori casa o su Wi-Fi non fidate consigliamo <a href="https://tailscale.com/">Tailscale</a>.</strong> Collega dispositivi e host clipboard alla stessa rete privata Tailscale, poi usa l'indirizzo Tailscale dell'host nelle app e in entrambi i comandi Apple. Funziona anche con Windows in modalit&agrave; server. Tailscale &egrave; facoltativa: puoi usare un'altra VPN privata. Consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">guida alla rete</a> per configurazione, precauzioni firewall e subnet routing opzionale.</p>
         <div class="tutorial-note"><strong>Non esporlo su Internet.</strong> Non aprire la porta 5088 del router verso Internet. Account e token sono opzionali; HTTP non cifra contenuti o credenziali, che restano leggibili negli URL degli account.</div>
       </section>
       <section id="windows">

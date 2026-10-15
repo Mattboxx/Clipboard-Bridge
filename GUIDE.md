@@ -415,9 +415,8 @@ URLs remain valid:** no pairing, interactive login, refresh token or required he
 is introduced. The Windows app currently uses HTTP; use LAN/VPN with it rather than
 assuming it can connect directly to an HTTPS-only reverse proxy.
 
-> The token and password travel in plain text over HTTP, which is fine on a trusted LAN. To
-> use the server away from that LAN, put it behind a VPN or an HTTPS reverse proxy.
-> [Tailscale](https://tailscale.com/) is one possible VPN: install it on the iPhone and
+> Plain HTTP does not encrypt clipboard contents or credentials. **Away from home or on
+> untrusted Wi-Fi, we recommend [Tailscale](https://tailscale.com/)**: install it on the iPhone and
 > server, then replace `SERVER_IP` in both Shortcuts with the server's Tailscale IP
 > (usually `100.x.y.z`). This includes the Windows app's **Server mode**: install Tailscale
 > on that PC and use its Tailscale IP plus the port configured in Clipboard Bridge. No
@@ -430,12 +429,30 @@ assuming it can connect directly to an HTTPS-only reverse proxy.
 ### Local network, VPN and subnet routing
 
 **Every device must be able to reach the clipboard host.** On a trusted local
-network, use its LAN address. Outside that network, use a private VPN. Tailscale
-is one example, not a requirement. Both Docker/Python hosting and Windows Server
+network, use its LAN address. **Away from home or on untrusted Wi-Fi, we recommend
+[Tailscale](https://tailscale.com/).** It is optional: another private VPN can work
+too, and a trusted LAN needs no VPN. Both Docker/Python hosting and Windows Server
 mode support this approach. Keep the selected host running.
 
 The simplest remote setup installs the VPN on the host and each client, then uses
 the host's VPN address in Windows, Android and both Apple Shortcuts.
+
+Join the same private Tailscale network on those devices; follow the
+[official quickstart](https://tailscale.com/docs/how-to/quickstart). For Docker,
+the VPN must reach the machine hosting the container's published port. For
+Windows Server mode, use that PC's Tailscale address and configured clipboard port.
+You do not need to change the Shortcut actions, account URLs or clipboard format.
+
+**On an untrusted network, use the VPN address, not a direct LAN URL.** Keep port
+`5088` blocked on public/untrusted interfaces using the host firewall. Turning on
+a VPN does not automatically restrict a server that also listens on those interfaces.
+With subnet routing, the route from the gateway to the destination may still be
+plain HTTP: keep that LAN trusted, or use appropriate transport protection.
+
+Tailscale normally routes traffic to your private devices, not all internet
+browsing. An [exit node](https://tailscale.com/docs/features/exit-nodes) is a separate,
+optional choice for routing general internet traffic; it is not required for
+Clipboard Bridge transfers between Tailscale-connected devices.
 
 #### Keep the same LAN address at home and away
 
