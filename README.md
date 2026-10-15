@@ -16,6 +16,8 @@ No mandatory cloud service, online account, subscription or telemetry.
 Center**, or run the Send Shortcut from another app's **Share Sheet**. Once set
 up, you do not need to reopen the Shortcuts editor for each transfer.
 
+[See the illustrated iPhone setup and quick-access tips](https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html#iphone).
+
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |

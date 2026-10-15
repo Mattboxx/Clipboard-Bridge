@@ -10,7 +10,9 @@
   <link rel="alternate" hreflang="it" href="https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="apple-shortcuts.css">
   <link rel="stylesheet" href="tutorial.css">
+  <script src="site.js" defer></script>
   <meta property="og:type" content="article">
   <meta property="og:title" content="Condividi la clipboard tra Windows e il tuo telefono">
   <meta property="og:description" content="Parti dal PC Windows, collega iPhone o Android e scegli Docker se desideri una clipboard sempre disponibile.">
@@ -74,7 +76,20 @@ Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
         <h3>Fai la prima prova</h3>
         <p>Copia <code>Ciao da Windows</code> sul PC e usa <strong>Invia clipboard</strong> dal menu dell'app. Esegui <strong>Download Clipboard</strong> su iPhone, poi incolla in una nota vuota. Per il percorso opposto, copia un messaggio su iPhone, esegui <strong>Load Clipboard</strong> e usa <strong>Ricevi ultimo</strong> su Windows prima di incollarlo.</p>
         <h3>Aggiungili al Centro di Controllo</h3>
-        <p>Nelle versioni iOS che lo supportano, apri il Centro di Controllo, tocca <strong>+</strong>, poi <strong>Aggiungi un controllo &gt; Comando rapido &gt; Scegli</strong>. Seleziona Load Clipboard e ripeti per Download Clipboard. Consulta le <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">istruzioni Apple</a>.</p>
+        <div class="apple-setup" aria-label="Passaggi illustrati del Centro di Controllo Apple">
+          <figure class="apple-step"><a class="apple-shot" href="https://support.apple.com/it-it/guide/iphone/iph59095ec58/26/ios/26" target="_blank" rel="noopener noreferrer"><img data-apple-image src="https://help.apple.com/assets/69F8EBBDF3B89A4F6E0C704C/69F8EBC43862495245036393/it_IT/6dfa9fd49e34b75ba529bc04c7bbf9b4.png" alt="Schermata Apple: Centro di Controllo in modifica, con Aggiungi un controllo in basso" width="393" height="535" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="apple-image-fallback" hidden>Apri questo passaggio sul Supporto Apple</span></a><figcaption><strong>1. Aggiungi un controllo</strong>Apri il Centro di Controllo e tocca il pulsante +.</figcaption></figure>
+          <figure class="apple-step"><a class="apple-shot" href="https://support.apple.com/it-it/guide/iphone/iph59095ec58/26/ios/26" target="_blank" rel="noopener noreferrer"><img data-apple-image src="https://help.apple.com/assets/69F8EBBDF3B89A4F6E0C704C/69F8EBC43862495245036393/it_IT/7231f97306e40a8363d1541633449391.png" alt="Schermata Apple: galleria dei controlli in cui cercare Comando rapido" width="245" height="504" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="apple-image-fallback" hidden>Apri questo passaggio sul Supporto Apple</span></a><figcaption><strong>2. Cerca Comando rapido</strong>Nella galleria, aggiungi il controllo Comando rapido.</figcaption></figure>
+        </div>
+        <p class="apple-choice"><strong>3. Tocca Scegli.</strong> Seleziona <strong>Load Clipboard</strong> per inviare. Aggiungi un secondo controllo e seleziona <strong>Download Clipboard</strong> per ricevere. <a href="https://support.apple.com/it-it/guide/shortcuts/apd06a9201d4/ios">Istruzioni Apple per i Comandi Rapidi</a>.</p>
+        <p class="apple-credit">Esempi ufficiali iOS 26, &copy; Apple, caricati dal sito Apple. Non mostrano Clipboard Bridge configurato; l'aspetto cambia secondo la versione iOS. Clipboard Bridge &egrave; un progetto indipendente.</p>
+        <details class="apple-tips"><summary>Menu Condividi, schermata Home e altri consigli utili</summary>
+          <dl>
+            <dt>Invia senza copiare prima</dt><dd>Nei dettagli del comando di invio, attiva <strong>Mostra in Condividi</strong>. Seleziona una foto, un file o un link in un'altra app e usa <strong>Condividi &gt; Load Clipboard</strong>. Il comando deve usare l'input ricevuto quando presente: segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">guida per input e gruppi di file</a>. <a href="https://support.apple.com/it-it/guide/shortcuts/apd163eb9f95/ios">Guida Apple per Condividi</a>.</dd>
+            <dt>Preferisci un'icona sulla schermata Home?</dt><dd>Apri i dettagli del comando e scegli <strong>Aggiungi alla schermata Home</strong>. Ripeti per Ricevi. <a href="https://support.apple.com/it-it/guide/shortcuts/apd735880972/ios">Guida Apple per la schermata Home</a>.</dd>
+            <dt>Il comando non compare?</dt><dd>Importalo e configuralo prima. Nel Centro di Controllo cerca <strong>Comando rapido</strong>, non un controllo separato dell'app Clipboard Bridge. In Condividi scorri verso il basso; se manca, verifica l'opzione Mostra in Condividi e i tipi di input accettati.</dd>
+            <dt>Fai una prova prima dell'uso quotidiano</dt><dd>Tieni l'host acceso e usa la stessa rete fidata o una VPN privata. Invia un breve messaggio e ricevilo sull'altro dispositivo. Se iOS lo chiede, consenti l'accesso alla rete locale.</dd>
+          </dl>
+        </details>
         <p>Per il menu Condividi, i nomi originali e pi&ugrave; file insieme, segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">variante avanzata dei Comandi Rapidi</a>. I file firmati della release non sono cambiati: non presumere che includano gi&agrave; la nuova variante multi-file. Questa invia uno ZIP temporaneo a <code>/clipboard/bundle</code> e pu&ograve; estrarre il gruppo ricevuto leggendo prima <code>/clipboard/latest/meta</code>.</p>
         <p>Su Mac puoi creare lo stesso flusso manuale in Comandi Rapidi. Non c'&egrave; un client Mac nativo: consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#mac-compatibility">guida Mac</a>.</p>
       </section>

@@ -151,6 +151,31 @@ def test_english_guides_explain_the_quick_iphone_workflow_and_limits():
         (DOCS / filename).read_text(encoding="utf-8") for filename in PAGES)
 
 
+@pytest.mark.parametrize("filename", PAGES)
+def test_apple_visual_steps_have_sources_translations_and_fallbacks(filename):
+    page = read_page(filename)
+    images = [img for img in page.tags("img") if "data-apple-image" in img]
+    assert len(images) == 2
+    locale = "/it_IT/" if filename == "tutorial.it.html" else "/en_US/"
+    for image in images:
+        assert image["src"].startswith("https://help.apple.com/assets/")
+        assert locale in image["src"]
+        assert image["alt"] and int(image["width"]) > 0 and int(image["height"]) > 0
+        assert image["loading"] == "lazy"
+        assert image["referrerpolicy"] == "no-referrer"
+    assert any(link.get("href") == "apple-shortcuts.css" for link in page.tags("link"))
+    assert any(script.get("src") == "site.js" for script in page.tags("script"))
+    fallbacks = [el for el in page.tags("span")
+                 if "apple-image-fallback" in el.get("class", "").split()]
+    assert len(fallbacks) == 2 and all("hidden" in item for item in fallbacks)
+    assert len([a for a in page.tags("a")
+                if a.get("class") == "apple-shot" and a["href"].startswith("https://support.apple.com/")]) == 2
+    visible = " ".join(page.texts)
+    assert "Apple" in visible and "iOS 26" in visible
+    assert "Load Clipboard" in visible and "Download Clipboard" in visible
+    assert "Mostra in Condividi" in visible or "Show in Share Sheet" in visible
+
+
 def load_notifier():
     spec = importlib.util.spec_from_file_location("search_notifier", ROOT / "scripts/notify_search_engines.py")
     module = importlib.util.module_from_spec(spec)
