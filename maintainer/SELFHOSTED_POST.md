@@ -32,8 +32,10 @@ HTTP does not encrypt them.
 - Tutorial and live web demo: https://mattboxx.github.io/Clipboard-Bridge/tutorial.html
 - Docker/custom-store setup: https://github.com/Mattboxx/Clipboard-Bridge-AppStore
 
-The demo records the real web interface with sample data and independent HTTP checks,
-not physical phone-to-PC transfers. The source is MIT-licensed. AI tools have been used
+The walkthrough illustrates Windows-to-iPhone sending and receiving with a real
+Windows screenshot. A separate technical recording shows the optional web interface
+with independent HTTP checks. Neither is a physical phone-to-PC recording.
+The source is MIT-licensed. AI tools have been used
 substantially for implementation, tests and documentation, including this draft.
 
 I'd appreciate feedback on the setup instructions and everyday clipboard workflow,
@@ -47,8 +49,8 @@ This is a truthful starting point to review personally:
 
 > AI coding assistants were used substantially for implementation, bug fixes, tests,
 > documentation and drafting this post. I direct the requirements and maintain the
-> project and releases. The demo is an automated recording of the actual software
-> with sample data, not an AI-generated interface or a physical-phone test.
+> project and releases. The main walkthrough is an illustrated Windows/iPhone workflow,
+> not a physical-phone test. A separate recording shows the actual web UI with sample data.
 
 Do not claim AI was used only for grammar. Do not claim every line was reviewed manually.
 

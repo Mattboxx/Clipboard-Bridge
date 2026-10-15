@@ -195,14 +195,20 @@ configured subnet router can retain a home LAN address remotely. A VPN protects
 its tunnel, not necessarily every local segment. The current Windows client uses
 HTTP; do not assume an HTTPS-only reverse proxy works on all clients.
 
-## A real web demo, and what it does not prove
+## See Windows and iPhone working together
 
-[Watch the recorded demo](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html#demo).
-It uses the actual standalone server 1.0.8 on a disposable local instance: save
+[Watch the illustrated workflow](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html#demo):
+copy and Send on Windows, trigger Receive on iPhone, then paste. Share a photo with
+the Send Shortcut to go the other way, then Receive in Windows. It uses a real
+sample-data Windows screenshot and illustrated iPhone instructions, not physical
+phone footage. The example uses Windows as host, so no separate server is required.
+
+The page also keeps a separate technical recording of the actual standalone
+server 1.0.8 on a disposable local instance: save
 Unicode text, upload the public project icon, send two files as one group, download
 the ZIP, then save newer text.
 
-The recording uses automated browser actions and captions. Independent HTTP reads
+The web recording uses automated browser actions and captions. Independent HTTP reads
 and byte comparisons validate the text, image and both grouped files. It is **not**
 a physical-phone or cross-device system-clipboard recording. Physical phone, NAS GUI
 and real VPN acceptance checks on the latest builds remain pending.

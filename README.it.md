@@ -18,7 +18,11 @@ Nessun cloud, account online, abbonamento o telemetria obbligatori.
 [Download](#download) | [Da dove iniziare](#da-dove-iniziare) |
 [Guida completa](GUIDE.md) | [Sviluppatori](#sviluppatori)
 
-Prima configurazione? Segui il [tutorial illustrato con demo web reale](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html).
+Prima configurazione? Segui il [tutorial con spiegazione animata Windows/iPhone](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html#demo).
+
+[![Windows invia un link; iPhone avvia Ricevi e lo incolla; una foto da iPhone torna su Windows](docs/assets/demo/windows-iphone-workflow-it.gif)](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html#demo)
+
+*Flusso illustrato con schermata Windows reale, non una registrazione del telefono. I Comandi Rapidi si avviano manualmente. Nell'esempio Windows fa da host: non serve un server separato.*
 
 [![Test](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![Licenza MIT](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)

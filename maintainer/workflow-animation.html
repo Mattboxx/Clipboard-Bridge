@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clipboard Bridge illustrated Windows and iPhone workflow</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#fff;font-family:"Segoe UI",sans-serif}canvas{display:block;width:100%;height:auto;max-width:1000px}p{max-width:1000px;margin:16px;padding:0 20px;color:#626974;font-size:16px}</style></head>
+<body><canvas id="workflow" width="1000" height="720" role="img" aria-label="Illustrated workflow: send text from Windows, run Receive on iPhone and paste; share a photo with Send, then receive on Windows."></canvas>
+<p>Illustrated workflow with a real sample-data Windows screenshot. The iPhone side shows instructions, not an actual phone recording. Keep the host running on a trusted LAN or private VPN.</p>
+<script>
+const c=document.querySelector('canvas'),ctx=c.getContext('2d');
+const it=new URLSearchParams(location.search).get('lang')==='it';
+const ink='#17191d',muted='#626974',blue='#1559de',green='#137458',line='#e1e5eb';
+const assetPaths={brand:'../docs/icon.svg',windows:'../docs/assets/windows-history.png',
+  phone:'../docs/assets/icons/smartphone.svg',download:'../docs/assets/icons/download.svg',
+  send:'../docs/assets/icons/arrow-up-right.svg',copy:'../docs/assets/icons/copy.svg',
+  files:'../docs/assets/icons/file-stack.svg',check:'../docs/assets/icons/check.svg'};
+const imgs={};
+window.assetsReady=Promise.all(Object.entries(assetPaths).map(([name,src])=>new Promise((resolve,reject)=>{
+  const img=new Image();img.onload=()=>{imgs[name]=img;resolve();};img.onerror=reject;img.src=src;
+})));
+const stages=it?[
+  ['Il tuo PC pu\u00f2 fare da server.','Senza Docker o un computer aggiuntivo.'],
+  ['1. Copia e invia da Windows.','Usa Invia clipboard.'],
+  ['2. Avvia Ricevi su iPhone.','Esegui Download Clipboard.'],
+  ['3. Incolla su iPhone.','Il link \u00e8 pronto nella clipboard.'],
+  ['4. Invia una foto da iPhone.','Condividi con Load Clipboard.'],
+  ['5. Ricevila su Windows.','Usa Ricevi ultimo nel client.'],
+  ['Una clipboard, nei due sensi.','Testo, immagini e file: vince il pi\u00f9 recente.']
+]:[
+  ['Your PC can be the host.','No Docker or extra computer required.'],
+  ['1. Copy and send on Windows.','Use Send clipboard.'],
+  ['2. Run Receive on iPhone.','Trigger Download Clipboard.'],
+  ['3. Paste on iPhone.','The link is ready on your clipboard.'],
+  ['4. Share a photo on iPhone.','Share it with Load Clipboard.'],
+  ['5. Receive it on Windows.','Use Receive latest in the client.'],
+  ['One clipboard. Both directions.','Text, photos and files: the latest item wins.']
+];
+function text(s,x,y,size=28,color=ink,weight=400){ctx.fillStyle=color;ctx.font=`${weight} ${size}px "Segoe UI",sans-serif`;ctx.fillText(s,x,y);}
+function rect(x,y,w,h,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,6);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}}
+function row(icon,label,x,y,active,color=blue){rect(x,y,298,62,active?'#eaf0ff':'#f5f7fa',active?color:line);ctx.drawImage(imgs[icon],x+16,y+16,30,30);text(label,x+60,y+41,29,active?color:ink,600);}
+function arrow(reverse,phase,colour){const start=reverse?655:528,end=reverse?528:655,y=413;
+  ctx.strokeStyle='#aab3bf';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(start,y);ctx.lineTo(end,y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(end+(reverse?12:-12),y-8);ctx.lineTo(end,y);ctx.lineTo(end+(reverse?12:-12),y+8);ctx.stroke();
+  const t=Math.min(1,Math.max(0,phase));const x=start+(end-start)*t;
+  rect(x-18,y-18,36,36,colour);ctx.drawImage(imgs[reverse?'brand':'copy'],x-12,y-12,24,24);
+}
+window.renderAt=ms=>{
+  const stage=Math.min(6,Math.floor(ms/3600)),phase=(ms%3600)/3600;
+  ctx.clearRect(0,0,1000,720);ctx.fillStyle='#fff';ctx.fillRect(0,0,1000,720);
+  ctx.drawImage(imgs.brand,42,28,40,48);text('Clipboard Bridge',96,64,30,ink,650);
+  text(it?'Flusso illustrato':'Illustrated workflow',705,57,22,muted);
+  text(stages[stage][0],42,133,42,ink,700);text(stages[stage][1],44,181,28,muted);
+  text('Windows',44,243,36,blue,650);ctx.drawImage(imgs.phone,688,209,30,40);text('iPhone',736,243,36,green,650);
+  const w=475,h=w*imgs.windows.height/imgs.windows.width;
+  ctx.drawImage(imgs.windows,43,264,w,h);
+  if(stage===1||stage===5){ctx.strokeStyle=stage===1?blue:green;ctx.lineWidth=4;ctx.strokeRect(41,262,w+4,h+4);}
+  text(it?'Schermata reale \u00b7 dati di esempio':'Real screenshot \u00b7 sample data',44,626,22,muted);
+  if(stage<4){
+    row('download',it?'Avvia Ricevi':'Run Receive',660,292,stage===2);
+    row('copy',it?'Incolla':'Paste',660,386,stage===3,green);
+    if(stage===3){text('example.com',678,506,38,green,600);}
+    else{text('Apple Shortcuts',678,506,28,muted);}
+  }else if(stage<6){
+    row('files',it?'Condividi foto':'Share a photo',660,292,stage===4,green);
+    row('send',it?'Avvia Invia':'Run Send',660,386,stage===4,green);
+    ctx.drawImage(imgs.brand,689,480,55,65);text(it?'Immagine':'Image',758,526,32,green,600);
+  }else{
+    text(it?'Testo':'Text',678,325,37,blue,650);text(it?'Foto':'Photos',678,404,37,green,650);text(it?'File':'Files',678,483,37,ink,650);
+    text(it?'Invia \u2194 Ricevi':'Send \u2194 Receive',662,564,30,ink,600);
+  }
+  if(stage===6){arrow(false,.72,blue);arrow(true,.72,green);}
+  else if(stage===1||stage===2)arrow(false,Math.min(1,phase*1.5),blue);
+  else if(stage===4||stage===5)arrow(true,Math.min(1,phase*1.5),green);
+  else{arrow(false,1,blue);}
+  text(it?'Stessa LAN fidata o VPN privata':'Same trusted LAN or private VPN',44,680,25,ink,600);
+  for(let i=0;i<7;i++){ctx.fillStyle=i===stage?blue:line;ctx.fillRect(728+i*32,668,24,4);}
+};
+window.assetsReady.then(()=>{
+  window.renderAt(0);
+  if(!new URLSearchParams(location.search).has('capture')&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
+    const started=performance.now();function animate(now){window.renderAt(Math.min(25199,now-started));if(now-started<25200)requestAnimationFrame(animate);}requestAnimationFrame(animate);
+  }
+});
+</script></body></html>
