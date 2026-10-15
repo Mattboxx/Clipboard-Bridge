@@ -135,10 +135,9 @@ http://TUO_HOST:5088/clipboard/latest/raw?user=alice&amp;password=TUA_PASSWORD</
         <div class="tutorial-note"><strong>Le credenziali restano leggibili negli URL e HTTP non cifra i dati.</strong> Non includerle in screenshot, post o log condivisi. Usa rete fidata o VPN privata; la VPN non cifra necessariamente ogni tratto della LAN.</div>
       </section>
       <section id="demo">
-        <h2>Da Windows a iPhone. E ritorno.</h2>
-        <p>Copia e invia da Windows, avvia Ricevi su iPhone e incolla. Per il percorso opposto, condividi una foto con il comando Invia e ricevila nel client Windows. L'esempio usa la modalit&agrave; server Windows: non serve un server separato.</p>
-        <figure><video class="workflow-video" controls playsinline preload="metadata" poster="assets/demo/windows-iphone-workflow-it.png" aria-label="Flusso illustrato di invio e ricezione tra Windows e iPhone"><source src="assets/demo/windows-iphone-workflow-it.mp4" type="video/mp4"><p><a href="assets/demo/windows-iphone-workflow-it.gif">Guarda la GIF esplicativa</a>.</p></video><figcaption>Spiegazione animata con una schermata Windows reale e soli dati di esempio. Il lato iPhone mostra istruzioni illustrate, non una registrazione del telefono. I Comandi Rapidi si avviano manualmente: non &egrave; sincronizzazione continua su iPhone.</figcaption></figure>
-        <p><a href="assets/demo/windows-iphone-workflow-it.gif">Apri la GIF</a> &middot; <a href="assets/demo/windows-iphone-workflow-it.mp4" download>Scarica il video illustrato</a></p>
+        <h2>Prova il trasferimento Windows e iPhone</h2>
+        <ol><li>Copia <code>Ciao da Windows</code> sul PC e scegli <strong>Invia clipboard</strong>.</li><li>Avvia <strong>Download Clipboard</strong> su iPhone e incolla in una nota vuota.</li><li>Per il percorso opposto, copia un testo su iPhone e avvia <strong>Load Clipboard</strong>.</li><li>Scegli <strong>Ricevi ultimo</strong> su Windows e incolla in un documento.</li></ol>
+        <p>Sono istruzioni da provare sui tuoi dispositivi, non un test registrato sul telefono. Puoi usare la modalit&agrave; server Windows senza un server separato.</p>
         <p>Un host Docker/NAS facoltativo pu&ograve; sostituire Windows e mantenere la clipboard disponibile a PC spento. Android si collega allo stesso host scelto. I dispositivi devono raggiungerlo tramite LAN fidata o VPN privata.</p>
         <details><summary>Verifica tecnica: registrazione web del server autonomo facoltativo</summary>
         <p>La registrazione usa il server autonomo 1.0.8, in un'istanza locale temporanea con soli dati di esempio. Mostra testo Unicode, un'immagine, un gruppo di due file e un nuovo testo che diventa l'ultimo elemento.</p>

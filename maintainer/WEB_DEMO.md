@@ -1,8 +1,7 @@
 # Live web demonstration: provenance
 
-This recording is now a secondary technical example. The main walkthrough covers
-Windows and iPhone; see [WORKFLOW_DEMO.md](WORKFLOW_DEMO.md). Neither demonstration
-is presented as physical-phone footage.
+This recording is a secondary technical example, not a physical-phone demonstration.
+The rejected illustrated animation was removed; the tutorial retains setup instructions.
 
 Published with the maintainer's explicit request to create and publish a demonstration
 and tutorial on 14 October 2026. The Reddit and Dev.to texts are prepared, not posted.

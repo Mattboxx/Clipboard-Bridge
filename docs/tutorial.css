@@ -18,7 +18,6 @@
 .tutorial-article figure{margin:24px 0}
 .tutorial-article figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6}
 .tutorial-article video{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f5f7fa;border:1px solid var(--line);border-radius:6px}
-.tutorial-article video.workflow-video{aspect-ratio:25/18;background:#fff}
 .tutorial-article figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
 .tutorial-article code{font-size:14px;overflow-wrap:anywhere}
 .tutorial-article pre{font-size:14px;line-height:1.65;background:var(--surface);padding:18px;border:1px solid var(--line);border-radius:6px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere}
