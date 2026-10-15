@@ -32,11 +32,11 @@
     <h1>Tutorial Clipboard Bridge</h1>
     <p>Copia un link sul PC e usalo sul telefono. Invia una foto o un documento al computer. Tutti i dispositivi accedono allo stesso ultimo elemento e alla sua cronologia, tramite un host gestito da te.</p>
     <p><strong>Non hai un server? Basta il PC Windows.</strong> Docker o un NAS sono facoltativi: mantengono la clipboard disponibile quando il PC &egrave; spento e aggiungono pagina web e account separati.</p>
-    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Guarda la demo web</a></div>
+    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows e iPhone</a></div>
     <div class="tutorial-meta">14 ottobre 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
   </header>
   <main class="tutorial-layout">
-    <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Demo web reale</a><a href="#help">Problemi comuni</a></aside>
+    <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Windows e iPhone</a><a href="#help">Problemi comuni</a></aside>
     <article class="tutorial-article" id="article">
       <section id="before">
         <h2>1. Collega i dispositivi alla stessa rete</h2>
@@ -135,11 +135,17 @@ http://TUO_HOST:5088/clipboard/latest/raw?user=alice&amp;password=TUA_PASSWORD</
         <div class="tutorial-note"><strong>Le credenziali restano leggibili negli URL e HTTP non cifra i dati.</strong> Non includerle in screenshot, post o log condivisi. Usa rete fidata o VPN privata; la VPN non cifra necessariamente ogni tratto della LAN.</div>
       </section>
       <section id="demo">
-        <h2>Guarda la demo web reale</h2>
+        <h2>Da Windows a iPhone. E ritorno.</h2>
+        <p>Copia e invia da Windows, avvia Ricevi su iPhone e incolla. Per il percorso opposto, condividi una foto con il comando Invia e ricevila nel client Windows. L'esempio usa la modalit&agrave; server Windows: non serve un server separato.</p>
+        <figure><video class="workflow-video" controls playsinline preload="metadata" poster="assets/demo/windows-iphone-workflow-it.png" aria-label="Flusso illustrato di invio e ricezione tra Windows e iPhone"><source src="assets/demo/windows-iphone-workflow-it.mp4" type="video/mp4"><p><a href="assets/demo/windows-iphone-workflow-it.gif">Guarda la GIF esplicativa</a>.</p></video><figcaption>Spiegazione animata con una schermata Windows reale e soli dati di esempio. Il lato iPhone mostra istruzioni illustrate, non una registrazione del telefono. I Comandi Rapidi si avviano manualmente: non &egrave; sincronizzazione continua su iPhone.</figcaption></figure>
+        <p><a href="assets/demo/windows-iphone-workflow-it.gif">Apri la GIF</a> &middot; <a href="assets/demo/windows-iphone-workflow-it.mp4" download>Scarica il video illustrato</a></p>
+        <p>Un host Docker/NAS facoltativo pu&ograve; sostituire Windows e mantenere la clipboard disponibile a PC spento. Android si collega allo stesso host scelto. I dispositivi devono raggiungerlo tramite LAN fidata o VPN privata.</p>
+        <details><summary>Verifica tecnica: registrazione web del server autonomo facoltativo</summary>
         <p>La registrazione usa il server autonomo 1.0.8, in un'istanza locale temporanea con soli dati di esempio. Mostra testo Unicode, un'immagine, un gruppo di due file e un nuovo testo che diventa l'ultimo elemento.</p>
         <figure><video controls playsinline preload="metadata" poster="assets/demo/poster.png" aria-label="Demo reale della pagina web facoltativa di Clipboard Bridge"><source src="assets/demo/clipboard-bridge-web-demo.mp4" type="video/mp4"><p><a href="assets/demo/clipboard-bridge-web-demo.mp4">Scarica il video della demo</a>.</p></video><figcaption>Interfaccia web reale, con didascalie aggiunte alla registrazione e azioni browser automatizzate. Testo e byte dei file sono stati verificati da un client HTTP indipendente. Non &egrave; una prova su iPhone/Android fisici o della clipboard tra dispositivi.</figcaption></figure>
         <p><a href="assets/demo/clipboard-bridge-web-demo.mp4" download>Scarica il video MP4</a></p>
         <details><summary>Leggi la descrizione della demo</summary><ol><li>Salva un testo con emoji, accento e link.</li><li>Leggi lo stesso testo tramite un client HTTP separato.</li><li>Carica l'icona SVG pubblica del progetto come immagine.</li><li>Invia insieme note e checklist: appare un elemento con due file.</li><li>Scarica lo ZIP e verifica che i file originali non siano cambiati.</li><li>Salva un testo pi&ugrave; recente: diventa l'ultimo elemento, mantenendo i precedenti in cronologia.</li></ol></details>
+        </details>
       </section>
       <section id="help">
         <h2>Se qualcosa non funziona</h2>

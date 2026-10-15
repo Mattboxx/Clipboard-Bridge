@@ -32,11 +32,11 @@
     <h1>Clipboard Bridge tutorial</h1>
     <p>Copy a link on Windows and use it on your phone. Send a photo or document back to your PC. Your devices share one latest item and a history through a host you control.</p>
     <p><strong>No home server? Your Windows PC can be the host.</strong> A Docker or NAS server is optional: it keeps the clipboard available when your PC is off and adds browser access and separate accounts.</p>
-    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Watch the web demo</a></div>
+    <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <div class="tutorial-meta">14 October 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
   </header>
   <main class="tutorial-layout">
-    <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Live web demo</a><a href="#help">Troubleshooting</a></aside>
+    <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
     <article class="tutorial-article" id="article">
       <section id="before">
         <h2>1. Put the devices on the same network</h2>
@@ -135,11 +135,17 @@ http://YOUR_HOST:5088/clipboard/latest/raw?user=alice&amp;password=YOUR_PASSWORD
         <div class="tutorial-note"><strong>Credentials remain readable in URLs and HTTP is not encrypted.</strong> Keep these links out of screenshots, posts and shared logs. Use a trusted LAN or private VPN; a VPN does not necessarily encrypt every segment of your LAN.</div>
       </section>
       <section id="demo">
-        <h2>Watch the live web demo</h2>
+        <h2>Windows to iPhone. And back.</h2>
+        <p>Copy and send on Windows, run Receive on iPhone, then paste. To go back, share a photo with the Send Shortcut and receive it in Windows. This example uses Windows Server mode: no separate server is required.</p>
+        <figure><video class="workflow-video" controls playsinline preload="metadata" poster="assets/demo/windows-iphone-workflow-en.png" aria-label="Illustrated Windows and iPhone send and receive workflow"><source src="assets/demo/windows-iphone-workflow-en.mp4" type="video/mp4"><p><a href="assets/demo/windows-iphone-workflow-en.gif">View the illustrated GIF</a>.</p></video><figcaption>Illustrated walkthrough with a real sample-data Windows screenshot. The iPhone side shows instructions, not a device recording. Apple Shortcuts are triggered manually; this is not automatic iPhone synchronization.</figcaption></figure>
+        <p><a href="assets/demo/windows-iphone-workflow-en.gif">Open the GIF</a> &middot; <a href="assets/demo/windows-iphone-workflow-en.mp4" download>Download the illustrated video</a></p>
+        <p>An optional Docker/NAS host can replace the Windows host and keep the clipboard available when the PC is off. Android connects to the same chosen host. All devices must reach it over a trusted LAN or private VPN.</p>
+        <details><summary>Technical check: optional standalone server web recording</summary>
         <p>This is a recording of the actual standalone server 1.0.8, using a disposable local instance and sample data. It shows saving Unicode text, uploading an image, sending a two-file group and replacing it with newer text.</p>
         <figure><video controls playsinline preload="metadata" poster="assets/demo/poster.png" aria-label="Live demonstration of Clipboard Bridge's optional web interface"><source src="assets/demo/clipboard-bridge-web-demo.mp4" type="video/mp4"><p><a href="assets/demo/clipboard-bridge-web-demo.mp4">Download the demonstration video</a>.</p></video><figcaption>Actual web UI, with captions added for the recording. Browser actions are automated. Text and original file bytes were checked from an independent HTTP client. This is not a physical iPhone/Android or cross-device clipboard recording.</figcaption></figure>
         <p><a href="assets/demo/clipboard-bridge-web-demo.mp4" download>Download the MP4</a></p>
         <details><summary>Read the demo transcript</summary><ol><li>Save text containing an emoji, an accent and a link.</li><li>Read the same text through a separate HTTP client.</li><li>Upload the project's public SVG icon as an image.</li><li>Send sample notes and a checklist together; one two-file history item appears.</li><li>Download the group's ZIP and verify that both original files are unchanged.</li><li>Save newer text: it becomes the latest item while older entries remain in history.</li></ol></details>
+        </details>
       </section>
       <section id="help">
         <h2>If something does not work</h2>
