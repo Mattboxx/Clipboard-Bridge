@@ -16,6 +16,8 @@ Nessun cloud, account online, abbonamento o telemetria obbligatori.
 oppure avvia il comando di invio dal menu **Condividi** di un'altra app. Dopo la
 configurazione non devi riaprire l'editor di Comandi Rapidi a ogni trasferimento.
 
+[Guarda la configurazione iPhone illustrata e i consigli di accesso rapido](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html#iphone).
+
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |

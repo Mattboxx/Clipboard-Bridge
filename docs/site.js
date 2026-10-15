@@ -1,5 +1,14 @@
 "use strict";
 
+document.querySelectorAll("[data-apple-image]").forEach((image) => {
+  const showFallback = () => {
+    image.hidden = true;
+    image.closest(".apple-shot").querySelector(".apple-image-fallback").hidden = false;
+  };
+  image.addEventListener("error", showFallback, { once: true });
+  if (image.complete && !image.naturalWidth) showFallback();
+});
+
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const command = document.getElementById(button.dataset.copy);

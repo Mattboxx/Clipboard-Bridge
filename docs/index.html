@@ -9,6 +9,7 @@
   <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="apple-shortcuts.css">
   <script src="site.js" defer></script>
   <meta property="og:type" content="website">
   <meta property="og:title" content="Clipboard Bridge - Share your clipboard across Windows, Apple and Android">
@@ -134,7 +135,20 @@
         <span class="section-kicker">Keep it within reach</span><h2>Two Shortcuts for your Apple devices.</h2>
         <p class="section-copy"><strong>Swipe to Control Center. Tap Send or Receive.</strong> Keep both iPhone Shortcuts there for quick access, or send directly from another app's Share menu. <strong>Load Clipboard</strong> sends; <strong>Download Clipboard</strong> receives.</p>
         <div class="shortcut-actions"><article class="shortcut-action"><h3>Send from your device</h3><p>Your clipboard, a photo or a group of files.</p><a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut">Get Send Shortcut<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a></article><article class="shortcut-action"><h3>Receive the latest item</h3><p>The same action, whatever its file type.</p><a class="text-link" href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut">Get Receive Shortcut<img class="icon" src="assets/icons/arrow-up-right.svg" alt=""></a></article></div>
-        <div class="phone-tips"><p><strong>From another app:</strong> enable Show in Share Sheet to send a photo or file directly.</p><p><strong>From iPhone Control Center:</strong> tap Add a Control, choose Shortcut and select each of the two actions.</p><p><strong>Several files together:</strong> follow the grouped-file setup in the guide to keep them in one history item.</p></div>
+        <div class="apple-setup" aria-label="Apple Control Center illustrated steps">
+          <figure class="apple-step"><a class="apple-shot" href="https://support.apple.com/guide/iphone/iph59095ec58/26/ios/26" target="_blank" rel="noopener noreferrer"><img data-apple-image src="https://help.apple.com/assets/69F8EBBDF3B89A4F6E0C704C/69F8EBC43862495245036393/en_US/fbc7a8d3ef2b5f13b3ab7be6425f02bf.png" alt="Apple screenshot: Control Center in edit mode, with Add a Control at the bottom" width="393" height="535" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="apple-image-fallback" hidden>View this step on Apple Support</span></a><figcaption><strong>1. Add a Control</strong>Open Control Center and tap the + button.</figcaption></figure>
+          <figure class="apple-step"><a class="apple-shot" href="https://support.apple.com/guide/iphone/iph59095ec58/26/ios/26" target="_blank" rel="noopener noreferrer"><img data-apple-image src="https://help.apple.com/assets/69F8EBBDF3B89A4F6E0C704C/69F8EBC43862495245036393/en_US/2e883c88aba91aa499c551cdd2178cff.png" alt="Apple screenshot: the Control Center gallery where you can find a control" width="245" height="504" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="apple-image-fallback" hidden>View this step on Apple Support</span></a><figcaption><strong>2. Find Shortcut</strong>Search the gallery, then add the Shortcut control.</figcaption></figure>
+        </div>
+        <p class="apple-choice"><strong>3. Tap Choose.</strong> Select <strong>Load Clipboard</strong> for Send. Add a second control and select <strong>Download Clipboard</strong> for Receive. <a href="https://support.apple.com/guide/shortcuts/apd06a9201d4/ios">Apple's Shortcut instructions</a>.</p>
+        <p class="apple-credit">Official iOS 26 examples, &copy; Apple, loaded from Apple's website. They do not show Clipboard Bridge configured; appearance varies by iOS version. Clipboard Bridge is an independent project.</p>
+        <details class="apple-tips"><summary>Share menu, Home Screen and other useful tips</summary>
+          <dl>
+            <dt>Send without copying first</dt><dd>In the Send Shortcut's details, enable <strong>Show in Share Sheet</strong>. Then select a photo, file or link in another app and use <strong>Share &gt; Load Clipboard</strong>. The Shortcut must use Shortcut Input when present: follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">input and multi-file recipe</a>. <a href="https://support.apple.com/guide/shortcuts/apd163eb9f95/ios">Apple's Share Sheet guide</a>.</dd>
+            <dt>Prefer an icon on your Home Screen?</dt><dd>Open the Shortcut's details and choose <strong>Add to Home Screen</strong>. Repeat for Receive. <a href="https://support.apple.com/guide/shortcuts/apd735880972/ios">Apple's Home Screen guide</a>.</dd>
+            <dt>Cannot find the Shortcut?</dt><dd>Import and configure it first. Control Center uses the <strong>Shortcut</strong> control, not a separate Clipboard Bridge app control. In Share, scroll down; if the action is missing, check Show in Share Sheet and the accepted input types.</dd>
+            <dt>Test once before using it every day</dt><dd>Keep the host awake and use the same trusted network or private VPN. Send a short message and receive it on the other device. Allow local-network access if iOS asks.</dd>
+          </dl>
+        </details>
         <p class="mac-note"><strong>On Mac:</strong> build the same send/receive actions in Shortcuts using the server URLs in the guide. Run them when needed, or assign a keyboard shortcut. The distributed iPhone files have not yet been tested on a Mac; macOS support is through the workflow, not a native app or continuous background sync.</p>
         <a class="text-link" href="windows-iphone-clipboard.html#iphone">Set up Control Center and Share Sheet &rarr;</a>
       </div>

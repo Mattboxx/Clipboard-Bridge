@@ -73,8 +73,8 @@ def test_website_support_opens_donation_directly_and_stylesheet_exists():
     assert link["href"] == "https://ko-fi.com/mattboxx"
     assert link["target"] == "_blank"
     assert {"noopener", "noreferrer"} <= set(link["rel"].split())
-    assert links.stylesheets == ["site.css"]
-    assert (ROOT / "docs/site.css").is_file()
+    assert links.stylesheets == ["site.css", "apple-shortcuts.css"]
+    assert all((ROOT / "docs" / source).is_file() for source in links.stylesheets)
 
 
 def test_website_local_images_and_device_downloads_exist():
@@ -88,7 +88,7 @@ def test_website_local_images_and_device_downloads_exist():
         def handle_starttag(self, tag, attrs):
             values = dict(attrs)
             if tag == "img":
-                self.images.append(values["src"])
+                self.images.append(values)
                 assert "alt" in values
             if tag == "a" and "/releases/download/" in values.get("href", ""):
                 self.downloads.add(values["href"].rsplit("/", 1)[1])
@@ -99,9 +99,14 @@ def test_website_local_images_and_device_downloads_exist():
     assets.feed((ROOT / "docs/index.html").read_text(encoding="utf-8"))
     assert assets.main_ids == ["main"]
     assert assets.images
-    for source in assets.images:
-        assert not source.startswith(("http:", "https:")), "Website assets should work without a CDN"
-        assert (ROOT / "docs" / source).is_file(), source
+    for image in assets.images:
+        source = image["src"]
+        if source.startswith("https://help.apple.com/assets/"):
+            assert "data-apple-image" in image
+            assert image["referrerpolicy"] == "no-referrer"
+        else:
+            assert not source.startswith(("http:", "https:")), "Only credited Apple illustrations may use a CDN"
+            assert (ROOT / "docs" / source).is_file(), source
     version = load_release_metadata().current_version()
     for architecture in ("x64", "arm64"):
         assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
