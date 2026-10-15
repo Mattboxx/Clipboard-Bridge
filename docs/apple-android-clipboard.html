@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share clipboard between iPhone, Mac and Android | Clipboard Bridge</title>
+  <meta name="description" content="Share text, photos and files between iPhone, iPad, Mac and Android. Use Apple Shortcuts and the Android app with a Windows or Docker host on your network.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="A shared clipboard for Apple and Android devices">
+  <meta property="og:description" content="Connect iPhone, iPad, Mac and Android using a host you control. Practical setup steps, Control Center access and honest platform limits.">
+  <meta property="og:url" content="https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html">
+  <meta property="og:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Share clipboard between iPhone, Mac and Android","description":"Connect Apple Shortcuts and the Android app to a shared Windows or Docker host.","datePublished":"2026-10-15","dateModified":"2026-10-15","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Clipboard Bridge","item":"https://mattboxx.github.io/Clipboard-Bridge/"},{"@type":"ListItem","position":2,"name":"Apple and Android clipboard","item":"https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html"}]}]}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to guide</a>
+  <nav aria-label="Main navigation"><div class="nav-inner"><a class="brand" href="./"><img src="icon.svg" alt="">Clipboard Bridge</a><div class="nav-links"><a class="nav-download" href="./#download">Download</a><a href="tutorial.html">Full tutorial</a></div></div></nav>
+  <header class="tutorial-header">
+    <p class="tutorial-meta"><a href="./">Clipboard Bridge</a> / Apple and Android</p>
+    <h1>Share your clipboard between Apple and Android devices</h1>
+    <p>Mixed devices should not mean sending yourself an email just to move a link. Clipboard Bridge shares text, photos and files between iPhone, iPad, Mac, Android and Windows through a host on your own network.</p>
+    <p><strong>On iPhone, Send and Receive can live in Control Center.</strong> The Send Shortcut can also appear in the Share Sheet, next to the sharing options in your other apps. Android has its own app and Share target.</p>
+    <div class="actions"><a class="button primary" href="#host">Choose your host</a><a class="button" href="./#download">Downloads</a></div>
+    <div class="tutorial-meta">Updated 15 October 2026 &middot; Apple Shortcuts + Android app</div>
+  </header>
+  <main class="tutorial-layout">
+    <aside class="tutorial-toc" aria-label="Guide sections"><strong>On this page</strong><a href="#host">Choose a host</a><a href="#iphone">iPhone and Android</a><a href="#mac">Mac and Android</a><a href="#files">Photos and files</a><a href="#automation">Automation limits</a><a href="#network">Network and accounts</a><a href="#help">Troubleshooting</a></aside>
+    <article class="tutorial-article" id="article">
+      <section id="host">
+        <h2>First, choose where the shared clipboard lives</h2>
+        <p>Apple and Android clients connect to the same host. <strong>The mobile apps do not host a direct phone-to-phone service.</strong> Choose one of these two options:</p>
+        <ul><li><strong>Already have a Windows PC?</strong> Install Clipboard Bridge and choose <strong>Settings &gt; General &gt; Server mode</strong>. Keep the PC and app running. There is no separate server to install and no web page in this mode.</li><li><strong>Want an always-on clipboard?</strong> Run the <a href="./#server">Docker/Python server</a> on a home server, NAS or Raspberry Pi. It adds browser access and optional separate accounts, and keeps working while Windows is off.</li></ul>
+        <p>Copy the chosen host's network address. Use it in every client and Shortcut. You do not need a Clipboard Bridge online account or a project-operated cloud service.</p>
+        <p>If your main pair is Windows and iPhone, use the shorter <a href="windows-iphone-clipboard.html">Windows to iPhone clipboard guide</a>.</p>
+      </section>
+      <section id="iphone">
+        <h2>Copy and paste between iPhone and Android</h2>
+        <ol>
+          <li>On Android 10 or newer, install the <a href="./#download">Clipboard Bridge APK</a>. Enter the chosen host's address in Settings and save. Android support is currently a public beta.</li>
+          <li>On iPhone or iPad, import the two <a href="./#shortcuts">iPhone Shortcuts</a>. Set Load Clipboard to POST to <code>/clipboard</code> and Download Clipboard to GET <code>/clipboard/latest/raw</code>, using the same host.</li>
+          <li>Add both Shortcuts to <strong>Control Center &gt; + &gt; Add a Control &gt; Shortcut &gt; Choose</strong> on supported iOS versions. Enable <strong>Show in Share Sheet</strong> for Send, and configure Shortcut Input using the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">Share Sheet recipe</a>.</li>
+          <li>To send from iPhone, copy text and tap Load Clipboard in Control Center, or send a photo/document from Share. On Android, tap <strong>Receive latest</strong>, then paste the text or open the received file.</li>
+          <li>To send from Android, copy text and use <strong>Send clipboard</strong> in the app. On iPhone, tap Download Clipboard, then paste into the destination app.</li>
+        </ol>
+        <pre><code>Send:    POST http://YOUR_HOST:5088/clipboard
+Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
+        <p>Replace <code>YOUR_HOST</code> with the Windows or standalone server address, not the phone's own address. One pair of actions covers the latest content; you do not choose a different endpoint for a newer photo versus newer text.</p>
+      </section>
+      <section id="mac">
+        <h2>Share a clipboard between Mac and Android</h2>
+        <p>There is no native Mac client. On macOS, build the same user-triggered workflow in Apple's Shortcuts app and connect it to your Windows or standalone host.</p>
+        <ol><li>Create a Send Shortcut: get the clipboard, then use <strong>Get Contents of URL</strong> with POST to <code>http://YOUR_HOST:5088/clipboard</code>. Use the copied text as the request body for a basic text-only setup.</li><li>Create a Receive Shortcut: GET <code>http://YOUR_HOST:5088/clipboard/latest/raw</code>, then <strong>Copy to Clipboard</strong>.</li><li>Copy a short sample message on Mac, run Send, and receive it in the Android app. For the other direction, send on Android and run Receive on Mac.</li></ol>
+        <p>Use the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#mac-compatibility">Mac setup guide</a> for action details and permissions. The distributed signed iPhone exports have not been physically tested on Mac; create or adapt the actions rather than assuming a native Mac installation. File and group handling requires the additional recipe below.</p>
+        <p>This is an independent workflow for mixed-device households, not Apple's built-in <a href="https://support.apple.com/en-us/102430">Universal Clipboard</a>. It does not require Android to join Handoff or use your Apple Account.</p>
+      </section>
+      <section id="files">
+        <h2>Move photos, PDFs and other files too</h2>
+        <p>On Android, choose Clipboard Bridge from another app's <strong>Share</strong> menu. On iPhone, use the Send Shortcut in the Share Sheet. The source app must provide access to the item, and the Shortcut must pass that input to the host.</p>
+        <p>A selection of several files can become one server history entry. The <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">advanced Apple Shortcut recipe</a> sends a temporary ZIP to <code>/clipboard/bundle</code> and can extract the latest group after checking <code>/clipboard/latest/meta</code>. The signed downloads have not been changed to include every advanced recipe.</p>
+        <p>Original file contents are preserved. Copied formatted text is received as plain Unicode text, with emoji, accents and line breaks. The newest upload always becomes the latest item; an older file does not take priority over newer text.</p>
+        <p>The Android history reads the selected host and account, rather than keeping an unrelated local-only list. You can restore an earlier item or delete an individual history entry.</p>
+      </section>
+      <section id="automation">
+        <h2>What is automatic, and what needs a tap?</h2>
+        <ul><li><strong>iPhone and iPad:</strong> run Send or Receive from Control Center, or Send from Share. There is no continuous background iOS clipboard watcher.</li><li><strong>Mac:</strong> run the manual Shortcuts. There is no native Mac client or continuous Mac clipboard synchronization in this project.</li><li><strong>Android:</strong> incoming notifications, receiving options and Quick Settings actions are available. Android restricts background clipboard reading, so copying inside another app is not guaranteed to trigger an upload.</li><li><strong>Windows:</strong> optional automatic sending and receiving run while the app is active. Notification types and hotkeys can be configured in Settings.</li></ul>
+        <p>Start with one manual text transfer in each direction. Enable optional automation afterwards. Physical phone, Mac and VPN acceptance tests are not implied by the automated API and build checks.</p>
+      </section>
+      <section id="network">
+        <h2>Use your local network, or a private VPN</h2>
+        <p>All clients must reach the same host. A trusted home Wi-Fi/LAN is enough; guest Wi-Fi may isolate devices. Away from home, connect through a private VPN such as Tailscale or WireGuard. VPN access also works when Windows itself is the host.</p>
+        <p>If an always-on server provides a separately configured subnet route, clients can keep using the same LAN address outside the house. See the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#local-network-vpn-and-subnet-routing">VPN and subnet-routing guide</a>.</p>
+        <p>Accounts and tokens are optional. Without a username, clients use the general shared clipboard. Named accounts on the standalone server have separate histories; select the same account in Android Settings and both Apple URLs. See <a href="tutorial.html#accounts">account URL examples</a>.</p>
+        <div class="tutorial-note"><strong>Keep the host private.</strong> Do not forward port 5088 to the Internet. Credentials in account/token URLs are readable, and plain HTTP does not encrypt them or the clipboard data. This project does not replace network security.</div>
+      </section>
+      <section id="help">
+        <h2>Check the connection before changing the Shortcuts</h2>
+        <p>If you see different histories, compare the full host address and selected account on every device. If a request times out, check that the host is awake, the firewall allows your private network and VPN routes are available. A missing web page is normal in Windows Server mode.</p>
+        <p>For detailed setup and troubleshooting, read the <a href="tutorial.html">complete tutorial</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/android/README.md">Android documentation</a>. For a phone-to-PC setup, read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a>.</p>
+      </section>
+    </article>
+  </main>
+  <footer class="tutorial-end"><a href="./">Clipboard Bridge</a> &middot; <a href="https://github.com/Mattboxx/Clipboard-Bridge">Source and issue reports</a> &middot; <a href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer">Support the project</a></footer>
+</body>
+</html>

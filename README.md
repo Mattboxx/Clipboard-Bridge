@@ -12,6 +12,10 @@ network or a private VPN. A Clipboard Bridge account is optional.
 
 No mandatory cloud service, online account, subscription or telemetry.
 
+**On iPhone, sharing is within easy reach:** add Send and Receive to **Control
+Center**, or run the Send Shortcut from another app's **Share Sheet**. Once set
+up, you do not need to reopen the Shortcuts editor for each transfer.
+
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
@@ -19,6 +23,9 @@ No mandatory cloud service, online account, subscription or telemetry.
 [Full guide](GUIDE.md) | [Developers](#developers)
 
 New here? Follow the [step-by-step setup tutorial](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html).
+
+Device-specific guides: [Windows to iPhone clipboard sharing](https://mattboxx.github.io/Clipboard-Bridge/windows-iphone-clipboard.html)
+and [sharing a clipboard between Apple and Android devices](https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html).
 
 [![Tests](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
