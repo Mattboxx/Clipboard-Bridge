@@ -183,6 +183,66 @@ def load_notifier():
     return module
 
 
+@pytest.mark.parametrize("filename", PAGES)
+def test_tailscale_is_recommended_for_remote_or_untrusted_networks(filename):
+    page = read_page(filename)
+    text = " ".join(page.texts)
+    assert any(a.get("href") == "https://tailscale.com/" for a in page.tags("a"))
+    if filename == "tutorial.it.html":
+        assert "Fuori casa o su Wi-Fi non fidate consigliamo" in text
+        assert "Tailscale dell'host" in text and "facoltativa" in text
+    else:
+        assert "untrusted Wi-Fi" in text
+        assert "we recommend" in text.lower()
+        assert "Tailscale address" in text and "optional" in text
+    assert "GUIDE.md#local-network-vpn-and-subnet-routing" in (DOCS / filename).read_text(encoding="utf-8")
+
+
+def test_vpn_guide_does_not_imply_all_traffic_or_exposed_services_are_protected():
+    guide = (ROOT / "GUIDE.md").read_text(encoding="utf-8")
+    assert "Keep port\n`5088` blocked on public/untrusted interfaces" in guide
+    assert "does not automatically restrict a server" in guide
+    assert "not all internet\nbrowsing" in guide
+    assert "exit node" in guide and "not required for\nClipboard Bridge" in guide
+    for filename in ("README.md", "README.it.md"):
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert "Tailscale" in text and "5088" in text
+        assert "untrusted Wi-Fi" in text or "Wi-Fi non fidate" in text
+
+
+def test_tray_demo_has_reduced_motion_poster_and_explains_optional_auto_sync():
+    page = read_page("index.html")
+    demo = next(img for img in page.tags("img")
+                if img.get("src") == "assets/demo/windows-tray-menu.gif")
+    assert (demo["width"], demo["height"]) == ("620", "660")
+    assert "Real English Windows tray menu" in demo["alt"]
+    assert any(source.get("media") == "(prefers-reduced-motion: reduce)"
+               and source.get("srcset") == "assets/demo/windows-tray-menu.png"
+               for source in page.tags("source"))
+    text = " ".join(page.texts)
+    assert "Automatic synchronization" in text
+    assert "without pressing Send or Receive" in text
+    assert "Keep the app running" in text and "sensitive text" in text
+    assert "No clipboard content is shown" in text
+    for extension in ("gif", "png", "mp4"):
+        asset = DOCS / f"assets/demo/windows-tray-menu.{extension}"
+        assert 10_000 < asset.stat().st_size < 500_000
+    gif = (DOCS / "assets/demo/windows-tray-menu.gif").read_bytes()
+    assert gif[:6] == b"GIF89a"
+    assert int.from_bytes(gif[6:8], "little") == 620
+    assert int.from_bytes(gif[8:10], "little") == 660
+
+
+@pytest.mark.parametrize("filename", ["README.md", "README.it.md"])
+def test_readme_shows_real_tray_gif_and_optional_automatic_sharing(filename):
+    text = (ROOT / filename).read_text(encoding="utf-8")
+    assert 'src="docs/assets/demo/windows-tray-menu.gif"' in text
+    assert 'srcset="docs/assets/demo/windows-tray-menu.png"' in text
+    assert "(prefers-reduced-motion: reduce)" in text
+    assert "without pressing Send or Receive" in text or "senza premere ogni volta Invia o Ricevi" in text
+    assert "automatically" in text or "automaticamente" in text
+
+
 def test_indexnow_payload_is_limited_to_public_project_pages():
     notifier = load_notifier()
     payload = notifier.build_payload()
