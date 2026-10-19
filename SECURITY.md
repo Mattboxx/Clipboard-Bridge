@@ -53,3 +53,10 @@ Changing a password does not currently revoke all existing browser sessions.
 For immediate revocation, stop the service, replace `/data/secret.key`, then
 restart it: all devices must log in again, but clipboard files are untouched.
 Back up securely first. Keep this disruptive action separate from routine upgrades.
+
+On case-insensitive or filename-normalizing storage, different account names can
+refer to the same directory. The candidate account-storage guard refuses access to
+such ambiguous accounts rather than exposing shared history. Prefer names that do
+not differ only by case or trailing dots. Back up and review any existing mixed
+history before changing account names; the application does not automatically move
+or reassign that data. See [account storage recovery](DOCKER.md#security-and-accounts).

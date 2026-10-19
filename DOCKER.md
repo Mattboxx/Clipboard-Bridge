@@ -126,6 +126,21 @@ account has isolated history and files. URL credentials remain supported for
 iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 `X-Clipboard-Password` headers.
 
+Accounts are loaded at startup; restart the host after editing their configuration.
+For portable deployments, choose names that do not differ only by letter case or
+trailing dots. Such names can refer to one directory on Windows or a case-insensitive
+NAS volume. The unreleased account-storage guard returns `503` with
+`code: account_storage_conflict` rather than allowing those accounts to share data.
+The shared space and unrelated users remain available. A healthy case-sensitive
+filesystem keeps existing distinct directories and behavior unchanged.
+
+To resolve a conflict, stop the host and back up all affected directories first.
+Review the configured names and choose unambiguous ones. If accounts have already
+shared a directory, do not automatically assign its mixed history to another user:
+review and separate or securely archive it before restoring access. The guard does
+not rename directories, migrate or delete data, or change Shortcut credential URLs.
+`account_storage_unavailable` instead indicates a directory/permissions problem.
+
 Remembered web logins keep the existing 3650-day default for compatibility.
 Set `CLIPBOARD_SESSION_DAYS` to a value from 1 to 3650, for example 90 on a shared
 computer or 365 at home. Add it to the service's environment if using a store

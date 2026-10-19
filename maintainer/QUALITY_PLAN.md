@@ -41,6 +41,7 @@ not a current claim that its candidate releases remain unpublished.
 | Q6 | Open dependency/action updates need compatibility and advisory review; risk, not a proven vulnerability | P1 maintenance | Dependency manifests and Dependabot PRs | Open PRs #14-18, #24, #26-29 observed. Review separately rather than blindly merging a Gunicorn major update. | Native x64/ARM64 packaging, runtime image and pipeline compatibility gates. |
 | Q7 | Several background operations swallow exceptions; diagnostic risk | P1 operability | Windows, Android service | Requires targeted fault tests and bounded, redacted diagnostics. Do not enable logging of clipboard values or URLs. | Avoid notification floods, leaking credentials, or destabilizing the UI. |
 | Q8 | Real device sleep, Share Sheet, Control Center and VPN routing remain unverified; acceptance gap | P1 launch evidence | Platform clients and manual test plan | Automated HTTP tests do not establish these OS-level results. | Run the actual device/NAS/VPN scenarios in [MANUAL_TESTS.md](MANUAL_TESTS.md). |
+| Q9 | Configured names can alias one physical account directory; demonstrated isolation bug on Windows | P1 confidentiality | Standalone account storage and server tests | Reproduced two case-distinct users reading one history on NTFS. Separate candidate guard uses actual filesystem identity, denies ambiguous accounts, and preserves the shared space, other users, existing paths and URLs. | Do not merge distinct Linux directories or silently reassign mixed data. Real Windows and Linux server tests, redacted error and permissions checks. |
 
 ## Storage Candidate Contract
 
@@ -67,7 +68,7 @@ to the work already done.
 
 | Gate | Required evidence | Current status |
 | --- | --- | --- |
-| Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | Candidate implemented; clean-tree local suite passed, CI verification pending |
+| Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | PR #50 candidate verified locally and in CI; not released |
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
 | Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | Baseline pipelines verified; rerun native build for the storage candidate |
@@ -100,7 +101,7 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
 
 ### Candidate Evidence, 20 October
 
-- Clean staged source with `CLIPBOARD_TEST_IMAGE` enabled: **281 passed, 1 skipped**.
+- Clean committed PR #50 source with `CLIPBOARD_TEST_IMAGE` enabled: **282 passed, 1 skipped**.
   The skip is the separately configured external-host test, not the disposable Docker suite.
 - All five disposable Docker tests passed locally, including the real Windows
   client's protocol round trips. No test containers or volumes remained afterward.
@@ -119,3 +120,14 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   the valid 413 response. The test now writes and reads concurrently, still requires
   the actual 413 and confirms history is unchanged; it does not accept a connection
   reset as a successful size-limit check.
+- PR #50 latest head `f793076`: all checks passed in
+  [validation run 39339209727](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39339209727)
+  and [native ARM64 run 39339209708](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39339209708).
+  This verifies the candidate, not publication of new binaries or a store image.
+- The follow-up Q9 guard has **85 server tests passing locally on Windows**, with
+  actual case/trailing-dot alias behavior and explicit denial checks. Full candidate
+  verification before the large-account check: **284 passed, 6 opt-in tests skipped**;
+  the five disposable-container checks also passed separately against its rebuilt
+  image. The additional large-account check verifies 10,000 users without scanning
+  unrelated user directories on each request. Linux/Windows CI for the follow-up
+  is still pending.

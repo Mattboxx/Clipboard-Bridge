@@ -4,6 +4,9 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Refuse account access when distinct configured names resolve to the same physical
+  directory on a case-insensitive or filename-normalizing filesystem. Keep the
+  general clipboard and unrelated accounts available; do not relocate existing data.
 - Preserve existing history when its index is malformed or unreadable instead of
   treating it as empty, in the standalone host, Windows host and local history.
 - Return a safe `503 history_unavailable` response rather than overwriting damaged

@@ -1,6 +1,8 @@
 import base64
 import importlib.util
 import io
+import json
+import os
 import sys
 import uuid
 import zipfile
@@ -405,6 +407,82 @@ def test_account_can_delete_only_its_own_history_item(server):
     ).status_code == 200
 
 
+@pytest.mark.parametrize("other", ["Demo", "demo."])
+def test_account_names_never_share_a_physical_history_directory(server, monkeypatch, other):
+    accounts = {"demo": "lower", other: "upper", "bob": "second"}
+    monkeypatch.setattr(server, "ACCOUNTS", accounts)
+    monkeypatch.setattr(server, "_ACCOUNT_ALIASES", server._account_alias_groups(accounts))
+    lower = Path(server.DATA_DIR) / "users/demo"
+    upper = lower.parent / other
+    (lower / "items").mkdir(parents=True)
+    (lower / "items/legacy.txt").write_text("legacy sample", encoding="utf-8")
+    legacy = json.dumps([{"id": "legacy", "type": "text", "file": "legacy.txt", "preview": "legacy sample"}]).encode()
+    (lower / "index.json").write_bytes(legacy)
+    aliased = upper.exists() and os.path.samefile(lower, upper)
+    client = server.app.test_client()
+    first = client.post("/clipboard", query_string={"user": "demo", "password": "lower"}, json="lower space")
+    second = client.post("/clipboard", query_string={"user": other, "password": "upper"}, json="upper space")
+    if aliased:
+        assert first.status_code == second.status_code == 503
+        assert first.get_json()["code"] == second.get_json()["code"] == "account_storage_conflict"
+        assert (lower / "index.json").read_bytes() == legacy
+        assert list((lower / "items").iterdir()) == [lower / "items/legacy.txt"]
+    else:
+        assert first.status_code == second.status_code == 200
+        assert client.get("/clipboard/latest/raw", query_string={"user": "demo", "password": "lower"}).data == b"lower space"
+        assert client.get("/clipboard/latest/raw", query_string={"user": other, "password": "upper"}).data == b"upper space"
+    assert client.get("/health").status_code == 200
+    assert client.post("/clipboard?token=shared-token", json="general space").status_code == 200
+    assert client.get("/clipboard/latest/raw?token=shared-token").data == b"general space"
+
+
+@pytest.mark.parametrize("method,route", [
+    ("get", "/clipboard/latest/raw"), ("get", "/clipboard/history"),
+    ("post", "/clipboard"), ("delete", "/clipboard/history"),
+])
+def test_filesystem_alias_fails_closed_without_leaking_data_or_paths(server, monkeypatch, method, route, caplog):
+    accounts = {"alice": "lower", "Alice": "upper", "bob": "second"}
+    monkeypatch.setattr(server, "ACCOUNTS", accounts)
+    monkeypatch.setattr(server, "_ACCOUNT_ALIASES", server._account_alias_groups(accounts))
+    monkeypatch.setattr(server.os.path, "samefile", lambda first, second: True)
+    client = server.app.test_client()
+    response = getattr(client, method)(route, query_string={"user": "Alice", "password": "upper"},
+                                       data=b"new data" if method == "post" else None)
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "account_storage_conflict"
+    assert str(server.DATA_DIR) not in response.get_data(as_text=True)
+    assert "Alice" not in caplog.text and "upper" not in caplog.text
+    assert client.post("/clipboard?user=bob&password=second", json="healthy account").status_code == 200
+
+
+def test_account_directory_permission_failure_has_a_safe_response(server, monkeypatch):
+    original = server.os.makedirs
+
+    def denied(path, *args, **kwargs):
+        if "users" in Path(path).parts:
+            raise PermissionError("private path and diagnostic details")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(server.os, "makedirs", denied)
+    response = server.app.test_client().get("/clipboard/history?user=alice&password=p%26ss%3Fword")
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "account_storage_unavailable"
+    assert "private path" not in response.get_data(as_text=True)
+
+
+def test_alias_guard_keeps_large_account_sets_without_per_request_directory_scans(server, monkeypatch):
+    accounts = server._parse_accounts("\n".join(f"user{number}:sample" for number in range(10000)))
+    assert len(accounts) == 10000
+    monkeypatch.setattr(server, "ACCOUNTS", accounts)
+    monkeypatch.setattr(server, "_ACCOUNT_ALIASES", server._account_alias_groups(accounts))
+    scans = []
+    monkeypatch.setattr(server.os.path, "samefile", lambda *paths: scans.append(paths) or False)
+    client = server.app.test_client()
+    assert client.post("/clipboard?user=user9999&password=sample", json="many accounts").status_code == 200
+    assert client.get("/clipboard/latest/raw?user=user9999&password=sample").data == b"many accounts"
+    assert scans == []
+
+
 def test_iphone_style_binary_round_trip(server):
     client = server.app.test_client()
     payload = b"%PDF-1.4\nclipboard bridge test\n%%EOF"
@@ -721,6 +799,7 @@ def test_rtf_documents_are_files_not_clipboard_text(server, mode):
 
 def test_unicode_password_and_token_are_supported(server):
     server.ACCOUNTS["unicode"] = "caff\u00e8-\u96ea-\U0001f511"
+    server._ACCOUNT_ALIASES = server._account_alias_groups(server.ACCOUNTS)
     server.AUTH_TOKEN = "tok\u00e9n-\u96ea"
     client = server.app.test_client()
     assert client.post("/clipboard", query_string={"user": "unicode", "password": server.ACCOUNTS["unicode"]},

@@ -69,10 +69,10 @@ jobs:
       - name: Install client test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements-client.txt pytest
+          python -m pip install -r requirements-client.txt -r requirements-server.txt pytest
 
-      - name: Test Windows client
-        run: python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py
+      - name: Test Windows client and standalone server
+        run: python -m pytest -q tests/test_windows_client.py tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py
 
   android-client:
     runs-on: ubuntu-latest
