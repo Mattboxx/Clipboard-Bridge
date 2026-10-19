@@ -43,6 +43,7 @@ not a current claim that its candidate releases remain unpublished.
 | Q8 | Real device sleep, Share Sheet, Control Center and VPN routing remain unverified; acceptance gap | P1 launch evidence | Platform clients and manual test plan | Automated HTTP tests do not establish these OS-level results. | Run the actual device/NAS/VPN scenarios in [MANUAL_TESTS.md](MANUAL_TESTS.md). |
 | Q9 | Configured names can alias one physical account directory; demonstrated isolation bug on Windows | P1 confidentiality | Standalone account storage and server tests | Reproduced two case-distinct users reading one history on NTFS. Separate candidate guard uses actual filesystem identity, denies ambiguous accounts, and preserves the shared space, other users, existing paths and URLs. | Do not merge distinct Linux directories or silently reassign mixed data. Real Windows and Linux server tests, redacted error and permissions checks. |
 | Q10 | Android trusts incomplete responses and leaves files from failed cache downloads; demonstrated transfer bugs | P1 reliability | Android API client and loopback HTTP tests | Five new regression tests first failed: explicit text files became clipboard text, single/group downloads left partial files, missing upload IDs passed, and wrong JSON endpoints appeared connected. Candidate fixes these without changing authentication or Apple URLs. | Preserve normal Unicode, original document bytes, duplicate filenames, zero-byte files and unrelated cache entries. MediaStore/clipboard application and physical-device acceptance are separate gates. |
+| Q11 | Failed Android grouped receipt leaves already-published downloads; demonstrated application-flow defect | P1 reliability | Android receive helper and MediaStore adapter | Extracted the existing save/apply sequence without changing its behavior; four injected create/write/publish/clipboard failures reproduced retained targets. Candidate stages all writes, checks publication, rolls back every owned target on failure, cleans owned cache files and preserves the original error. | Fake-destination tests are not physical MediaStore evidence. Provider deletion can fail and process death is not transactional; report bounded content-free cleanup diagnostics and keep device checks open. |
 
 ## Storage Candidate Contract
 
@@ -73,7 +74,7 @@ to the work already done.
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
 | Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #50 native ARM64 packaging and settings-preservation checks passed; no replacement installer published |
-| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10 loopback transfer tests, debug build and lint passed locally; MediaStore/lifecycle and physical acceptance remain pending |
+| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10 HTTP tests passed in CI; Q11 save/apply failure tests, debug build and lint passed locally. Physical MediaStore/lifecycle acceptance remains pending |
 | Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
 | Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
 | User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
@@ -143,5 +144,14 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   Warnings were not suppressed. No APK was installed or published.
 - The Q10 working candidate retained **290 passing Python tests and one opt-in skip**
   with Docker enabled. Disposable containers and volumes were removed after testing.
-  Android CI now runs lint and retains test/lint reports for 14 days; the new PR's
-  hosted checks are still pending.
+  Android CI now runs lint and retains test/lint reports for 14 days; the hosted
+  outcome is recorded below.
+- PR #52 head `0bc3a85`: all checks passed in
+  [validation run 39341789210](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39341789210).
+  The `android-verification-reports` artifact was uploaded successfully. PR remains draft.
+- Q11 candidate: the four fault tests first failed with the extracted original
+  save/apply sequence. After the fix, **31 Android JVM tests passed**, including ten
+  receive-operation tests using an in-memory destination. Debug compilation and lint
+  succeeded, with the same eight maintenance warnings and no errors. Tests cover
+  write/create/publish/clipboard failures, success ordering, empty files, cleanup
+  refusal and a failing diagnostic callback. No physical MediaStore result is claimed.

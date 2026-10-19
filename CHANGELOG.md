@@ -4,6 +4,11 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Stage Android file groups before publishing them to Downloads. If writing,
+  publishing or applying the clipboard fails, attempt cleanup of every newly
+  created download and remove this operation's cached files. Preserve existing files.
+- Treat a failed MediaStore publication as an error rather than claiming receipt;
+  log a content-free warning if rollback cannot remove an owned file.
 - Preserve Android downloads marked as files even when their MIME type is `text/*`.
   Ordinary clipboard text remains plain Unicode; actual documents keep their bytes.
 - Remove files created by an interrupted Android cache download, including completed

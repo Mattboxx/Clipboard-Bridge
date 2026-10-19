@@ -28,6 +28,11 @@ do not disable protection or treat a checksum as a trusted signature.
 - [ ] Unicode password/token, including an accented character: no invalid-header exception.
 - [ ] Receive Windows/Apple plain text with emoji; paste in a separate application.
 - [ ] Share text, a photo, an unfamiliar extension, and a multi-file group from other apps.
+- [ ] Receive a `.txt`/`.rtf` document as a file; original filename and bytes survive.
+- [ ] Receive a group with an empty file and repeated filenames; all members appear and paste together.
+- [ ] On a disposable test device/profile, interrupt a grouped receipt or force a storage
+      failure. Check Downloads and retry: no earlier file is deleted and no failed group
+      is reported as received. Record provider cleanup failures rather than hiding them.
 - [ ] Quick Settings Send/Receive execute and close the transparent helper, not the main screen.
 - [ ] Server history matches the web account; delete one item only after confirmation.
 - [ ] New-item notifications obey preferences; receipt is not advertised as guaranteed background pasting.
@@ -36,6 +41,9 @@ do not disable protection or treat a checksum as a trusted signature.
 
 No Android device was connected during this audit (`adb devices` returned no devices).
 JUnit/Gradle success does not replace this list.
+The receive helper's unit tests use an in-memory destination, not a real MediaStore.
+Pending rows and clipboard writes are not an atomic OS transaction; a killed process
+or a provider refusing deletion can leave new files behind despite attempted rollback.
 
 ## Apple: iPhone, iPad and Mac Shortcuts
 

@@ -89,6 +89,14 @@ group rollback, text/file discrimination, Unicode and invalid server responses. 
 does not contact a personal server or use a device clipboard. MockWebServer and the
 JVM JSON implementation are test-only dependencies, not additions to the release APK.
 
+`ReceivedFilesTest` separately injects create/write/publish/clipboard failures through
+an in-memory destination. It verifies the receive operation's ordering, cleanup,
+preservation of existing files and behavior when a provider refuses deletion. The
+Android adapter uses [MediaStore's pending flag](https://developer.android.com/reference/android/provider/MediaStore.MediaColumns#IS_PENDING)
+and checks the updated-row count before claiming publication. Multiple rows and the
+system clipboard do not form an atomic Android transaction: rollback is best effort,
+and process termination or provider deletion failures can leave files behind.
+
 These tests do not establish Android MediaStore, clipboard permissions, Quick Settings
 or sleep/background behavior. Complete the physical-device cases in
 [the manual acceptance plan](maintainer/MANUAL_TESTS.md) before claiming those results.
