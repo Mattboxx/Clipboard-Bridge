@@ -5,7 +5,9 @@ owns a unique container and volume and removes only those named resources.
 """
 
 import io
+import http.client
 import http.cookiejar
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import subprocess
@@ -128,7 +130,33 @@ def test_container_transfers_latest_groups_and_account_isolation(container_host)
         assert files.read("photo.png") == b"test-image-bytes"
     host.request("POST", "/clipboard", b"newest text", account="alice")
     assert host.request("GET", "/clipboard/latest/raw", account="alice")[2] == b"newest text"
-    assert host.request("POST", "/clipboard", b"x" * (4 * 1024 * 1024 + 1))[0] == 413
+
+
+def test_container_rejects_oversized_upload_without_mutating_history(container_host):
+    host = container_host
+    before = host.request("GET", "/clipboard/history")[2]
+    address = urllib.parse.urlsplit(host.base)
+    payload = b"x" * (4 * 1024 * 1024 + 1)
+    connection = http.client.HTTPConnection(address.hostname, address.port, timeout=5)
+    connection.putrequest("POST", "/clipboard")
+    connection.putheader("Content-Type", "application/octet-stream")
+    connection.putheader("Content-Length", str(len(payload)))
+    connection.endheaders()
+    # Read the early rejection while writing: Gunicorn need not drain a rejected
+    # multi-megabyte body. urllib can otherwise lose the 413 behind BrokenPipe.
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        sent = worker.submit(connection.sock.sendall, payload)
+        try:
+            response = connection.getresponse()
+            assert response.status == 413
+            assert json.loads(response.read())["max_upload_mb"] == 4
+        finally:
+            connection.close()
+        try:
+            sent.result(timeout=5)
+        except OSError:
+            pass  # Allowed only after observing the actual 413 response above.
+    assert host.request("GET", "/clipboard/history")[2] == before
 
 
 def test_container_restart_and_recreation_preserve_files_and_web_session(container_host):

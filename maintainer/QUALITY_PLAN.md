@@ -102,13 +102,20 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
 
 - Clean staged source with `CLIPBOARD_TEST_IMAGE` enabled: **281 passed, 1 skipped**.
   The skip is the separately configured external-host test, not the disposable Docker suite.
-- All four disposable Docker tests passed locally, including the real Windows
+- All five disposable Docker tests passed locally, including the real Windows
   client's protocol round trips. No test containers or volumes remained afterward.
 - Real Tk tests cover localized error display and saving Settings with damaged
   local history. Manual send and automatic sync continue against a healthy remote host.
 - Critical static checks (`E9`, `F821`, `F822`, `F823`) and release metadata check passed.
 - No authorized Android device was connected when checked. No physical Apple or
   NAS/VPN acceptance results are inferred from the above.
-- The initially discovered global `pip-audit` command could not run because its
-  Python installation had no pip. Dependency advisories have **not** been cleared;
-  use an isolated tooling environment instead of changing the user's global Python.
+- `pip-audit` 2.10.1 ran successfully in an isolated tooling environment after the
+  global command proved unusable. The freshly resolved server/client requirements
+  contained **20 dependencies, zero known advisories and zero skipped packages**.
+  This does not clear older frozen EXE/APK/container dependency graphs or unknown
+  vulnerabilities, and it does not replace compatibility review of open updates.
+- The first Linux CI run exposed a test-harness race: Gunicorn can reject a large
+  upload before draining its body, and urllib reports BrokenPipe before reading
+  the valid 413 response. The test now writes and reads concurrently, still requires
+  the actual 413 and confirms history is unchanged; it does not accept a connection
+  reset as a successful size-limit check.
