@@ -25,9 +25,48 @@ def test_release_metadata_is_consistent():
 
 def test_installer_default_matches_project_version():
     version = (ROOT / "VERSION").read_text(encoding="ascii").strip()
-    installer = (ROOT / "Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
+    installer = (ROOT / "packaging/windows/Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
 
     assert f'#define MyAppVersion "{version}"' in installer
+
+
+def test_windows_packaging_paths_are_relative_to_repository_root():
+    installer = (ROOT / "packaging/windows/Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
+    assert "SourceDir=..\\.." in installer
+    assert "OutputDir=Output" in installer
+    assert 'Source: "dist\\Clipboard Bridge.exe"' in installer
+    for name in ("build_client.bat", "build_release.bat"):
+        script = (ROOT / "scripts/windows" / name).read_text(encoding="utf-8")
+        assert 'cd /d "%~dp0..\\.."' in script
+        assert "--version-file packaging\\windows\\windows_version_info.txt" in script
+        assert "--copy-metadata striprtf" in script
+    release = (ROOT / "scripts/windows/build_release.bat").read_text(encoding="utf-8")
+    assert '"packaging\\windows\\Clipboard_Bridge_setup.iss"' in release
+    workflow = (ROOT / ".github/workflows/windows-arm64.yml").read_text(encoding="utf-8")
+    assert '"packaging/windows/**"' in workflow
+    assert "--version-file packaging/windows/windows_version_info.txt" in workflow
+    assert "/OOutput/arm64 packaging/windows/Clipboard_Bridge_setup.iss" in workflow
+    for old in ("build_client.bat", "build_windows_release.bat",
+                "Clipboard_Bridge_setup.iss", "windows_version_info.txt"):
+        assert not (ROOT / old).exists()
+
+
+def test_developer_navigation_links_resolve_after_repository_reorganization():
+    files = ("docs/development/ARCHITECTURE.md", "scripts/README.md",
+             "packaging/windows/README.md", "CONTRIBUTING.md")
+    for name in files:
+        document = ROOT / name
+        for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", document.read_text(encoding="utf-8")):
+            if "://" in link or link.startswith("#"):
+                continue
+            path, _, fragment = link.partition("#")
+            target = (document.parent / path).resolve()
+            assert target.is_file(), f"{name}: broken link {link}"
+            if fragment:
+                headings = re.findall(r"^#+ (.+)$", target.read_text(encoding="utf-8"), re.MULTILINE)
+                slugs = {re.sub(r"[^a-z0-9 -]", "", heading.lower()).replace(" ", "-")
+                         for heading in headings}
+                assert fragment in slugs, f"{name}: missing heading {link}"
 
 
 def test_docker_context_is_an_explicit_server_only_allowlist():
@@ -43,7 +82,7 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
 
 
 def test_installer_supports_native_arm64_without_changing_app_identity():
-    installer = (ROOT / "Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
+    installer = (ROOT / "packaging/windows/Clipboard_Bridge_setup.iss").read_text(encoding="utf-8")
     assert '#define MyAppArchitecture "x64"' in installer
     assert '#if MyAppArchitecture == "arm64"' in installer
     assert "ArchitecturesAllowed=arm64" in installer
@@ -171,6 +210,6 @@ def test_python_sources_are_developer_only_not_release_downloads():
     assert "Download Python server" not in html
     for source in ("clipboard_bridge-Server.py", "clipboard_bridge_windows.py"):
         assert f"/blob/main/{source}" in html
-    build = (ROOT / "build_windows_release.bat").read_text(encoding="utf-8")
+    build = (ROOT / "scripts/windows/build_release.bat").read_text(encoding="utf-8")
     attachments = build.split("Preparing the public GitHub release assets...", 1)[1]
     assert ".py" not in attachments

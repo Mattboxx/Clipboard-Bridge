@@ -5,7 +5,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/windows-arm64.yml"
-      - "Clipboard_Bridge_setup.iss"
+      - "packaging/windows/**"
+      - "scripts/release_metadata.py"
       - "clipboard_bridge_windows.py"
       - "clipboard_text.py"
       - "tests/test_clipboard_text.py"
@@ -50,7 +51,7 @@ jobs:
         run: |
           python scripts/release_metadata.py --check
           if ($LASTEXITCODE -ne 0) { throw 'Release metadata is inconsistent' }
-          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --hidden-import pystray._win32 --collect-submodules keyboard --copy-metadata striprtf --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
+          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file packaging/windows/windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --hidden-import pystray._win32 --collect-submodules keyboard --copy-metadata striprtf --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
           if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
           python scripts/verify_windows_build.py "dist/Clipboard Bridge.exe" --architecture arm64 --smoke
           if ($LASTEXITCODE -ne 0) { throw 'Native portable verification failed' }
@@ -70,7 +71,7 @@ jobs:
         run: |
           $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
           $version = (Get-Content VERSION -Raw).Trim()
-          & $compiler "/DMyAppVersion=$version" /DMyAppArchitecture=arm64 /OOutput/arm64 Clipboard_Bridge_setup.iss
+          & $compiler "/DMyAppVersion=$version" /DMyAppArchitecture=arm64 /OOutput/arm64 packaging/windows/Clipboard_Bridge_setup.iss
           if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
           $setup = (Resolve-Path "Output/arm64/Clipboard.Bridge_windows_client_and_server_setup_arm64_V$version.exe").Path
           $destination = Join-Path $env:RUNNER_TEMP 'clipboard-arm64-install'

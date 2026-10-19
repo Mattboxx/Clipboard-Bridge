@@ -21,7 +21,7 @@ configurazione non devi riaprire l'editor di Comandi Rapidi a ogni trasferimento
 [English](README.md) | **Italiano**
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Download](#download) | [Da dove iniziare](#da-dove-iniziare) |
+[Download](#download) | [Demo desktop](#desktop-in-azione) | [Da dove iniziare](#da-dove-iniziare) |
 [Guida completa](GUIDE.md) | [Sviluppatori](#sviluppatori)
 
 Prima configurazione? Segui il [tutorial passo passo](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html).
@@ -31,6 +31,33 @@ e [clipboard tra dispositivi Apple e Android](https://mattboxx.github.io/Clipboa
 
 [![Test](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![Licenza MIT](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)
+
+## Desktop in azione
+
+**Ritrova un elemento, visualizza l'anteprima di un'immagine o PDF e copialo di nuovo.**
+L'app Windows riunisce ricerca, gruppi di file e comandi Invia/Ricevi in una finestra.
+
+![App desktop Windows: cronologia ricercabile, gruppi di file e anteprima immagine](docs/assets/windows-history.png)
+
+*Schermata reale con dati di esempio pubblici, non contenuti privati della clipboard.*
+
+**Comandi rapidi accanto all'orologio.** Clic destro sull'icona per Invia, Ricevi
+e Cronologia; il clic sinistro apre direttamente la cronologia.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
+  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Menu Windows reale in inglese: invio clipboard, ricezione e cronologia" width="420">
+</picture>
+
+*Registrazione reale di Windows in inglese, ritagliata per la privacy. Mostra i
+comandi nell'area di notifica, non un trasferimento telefono-PC.*
+[Rivedi la GIF](docs/assets/demo/windows-tray-menu.gif) oppure
+[guarda il video](docs/assets/demo/windows-tray-menu.mp4).
+
+**Preferisci la sincronizzazione automatica?** Attiva **Sincronizzazione automatica**
+in **Impostazioni > Automazione** e lascia l'app aperta. Per ricevere anche i file,
+lascia attivo il download automatico. Invia e Ricevi restano disponibili manualmente.
+La sincronizzazione può condividere anche testo sensibile che copi: attivala consapevolmente.
 
 ## Scegli la configurazione
 
@@ -122,11 +149,7 @@ riguarda anteprime testuali e nomi dei file, inclusi i membri dei gruppi, non il
 completo dei documenti.
 
 <details>
-<summary>Vedi l'app Windows e lo schema dei collegamenti</summary>
-
-![Cronologia Windows con anteprima immagini, ricerca e filtri](docs/assets/windows-history.png)
-
-*Schermata reale con soli dati di esempio pubblici.*
+<summary>Schema dei collegamenti: due modalità alternative</summary>
 
 ![Due modalità di collegamento alternative e bidirezionali](docs/assets/two-modes.png)
 
@@ -150,13 +173,7 @@ in esecuzione e attiva **Scarica automaticamente i nuovi file** per ricevere
 automaticamente anche i file. Abilitala solo se vuoi condividere ciò che copi,
 anche quando contiene informazioni sensibili.
 
-<picture>
-  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
-  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Menu Windows reale in inglese: invio clipboard, ricezione e cronologia" width="620" height="660">
-</picture>
-
-Registrazione reale di Windows, ritagliata per la privacy. [Rivedi la GIF](docs/assets/demo/windows-tray-menu.gif)
-oppure [guarda il breve video](docs/assets/demo/windows-tray-menu.mp4).
+Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
 
 <details>
 <summary>Impostazioni Windows, notifiche e cronologia</summary>
@@ -489,7 +506,7 @@ rimuovono le voci vecchie.
 | Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_release_metadata.py` |
 | Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
-| Pacchetti Windows x64 | `build_windows_release.bat 2.0.15`; richiede Python x64, PyInstaller e Inno Setup |
+| Pacchetti Windows x64 | `scripts\windows\build_release.bat 2.0.15`; richiede Python x64, PyInstaller e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
 | Build Android | Java 17, Android SDK 35; [istruzioni Gradle e firma privata](android/README.md#build-from-source) |
 | Build Docker dai sorgenti | `docker build -t clipboard-bridge-server:dev .` |
@@ -510,10 +527,17 @@ Non committare credenziali, clipboard personali, chiavi Android o output di buil
 | `Iphone Shortcuts/` | Esportazioni firmate e istruzioni di aggiornamento |
 | `Dockerfile`, `compose.yaml`, `docker-compose.yml`, `.env.example` | Distribuzione container |
 | `requirements-*.txt` | Dipendenze Python |
-| `build_*.bat`, `Clipboard_Bridge_setup.iss`, `scripts/` | Pacchetti e verifiche |
+| `scripts/` | Comandi di sviluppo, verifica e build Windows |
+| `packaging/windows/` | Installer Inno Setup e metadati versione Windows generati |
 | `tests/` | Test di regressione |
 | `.github/workflows/` | Verifiche, build ARM64 nativa, immagini e pubblicazione del sito |
 | `docs/` | Sorgenti GitHub Pages e schermate con dati di esempio pubblici |
+| `docs/development/` | Architettura e documentazione sviluppatori |
+| `maintainer/` | Checklist di rilascio, prove manuali e provenienza dei media |
+| `distribution/` | Adattatori store; i cataloghi sono pubblicati dalla repo AppStore separata |
+
+[Architettura e struttura del repository](docs/development/ARCHITECTURE.md) |
+[Comandi degli script](scripts/README.md) | [Packaging Windows](packaging/windows/README.md)
 
 [Guida completa](GUIDE.md) | [Guida Docker](DOCKER.md) | [Documentazione Android](android/README.md) |
 [Changelog](CHANGELOG.md) | [Sicurezza](SECURITY.md)
