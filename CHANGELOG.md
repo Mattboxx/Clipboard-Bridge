@@ -2,6 +2,15 @@
 
 All notable user-facing changes are documented here.
 
+## Unreleased
+
+- Preserve existing history when its index is malformed or unreadable instead of
+  treating it as empty, in the standalone host, Windows host and local history.
+- Return a safe `503 history_unavailable` response rather than overwriting damaged
+  history; unaffected standalone accounts remain available.
+- Flush a complete temporary index before atomic replacement and remove temporary
+  files after failed commits. Keep previous indexed files on failed uploads.
+
 ## 2.0.15 / Server 1.0.8 / Android 1.0.0-beta.11 - 2026-10-14
 
 - Deliver copied RTF as plain Unicode text in both server modes; preserve emoji and visible hyperlink labels.

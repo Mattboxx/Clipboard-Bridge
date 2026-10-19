@@ -494,8 +494,8 @@ space; latest raw content is an empty response. Retention limits remove old entr
 
 | Task | Command or documentation |
 |---|---|
-| Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_release_metadata.py` |
-| Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py` on Windows |
+| Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
+| Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
 | Windows x64 packaging | `scripts\windows\build_release.bat 2.0.15`; requires x64 Python, PyInstaller and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
@@ -514,6 +514,7 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 | `clipboard_bridge_windows.py` | Windows client and built-in server |
 | `clipboard_bridge-Server.py` | Standalone Flask server and web interface |
 | `clipboard_text.py` | Shared Unicode/RTF conversion; keep alongside either Python script |
+| `clipboard_storage.py` | Shared fail-safe history reads and atomic index writes; keep alongside either Python script |
 | `android/` | Android source and build files |
 | `Iphone Shortcuts/` | Signed Shortcut exports and update instructions |
 | `Dockerfile`, `compose.yaml`, `docker-compose.yml`, `.env.example` | Container deployment |
@@ -529,6 +530,9 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 
 [Architecture and repository layout](docs/development/ARCHITECTURE.md) |
 [Script commands](scripts/README.md) | [Windows packaging](packaging/windows/README.md)
+
+[Quality audit and remaining verification gates](maintainer/QUALITY_PLAN.md) |
+[Backup and recovery](DOCKER.md#history-storage-errors)
 
 [Full user guide](GUIDE.md) | [Docker guide](DOCKER.md) | [Android documentation](android/README.md) |
 [Changelog](CHANGELOG.md) | [Security](SECURITY.md)

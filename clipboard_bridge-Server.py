@@ -49,6 +49,7 @@ import threading
 import zipfile
 from datetime import datetime, timedelta
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
+from clipboard_storage import HistoryStoreError, read_history, write_history
 
 app = Flask(__name__)
 
@@ -199,23 +200,11 @@ def _history_page(items, params):
 
 
 def _load_index():
-    index_file = _index_file()
-    if os.path.exists(index_file):
-        try:
-            with open(index_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    return read_history(_index_file())
 
 
 def _save_index(index):
-    index_file = _index_file()
-    os.makedirs(os.path.dirname(index_file), exist_ok=True)
-    tmp = index_file + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, index_file)  # atomic write
+    write_history(_index_file(), index)
 
 
 def _trim(index):
@@ -227,10 +216,10 @@ def _trim(index):
 
 def _commit_entry(entry):
     with _lock:
-        index = _load_index()
-        index.insert(0, entry)
-        expired = _trim(index)
         try:
+            index = _load_index()
+            index.insert(0, entry)
+            expired = _trim(index)
             _save_index(index)
         except Exception:
             _delete_entry_files(entry)
@@ -787,6 +776,13 @@ def _set_response_headers(response):
 @app.errorhandler(BadRequest)
 def _bad_request(_error):
     return jsonify({"error": "invalid request or JSON body"}), 400
+
+
+@app.errorhandler(HistoryStoreError)
+def _history_unavailable(error):
+    # Log only the failure category, never account names, paths or clipboard data.
+    app.logger.error("Clipboard history unavailable: %s", error.reason)
+    return jsonify({"error": str(error), "code": "history_unavailable"}), 503, {"Retry-After": "5"}
 
 
 @app.errorhandler(RequestEntityTooLarge)

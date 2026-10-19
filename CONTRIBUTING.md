@@ -74,3 +74,30 @@ so changing architecture preserves the existing per-user settings and history.
   before submitting.
 
 Security reports must follow [SECURITY.md](SECURITY.md), not a public issue.
+
+## Disposable Container Integration
+
+Build a local test image, then opt in to real HTTP/persistence tests:
+
+```powershell
+docker build -t clipboard-bridge-server:test .
+$env:CLIPBOARD_TEST_IMAGE = "clipboard-bridge-server:test"
+python -m pytest -q tests/test_container.py
+```
+
+On POSIX shells, use `CLIPBOARD_TEST_IMAGE=clipboard-bridge-server:test python -m
+pytest -q tests/test_container.py` instead of the PowerShell environment assignment.
+The suite creates uniquely named containers and volumes, binds a dynamic port to
+localhost and removes only those test resources. It never mounts an existing data
+directory or uses a production container. Docker must be running.
+
+These checks exercise transfers, groups, accounts, upload limits, remembered web
+sessions, restart/recreation, damaged-index protection and restoration. Windows
+also runs the native client protocol assertions against this disposable host;
+Linux skips only that Windows-specific check. CI executes the container suite
+after building the server image.
+
+`tests/test_live_server.py` remains available for an explicitly isolated external
+test host through `CLIPBOARD_TEST_SERVER_URL`; do not point it at a personal or
+production instance. Set `CLIPBOARD_TEST_SERVER_VERSION` to additionally assert a
+specific version. The disposable suite is the safer default.

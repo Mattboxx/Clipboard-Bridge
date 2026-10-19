@@ -268,6 +268,144 @@ def test_failed_embedded_index_commit_keeps_old_files(tmp_path, monkeypatch):
     assert client._host_with_content(client._host_load()[0])["text"] == "keep me"
 
 
+@pytest.mark.parametrize("damaged", [b'{"unfinished":', b'{}', b'[null]', b'\xff'])
+def test_damaged_windows_host_index_preserves_every_stored_file(embedded, damaged):
+    client, address = embedded
+    client._host_add("text", "original item")
+    Path(client.HOST_INDEX).write_bytes(damaged)
+    before = {path.name: path.read_bytes() for path in Path(client.HOST_ITEMS).iterdir()}
+    base = f"http://{address[0]}:{address[1]}"
+    for method, route in ((requests.get, "/clipboard/history"),
+                          (requests.post, "/clipboard"),
+                          (requests.delete, "/clipboard/history")):
+        response = method(base + route, data=b"new item", headers={"Content-Type": "text/plain"}, timeout=5)
+        assert response.status_code == 503
+        assert response.json()["code"] == "history_unavailable"
+        assert Path(client.HOST_INDEX).read_bytes() == damaged
+        assert {path.name: path.read_bytes() for path in Path(client.HOST_ITEMS).iterdir()} == before
+
+
+@pytest.mark.parametrize("damaged", [b'{"unfinished":', b'{}', b'[null]', b'\xff'])
+def test_damaged_local_index_is_not_replaced_by_new_clipboard_text(tmp_path, monkeypatch, damaged):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(damaged)
+    with pytest.raises(client.HistoryStoreError):
+        client.record_local_text("new item")
+    assert Path(client.LOCAL_INDEX).read_bytes() == damaged
+
+
+def test_windows_host_recovers_after_restoring_a_valid_index(embedded):
+    client, address = embedded
+    client._host_add("text", "preserved text")
+    index = Path(client.HOST_INDEX)
+    backup = index.read_bytes()
+    index.write_bytes(b"{damaged")
+    base = f"http://{address[0]}:{address[1]}"
+    assert requests.get(base + "/health", timeout=5).status_code == 503
+    response = requests.post(base + "/clipboard", data=b"new", headers={"Content-Type": "text/plain"}, timeout=5)
+    assert response.status_code == 503
+    assert str(client.HOST_DIR) not in response.text
+    index.write_bytes(backup)
+    assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == b"preserved text"
+    assert requests.get(base + "/health", timeout=5).status_code == 200
+
+
+def test_optional_local_history_warns_once_and_does_not_fail_a_successful_send(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(b"{damaged")
+    sent, notices = [], []
+    monkeypatch.setattr(client, "notify", lambda message, **kwargs: notices.append(message))
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "public sample")
+    monkeypatch.setattr(client, "push_text", lambda text: sent.append(text) or "sent")
+    client.action_send_clipboard()
+    client.action_send_clipboard()
+    assert sent == ["public sample", "public sample"]
+    assert notices.count(client.t("local_history_error")) == 1
+    assert notices.count(client.t("text_sent")) == 2
+    assert Path(client.LOCAL_INDEX).read_bytes() == b"{damaged"
+    assert "public sample" not in Path(client.ERROR_LOG).read_text(encoding="utf-8")
+    Path(client.LOCAL_INDEX).write_text("[]", encoding="utf-8")
+    assert client._try_local_history(client.record_local_text, "after recovery")
+    assert not client._local_history_warning
+
+
+def test_auto_sync_continues_with_a_damaged_optional_local_history(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(b"{damaged")
+    client.config.update(auto_sync=True, auto_receive_files=False, monitor_clipboard=True)
+
+    class TwoIterations:
+        count = 0
+        def is_set(self): return self.count >= 2
+        def wait(self, timeout): self.count += 1
+
+    sent, notices = [], []
+    monkeypatch.setattr(client, "stop_event", TwoIterations())
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: 1)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "public sample")
+    monkeypatch.setattr(client, "push_text", lambda text: sent.append(text) or "uploaded")
+    monkeypatch.setattr(client, "poll_latest", lambda known: {"type": "empty"})
+    monkeypatch.setattr(client, "notify", lambda message, **kwargs: notices.append(message))
+    client.sync_loop()
+    assert sent == ["public sample"]
+    assert notices.count(client.t("local_history_error")) == 1
+    assert Path(client.LOCAL_INDEX).read_bytes() == b"{damaged"
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_damaged_local_history_shows_a_localized_error_and_settings_still_save(tmp_path, monkeypatch, tk_test_root, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, hotkeys_enabled=False, mode="client")
+    index = Path(client.LOCAL_INDEX)
+    index.write_bytes(b"{damaged")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *args: {"items": []})
+    monkeypatch.setattr(client, "check_connection", lambda *args: True)
+    monkeypatch.setattr(client, "unregister_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
+    errors = []
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "history")
+        widgets = list(descendants(window))
+        local = next(child for child in widgets if isinstance(child, client.ttk.Radiobutton)
+                     and child.cget("text") == client.t("tab_local"))
+        local.invoke()
+        tk_test_root.update()
+        assert any(isinstance(child, client.ttk.Label) and child.cget("textvariable")
+                   and tk_test_root.getvar(child.cget("textvariable")) == client.t("local_history_error")
+                   for child in widgets)
+        window._close_history()
+        client.open_settings()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "settings")
+        save = next(child for child in descendants(window) if isinstance(child, client.ttk.Button)
+                    and child.cget("text") == client.t("save"))
+        save.invoke()
+        tk_test_root.update()
+        assert not window.winfo_exists()
+        assert json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))["lang"] == lang
+        assert index.read_bytes() == b"{damaged"
+        assert not errors
+    finally:
+        for child in tk_test_root.winfo_children():
+            close = getattr(child, "_close_history", None)
+            close() if close else child.destroy()
+
+
 def test_partial_embedded_bundle_is_cleaned_up(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     original = client._host_write_item

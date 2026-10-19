@@ -169,6 +169,54 @@ def test_partial_item_write_is_removed(server, monkeypatch):
     assert list((Path(server.DATA_DIR) / "items").iterdir()) == []
 
 
+@pytest.mark.parametrize("method,route", [
+    ("get", "/clipboard/history"), ("get", "/clipboard/latest"),
+    ("post", "/clipboard"), ("delete", "/clipboard/history"),
+])
+@pytest.mark.parametrize("damaged", [b'{"unfinished":', b'{}', b'[null]', b'\xff'])
+def test_damaged_index_is_not_treated_as_empty_or_overwritten(server, method, route, damaged):
+    client = server.app.test_client()
+    client.post("/clipboard?token=shared-token", json="original item")
+    index = Path(server.INDEX_FILE)
+    index.write_bytes(damaged)
+    before = {path.name: path.read_bytes() for path in Path(server.ITEMS_DIR).iterdir()}
+    response = getattr(client, method)(route + "?token=shared-token", json="new item"
+                                     if method == "post" else None)
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "history_unavailable"
+    assert index.read_bytes() == damaged
+    assert {path.name: path.read_bytes() for path in Path(server.ITEMS_DIR).iterdir()} == before
+
+
+def test_damaged_account_does_not_affect_other_spaces_and_can_be_restored(server, caplog):
+    client = server.app.test_client()
+    shared = "?token=shared-token"
+    alice = "?user=alice&password=p%26ss%3Fword"
+    bob = "?user=bob&password=second"
+    for auth, text in ((shared, "general"), (alice, "private sample"), (bob, "other account")):
+        assert client.post("/clipboard" + auth, json=text).status_code == 200
+    path = Path(server.DATA_DIR) / "users/alice/index.json"
+    backup = path.read_bytes()
+    path.write_bytes(b"{damaged")
+    response = client.post("/clipboard" + alice, json="must not erase history")
+    assert response.status_code == 503
+    assert client.get("/clipboard/latest/raw" + shared).data == b"general"
+    assert client.get("/clipboard/latest/raw" + bob).data == b"other account"
+    assert client.get("/health").status_code == 200
+    assert "private sample" not in caplog.text and "alice" not in caplog.text
+    assert str(server.DATA_DIR) not in response.get_data(as_text=True)
+    assert "Retry-After" in response.headers
+    path.write_bytes(backup)
+    assert client.get("/clipboard/latest/raw" + alice).data == b"private sample"
+
+
+def test_health_reports_unavailable_instead_of_empty_when_shared_index_is_damaged(server):
+    Path(server.INDEX_FILE).write_bytes(b"{damaged")
+    response = server.app.test_client().get("/health")
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "history_unavailable"
+
+
 def test_latest_item_follows_arrival_order_regardless_of_type(server):
     client = server.app.test_client()
     token = "?token=shared-token"

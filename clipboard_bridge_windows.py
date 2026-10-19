@@ -45,6 +45,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkinter import font as tkfont
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
+from clipboard_storage import HistoryStoreError, read_history, write_history
 
 try:
     import keyboard
@@ -190,6 +191,7 @@ _sync_state_lock = threading.Lock()
 _remote_activity_lock = threading.RLock()
 _remote_request_context = threading.local()
 _local_history_lock = threading.RLock()
+_local_history_warning = False
 _pdf_preview_lock = threading.Lock()
 _local_upload_lock = threading.Lock()
 _local_upload_marker = None
@@ -228,6 +230,7 @@ STRINGS = {
         "tab_general": "General",
         "tab_connection": "Connection",
         "tab_automation": "Automation",
+        "local_history_error": "Local history unavailable. Data preserved; check storage or restore a backup.",
         "tab_shortcuts": "Shortcuts",
         "section_notifications": "Notifications",
         "section_mode": "Operating mode",
@@ -353,6 +356,7 @@ STRINGS = {
         "tab_general": "Generale",
         "tab_connection": "Connessione",
         "tab_automation": "Automazione",
+        "local_history_error": "Cronologia locale non disponibile. Dati conservati: controlla il disco o ripristina un backup.",
         "tab_shortcuts": "Scorciatoie",
         "section_notifications": "Notifiche",
         "section_mode": "Modalità operativa",
@@ -1311,7 +1315,7 @@ def _auto_receive_remote_files():
         if not paths:
             _mark_remote_file_seen(item["id"])
             continue
-        record_local_files(paths)
+        _try_local_history(record_local_files, paths)
         _mark_remote_file_seen(item["id"])
         if item["id"] == latest.get("id"):
             clipboard_paths = paths
@@ -1381,21 +1385,12 @@ def _host_history_page(index, params):
 
 
 def _host_load():
-    if os.path.exists(HOST_INDEX):
-        try:
-            with open(HOST_INDEX, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    return read_history(HOST_INDEX)
 
 
 def _host_save(index):
     os.makedirs(HOST_ITEMS, exist_ok=True)
-    temp = HOST_INDEX + ".tmp"
-    with open(temp, "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
-    os.replace(temp, HOST_INDEX)
+    write_history(HOST_INDEX, index)
 
 
 def _host_meta(e):
@@ -1555,10 +1550,10 @@ def _host_delete_files(entry):
 
 def _host_commit_entry(entry):
     with _host_lock:
-        index = [entry] + _host_load()
-        limit = config.get("max_local_history", 100)
-        expired = index[limit:]
         try:
+            index = [entry] + _host_load()
+            limit = config.get("max_local_history", 100)
+            expired = index[limit:]
             _host_save(index[:limit])
         except Exception:
             _host_delete_files(entry)
@@ -1742,6 +1737,9 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
     def _json(self, obj, code=200):
         self._send(code, json.dumps(obj).encode("utf-8"))
 
+    def _history_unavailable(self, error):
+        self._json({"error": str(error), "code": "history_unavailable"}, 503)
+
     def _raw(self, e):
         if e["type"] == "bundle":
             return dict(code=200, body=_host_bundle_bytes(e), ctype="application/zip",
@@ -1800,6 +1798,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
             if "body" in payload:
                 return self._send(**payload)
             return self._json(payload)
+        except HistoryStoreError as error:
+            self._history_unavailable(error)
         except ValueError as ex:
             self._json({"error": str(ex)}, 400)
         except Exception as ex:
@@ -1965,6 +1965,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 e = _host_add("bin", body, filename, ctype or None)
                 return self._json({"status": "ok", "id": e["id"], "type": e["type"]})
             self._json({"error": "not found"}, 404)
+        except HistoryStoreError as error:
+            self._history_unavailable(error)
         except Exception as ex:
             try:
                 self._json({"error": str(ex)}, 500)
@@ -1993,6 +1995,8 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                     _host_delete_files(e)
                 return self._json({"status": "deleted"})
             self._json({"error": "not found"}, 404)
+        except HistoryStoreError as error:
+            self._history_unavailable(error)
         except Exception as ex:
             try:
                 self._json({"error": str(ex)}, 500)
@@ -2045,25 +2049,34 @@ def stop_host_server():
 
 
 # ---------------------------------------------------------------- local history
+def _try_local_history(operation, *args):
+    """A broken optional local cache must not interrupt healthy remote sharing."""
+    global _local_history_warning
+    with _local_history_lock:
+        try:
+            operation(*args)
+            _local_history_warning = False
+            return True
+        except OSError as error:
+            first_warning = not _local_history_warning
+            _local_history_warning = True
+            reason = error.reason if isinstance(error, HistoryStoreError) else "write_failed"
+    if first_warning:
+        _log_crash(RuntimeError("Local history unavailable: " + reason))
+        notify(t("local_history_error"))
+    return False
+
+
 def _local_load():
     with _local_history_lock:
-        if os.path.exists(LOCAL_INDEX):
-            try:
-                with open(LOCAL_INDEX, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, OSError):
-                return []
-        return []
+        return read_history(LOCAL_INDEX)
 
 
 def _local_save(index):
     with _local_history_lock:
         limit = config.get("max_local_history", 100)
         expired = index[limit:]
-        temp = LOCAL_INDEX + ".tmp"
-        with open(temp, "w", encoding="utf-8") as f:
-            json.dump(index[:limit], f, ensure_ascii=False, indent=2)
-        os.replace(temp, LOCAL_INDEX)
+        write_history(LOCAL_INDEX, index[:limit])
         for old in expired:
             if old.get("file"):
                 try:
@@ -2146,19 +2159,19 @@ def action_send_clipboard(icon=None, item=None):
         files = get_clipboard_files()
         if files:
             push_files(files)
-            record_local_files(files)
+            _try_local_history(record_local_files, files)
             notify(t("files_sent", n=len(files)) if len(files) > 1 else t("file_sent"))
             return
         img = get_clipboard_image()
         if img is not None:
             push_image(img)
-            record_local_image(img)
+            _try_local_history(record_local_image, img)
             notify(t("image_sent"))
             return
         text = get_clipboard_text()
         if text:
             push_text(text)
-            record_local_text(text)
+            _try_local_history(record_local_text, text)
             notify(t("text_sent"))
         else:
             notify(t("clip_empty"))
@@ -2215,7 +2228,7 @@ def action_get_latest(icon=None, item=None):
             notify_received("image", t("image_recv"))
         elif kind == "file":
             paths = save_remote_files(data)
-            record_local_files(paths)
+            _try_local_history(record_local_files, paths)
             notify_received(
                 "file",
                 t("file_arrived", name=os.path.basename(paths[0])),
@@ -2223,7 +2236,7 @@ def action_get_latest(icon=None, item=None):
             )
         elif kind == "bundle":
             paths = save_remote_files(data)
-            record_local_files(paths)
+            _try_local_history(record_local_files, paths)
             notify_received(
                 "file",
                 t("files_arrived", n=len(paths)),
@@ -2243,7 +2256,7 @@ def action_send_file(icon=None, item=None):
     def work():
         try:
             push_files(paths)
-            record_local_files(paths)
+            _try_local_history(record_local_files, paths)
             notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
         except Exception as e:
             notify(t("send_err", e=e))
@@ -2296,7 +2309,7 @@ def sync_loop():
                 if files:
                     key = _file_clipboard_key(files)
                     if key != last_files:
-                        record_local_files(files)
+                        _try_local_history(record_local_files, files)
                         if config.get("auto_sync"):
                             try:
                                 last_server = push_files(files) or last_server
@@ -2309,7 +2322,7 @@ def sync_loop():
                     if img is not None:
                         h = _img_hash(img)
                         if h and h != last_img:
-                            record_local_image(img)
+                            _try_local_history(record_local_image, img)
                             if config.get("auto_sync"):
                                 try:
                                     sent_id = push_image(img)
@@ -2324,7 +2337,7 @@ def sync_loop():
                         if not text:
                             last_text = last_img = last_files = None
                         if text and text != last_text:
-                            record_local_text(text)
+                            _try_local_history(record_local_text, text)
                             if config.get("auto_sync"):
                                 try:
                                     sent_id = push_text(text)
@@ -3056,7 +3069,16 @@ def open_history_window(icon=None, item=None):
             local_send.pack(side="left", after=copy_button, padx=6)
             page_controls.pack_forget()
             loaded_source = None
-            fill({"items": _filter_history(_local_load(), search, kind)})
+            try:
+                page = {"items": _filter_history(_local_load(), search, kind)}
+            except HistoryStoreError:
+                items.clear()
+                listing.delete(*listing.get_children())
+                empty.place_forget()
+                update_selection()
+                status.set(t("local_history_error"))
+            else:
+                fill(page)
             return
         source_key, requested_offset = _sync_source_key(), offset
         items.clear()
@@ -3109,7 +3131,7 @@ def open_history_window(icon=None, item=None):
                     if kind in ("file", "bundle"):
                         full = dict(full, type=kind)
                         paths = save_remote_files(full)
-                        record_local_files(paths)
+                        _try_local_history(record_local_files, paths)
                         notify_received("file", t("files_arrived", n=len(paths)) if len(paths) > 1
                                         else t("file_arrived", name=os.path.basename(paths[0])),
                                         action=(lambda: open_received_folder()) if len(paths) > 1
@@ -3754,7 +3776,7 @@ def open_settings(icon=None, item=None):
         _update_appearance(config["appearance"])
         save_config(config)
         with _local_history_lock:
-            _local_save(_local_load())
+            _try_local_history(lambda: _local_save(_local_load()))
         if config.get("mode") == "server":
             if old_mode != "server" or host_port != old_host_port:
                 stop_host_server()

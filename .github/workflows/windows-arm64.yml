@@ -9,7 +9,9 @@ on:
       - "scripts/release_metadata.py"
       - "clipboard_bridge_windows.py"
       - "clipboard_text.py"
+      - "clipboard_storage.py"
       - "tests/test_clipboard_text.py"
+      - "tests/test_clipboard_storage.py"
       - "requirements-client.txt"
       - "scripts/verify_windows_build.py"
       - "tests/test_windows_client.py"
@@ -44,7 +46,7 @@ jobs:
 
       - name: Test Windows client on ARM64
         run: |
-          python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_release_metadata.py
+          python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows ARM64 tests failed' }
 
       - name: Build native portable client

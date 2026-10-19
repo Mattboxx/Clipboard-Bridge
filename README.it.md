@@ -503,8 +503,8 @@ rimuovono le voci vecchie.
 
 | Attività | Comando o documentazione |
 |---|---|
-| Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_release_metadata.py` |
-| Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py` su Windows |
+| Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
+| Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
 | Pacchetti Windows x64 | `scripts\windows\build_release.bat 2.0.15`; richiede Python x64, PyInstaller e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
@@ -523,6 +523,7 @@ Non committare credenziali, clipboard personali, chiavi Android o output di buil
 | `clipboard_bridge_windows.py` | Client Windows e server integrato |
 | `clipboard_bridge-Server.py` | Server Flask indipendente e pagina web |
 | `clipboard_text.py` | Conversione Unicode/RTF condivisa; necessaria accanto agli script Python |
+| `clipboard_storage.py` | Lettura protetta della cronologia e scrittura atomica; necessario accanto agli script Python |
 | `android/` | Sorgenti Android e file di compilazione |
 | `Iphone Shortcuts/` | Esportazioni firmate e istruzioni di aggiornamento |
 | `Dockerfile`, `compose.yaml`, `docker-compose.yml`, `.env.example` | Distribuzione container |
@@ -538,6 +539,9 @@ Non committare credenziali, clipboard personali, chiavi Android o output di buil
 
 [Architettura e struttura del repository](docs/development/ARCHITECTURE.md) |
 [Comandi degli script](scripts/README.md) | [Packaging Windows](packaging/windows/README.md)
+
+[Audit qualità e verifiche ancora necessarie](maintainer/QUALITY_PLAN.md) |
+[Backup e recupero dati](DOCKER.md#history-storage-errors)
 
 [Guida completa](GUIDE.md) | [Guida Docker](DOCKER.md) | [Documentazione Android](android/README.md) |
 [Changelog](CHANGELOG.md) | [Sicurezza](SECURITY.md)

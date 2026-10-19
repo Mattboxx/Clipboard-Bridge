@@ -75,10 +75,11 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
     assert rules[0] == "*"
     assert set(rules[1:]) == {
         "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
-        "!clipboard_text.py", "!LICENSE",
+        "!clipboard_text.py", "!clipboard_storage.py", "!LICENSE",
     }
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile
+    assert "COPY clipboard_storage.py ." in dockerfile
 
 
 def test_installer_supports_native_arm64_without_changing_app_identity():

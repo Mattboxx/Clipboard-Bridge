@@ -18,6 +18,7 @@ COPY requirements-server.txt .
 RUN pip install --no-cache-dir -r requirements-server.txt
 COPY clipboard_bridge-Server.py server.py
 COPY clipboard_text.py .
+COPY clipboard_storage.py .
 COPY LICENSE .
 
 ENV CLIPBOARD_DATA_DIR=/data \

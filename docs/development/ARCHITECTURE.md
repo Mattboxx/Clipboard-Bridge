@@ -12,6 +12,7 @@ steps in a transfer.
 | Standalone host | `clipboard_bridge-Server.py` | Flask API, browser interface, persistence, shared space and optional isolated accounts |
 | Windows app | `clipboard_bridge_windows.py` | Tray commands, Tk history/settings, clipboard access, optional automation and embedded HTTP host |
 | Shared Python text conversion | `clipboard_text.py` | Normalize copied rich text to plain Unicode; preserve actual files |
+| Shared Python history storage | `clipboard_storage.py` | Refuse malformed/unreadable indices; flush and atomically commit complete replacements |
 | Android app | `android/app/src/main/` | Native UI, server history, Share target, notifications and optional incoming monitoring |
 | Apple integration | `Iphone Shortcuts/` | User-triggered Send and Receive Shortcuts for iPhone, iPad and Mac |
 
@@ -51,6 +52,7 @@ See the [API reference](../../README.md#api-reference) for payloads and endpoint
 clipboard_bridge-Server.py   Standalone server entry point
 clipboard_bridge_windows.py Windows entry point and embedded host
 clipboard_text.py           Shared text conversion
+clipboard_storage.py        Shared history persistence
 android/                    Android application and Gradle wrapper
 Iphone Shortcuts/           Signed exports and update instructions
 packaging/windows/          Installer definition and generated version metadata

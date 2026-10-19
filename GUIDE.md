@@ -491,6 +491,7 @@ Official reference: [Tailscale subnet routers](https://tailscale.com/docs/featur
 |---------|-------|
 | The web page won't open | Is the server running? Right `SERVER_IP`? Same network? Port 5088 allowed in the firewall? |
 | `401 unauthorized` | The token is missing or wrong (`X-Auth-Token` / Settings → Token). |
-| iPhone shortcut fails | Verify the URL and method; if you use a token, the header must be present. For universal sending use POST with **File → Clipboard**. |
+| iPhone shortcut fails | Verify the URL and method. Only if a token is configured, include it in the URL or `X-Auth-Token` header. For universal sending use POST with **File → Clipboard**. |
 | A received image isn't on the Windows clipboard | Some apps only accept certain formats; the client copies images as bitmap (works in Office, Paint, chats). |
 | Duplicate tray icons | Make sure only one instance of the client is running (close extra ones from Task Manager). |
+| `503 history_unavailable` in the candidate update | Stop the host and follow [storage recovery](DOCKER.md#history-storage-errors). Do not delete the index or reset configuration to hide the error. |
