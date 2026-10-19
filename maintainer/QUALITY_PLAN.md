@@ -38,10 +38,11 @@ not a current claim that its candidate releases remain unpublished.
 | Q3 | Optional live-server test requires obsolete server 1.0.7; test defect | P1 verification | `tests/test_live_server.py` | Removed the stale hard-coded version. Validate version syntax; allow an explicit expected version. Reuse protocol assertions with a disposable current host. | Must not weaken transfer/content/account assertions. Current client-to-container round trip. |
 | Q4 | CI builds an image but does not test its running persistence contract; verification gap | P1 | Validation workflow, `tests/test_container.py` | Candidate adds real container transfers, account isolation, limits, cookie persistence, restart/recreation and corruption/restoration tests. | Never touch production resources; unique containers/volumes and localhost test ports. Cleanup verified after the run. |
 | Q5 | Signing documentation verifies an older release; documentation gap | P1 clarity | `CODE_SIGNING.md` | Rechecked 2.0.15 bytes against current GitHub digests and Authenticode. No trusted signature present. | No certification claims, self-signing workaround, or Windows security bypass advice. |
-| Q6 | Open dependency/action updates need compatibility and advisory review; risk, not a proven vulnerability | P1 maintenance | Dependency manifests and Dependabot PRs | Open PRs #14-18, #24, #26-29 observed. Review separately rather than blindly merging a Gunicorn major update. | Native x64/ARM64 packaging, runtime image and pipeline compatibility gates. |
+| Q6 | Open dependency/action updates need compatibility and advisory review; risk, not a proven vulnerability | P1 maintenance | Dependency manifests and Dependabot PRs | Open PRs #14-18, #24, #26-29 observed. Android lint also reports five newer AndroidX/Compose dependencies. Review separately rather than blindly merging major updates. | Native x64/ARM64 packaging, runtime image and pipeline compatibility gates. |
 | Q7 | Several background operations swallow exceptions; diagnostic risk | P1 operability | Windows, Android service | Requires targeted fault tests and bounded, redacted diagnostics. Do not enable logging of clipboard values or URLs. | Avoid notification floods, leaking credentials, or destabilizing the UI. |
 | Q8 | Real device sleep, Share Sheet, Control Center and VPN routing remain unverified; acceptance gap | P1 launch evidence | Platform clients and manual test plan | Automated HTTP tests do not establish these OS-level results. | Run the actual device/NAS/VPN scenarios in [MANUAL_TESTS.md](MANUAL_TESTS.md). |
 | Q9 | Configured names can alias one physical account directory; demonstrated isolation bug on Windows | P1 confidentiality | Standalone account storage and server tests | Reproduced two case-distinct users reading one history on NTFS. Separate candidate guard uses actual filesystem identity, denies ambiguous accounts, and preserves the shared space, other users, existing paths and URLs. | Do not merge distinct Linux directories or silently reassign mixed data. Real Windows and Linux server tests, redacted error and permissions checks. |
+| Q10 | Android trusts incomplete responses and leaves files from failed cache downloads; demonstrated transfer bugs | P1 reliability | Android API client and loopback HTTP tests | Five new regression tests first failed: explicit text files became clipboard text, single/group downloads left partial files, missing upload IDs passed, and wrong JSON endpoints appeared connected. Candidate fixes these without changing authentication or Apple URLs. | Preserve normal Unicode, original document bytes, duplicate filenames, zero-byte files and unrelated cache entries. MediaStore/clipboard application and physical-device acceptance are separate gates. |
 
 ## Storage Candidate Contract
 
@@ -71,8 +72,8 @@ to the work already done.
 | Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | PR #50 candidate verified locally and in CI; not released |
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
-| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | Baseline pipelines verified; rerun native build for the storage candidate |
-| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Existing beta; physical matrix and lifecycle/failure audit pending |
+| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #50 native ARM64 packaging and settings-preservation checks passed; no replacement installer published |
+| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10 loopback transfer tests, debug build and lint passed locally; MediaStore/lifecycle and physical acceptance remain pending |
 | Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
 | Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
 | User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
@@ -129,5 +130,18 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   verification before the large-account check: **284 passed, 6 opt-in tests skipped**;
   the five disposable-container checks also passed separately against its rebuilt
   image. The additional large-account check verifies 10,000 users without scanning
-  unrelated user directories on each request. Linux/Windows CI for the follow-up
-  is still pending.
+  unrelated user directories on each request. The committed follow-up `28cfa97`
+  passed **290 tests, one opt-in skip**, with disposable Docker tests enabled.
+- PR #51 head `28cfa97`: all checks passed in
+  [validation run 39340281138](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39340281138),
+  including Windows standalone-server tests on NTFS. Both PRs remain draft and unmerged.
+- Q10 candidate: **21 Android JVM tests passed**, including 14 real loopback HTTP
+  checks. Five of the new regressions were first observed failing before the fixes.
+  `testDebugUnitTest assembleDebug lintDebug` completed successfully using a clean
+  temporary project copy. Lint reported **zero errors and eight warnings**: five
+  dependency-update notices, one obsolete resource qualifier and two unused strings.
+  Warnings were not suppressed. No APK was installed or published.
+- The Q10 working candidate retained **290 passing Python tests and one opt-in skip**
+  with Docker enabled. Disposable containers and volumes were removed after testing.
+  Android CI now runs lint and retains test/lint reports for 14 days; the new PR's
+  hosted checks are still pending.

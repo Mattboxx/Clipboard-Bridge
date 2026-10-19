@@ -10,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import okio.BufferedSink
 import okio.source
 import org.json.JSONObject
@@ -18,16 +19,20 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
-class ApiClient(
-    private val config: AppConfig,
-    private val client: OkHttpClient = OkHttpClient.Builder()
+class ApiClient internal constructor(
+    private val readSettings: () -> BridgeSettings,
+    private val rememberSent: (String) -> Unit,
+    private val client: OkHttpClient,
+) {
+    constructor(config: AppConfig, client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .build(),
-) {
+    ) : this(config::load, config::setLastSeenId, client)
+
     private fun request(path: String): Request.Builder {
-        val settings = config.load()
+        val settings = readSettings()
         val base = AppConfig.normalizeServerUrl(settings.serverUrl)
         val builder = Request.Builder().url(buildRequestUrl(base, path, settings))
         if (settings.accountMode && settings.username.isNotBlank() &&
@@ -42,11 +47,14 @@ class ApiClient(
     }
 
     fun testConnection(): OperationResult<String> = runCatching {
-        require(config.load().serverUrl.isNotBlank()) { "Enter a server address." }
+        require(readSettings().serverUrl.isNotBlank()) { "Enter a server address." }
         client.newCall(request("/clipboard/history?limit=1").get().build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 error(httpError(response.code, payload))
+            }
+            require(JSONObject(payload).optJSONArray("items") != null) {
+                "The server did not return clipboard history. Check its address."
             }
             "Connected"
         }
@@ -60,7 +68,8 @@ class ApiClient(
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
             val root = JSONObject(payload)
-            val items = root.optJSONArray("items") ?: return@use emptyList()
+            val items = root.optJSONArray("items")
+                ?: error("The server did not return clipboard history. Check its address.")
             buildList {
                 for (index in 0 until items.length()) {
                     val item = items.getJSONObject(index)
@@ -130,9 +139,7 @@ class ApiClient(
             client.newCall(request("/clipboard").post(multipart.build()).build()).execute().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) error(httpError(response.code, payload))
-                JSONObject(payload).optString("id").also { id ->
-                    if (id.isNotBlank()) config.setLastSeenId(id)
-                }
+                acknowledgeUpload(payload)
             }
         }.fold(
             onSuccess = { OperationResult.Success(it) },
@@ -165,9 +172,7 @@ class ApiClient(
         client.newCall(builder.build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
-            val id = JSONObject(payload).optString("id")
-            if (id.isNotBlank()) config.setLastSeenId(id)
-            id
+            acknowledgeUpload(payload)
         }
     }.fold(
         onSuccess = { OperationResult.Success(it) },
@@ -176,6 +181,13 @@ class ApiClient(
 
     fun downloadLatest(cacheDir: File): OperationResult<ReceivedClipboard> =
         download("/clipboard/latest/raw", cacheDir)
+
+    private fun acknowledgeUpload(payload: String): String {
+        val id = JSONObject(payload).opt("id") as? String
+        require(!id.isNullOrBlank()) { "The server did not confirm the saved clipboard item." }
+        rememberSent(id)
+        return id
+    }
 
     fun downloadItem(id: String, cacheDir: File): OperationResult<ReceivedClipboard> =
         download("/clipboard/item/$id/raw", cacheDir)
@@ -203,7 +215,7 @@ class ApiClient(
                 ?: "application/octet-stream"
             if (type == "bundle") {
                 downloadBundle(id, cacheDir)
-            } else if (type == "text" || mime.startsWith("text/")) {
+            } else if (type == "text" || (type.isBlank() && mime.startsWith("text/"))) {
                 ReceivedClipboard.Text(id, response.body?.string().orEmpty())
             } else {
                 val encodedName = response.header("X-Clipboard-Filename").orEmpty()
@@ -211,11 +223,7 @@ class ApiClient(
                     URLDecoder.decode(encodedName, StandardCharsets.UTF_8.name())
                         .ifBlank { "clipboard-file" },
                 )
-                val directory = File(cacheDir, "received").apply { mkdirs() }
-                val file = File(directory, "${System.nanoTime()}-$filename")
-                response.body?.byteStream()?.use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
-                } ?: error("The server returned an empty response.")
+                val file = cacheFile(response.body, cacheDir)
                 ReceivedClipboard.FileItem(id, file, filename, mime)
             }
         }
@@ -232,8 +240,8 @@ class ApiClient(
             JSONObject(payload)
         }
         val files = metadata.optJSONArray("files") ?: error("The file group is empty.")
-        val directory = File(cacheDir, "received").apply { mkdirs() }
-        val downloaded = buildList {
+        val downloaded = mutableListOf<ReceivedClipboard.FileItem>()
+        try {
             for (index in 0 until files.length()) {
                 val member = files.getJSONObject(index)
                 val memberIndex = member.optInt("index", index)
@@ -241,22 +249,37 @@ class ApiClient(
                     member.stringOrNull("filename") ?: "file-${index + 1}",
                 )
                 val mime = member.stringOrNull("mime") ?: "application/octet-stream"
-                val file = File(directory, "${System.nanoTime()}-$filename")
-                client.newCall(
+                val file = client.newCall(
                     request("/clipboard/item/$id/file/$memberIndex/raw").get().build(),
                 ).execute().use { response ->
                     if (!response.isSuccessful) {
                         error(httpError(response.code, response.body?.string().orEmpty()))
                     }
-                    response.body?.byteStream()?.use { input ->
-                        file.outputStream().use { output -> input.copyTo(output) }
-                    } ?: error("The server returned an empty file.")
+                    cacheFile(response.body, cacheDir)
                 }
-                add(ReceivedClipboard.FileItem(id, file, filename, mime))
+                downloaded.add(ReceivedClipboard.FileItem(id, file, filename, mime))
             }
+            require(downloaded.isNotEmpty()) { "The file group is empty." }
+            return ReceivedClipboard.FileGroup(id, downloaded)
+        } catch (error: Throwable) {
+            downloaded.forEach { runCatching { it.file.delete() } }
+            throw error
         }
-        require(downloaded.isNotEmpty()) { "The file group is empty." }
-        return ReceivedClipboard.FileGroup(id, downloaded)
+    }
+
+    private fun cacheFile(body: ResponseBody?, cacheDir: File): File {
+        requireNotNull(body) { "The server returned an empty response." }
+        val directory = File(cacheDir, "received").apply { mkdirs() }
+        val file = File.createTempFile("clipboard-", ".tmp", directory)
+        try {
+            body.byteStream().use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            return file
+        } catch (error: Throwable) {
+            runCatching { file.delete() }
+            throw error
+        }
     }
 
     private fun httpError(code: Int, responseBody: String = ""): String {

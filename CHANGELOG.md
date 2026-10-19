@@ -4,6 +4,12 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Preserve Android downloads marked as files even when their MIME type is `text/*`.
+  Ordinary clipboard text remains plain Unicode; actual documents keep their bytes.
+- Remove files created by an interrupted Android cache download, including completed
+  members of a failed group, without touching unrelated cached files.
+- Reject missing upload acknowledgements and non-history responses instead of showing
+  false Android send/connection success.
 - Refuse account access when distinct configured names resolve to the same physical
   directory on a case-insensitive or filename-normalizing filesystem. Keep the
   general clipboard and unrelated accounts available; do not relocate existing data.

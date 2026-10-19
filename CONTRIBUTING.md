@@ -75,6 +75,24 @@ so changing architecture preserves the existing per-user settings and history.
 
 Security reports must follow [SECURITY.md](SECURITY.md), not a public issue.
 
+## Android Transfer Tests
+
+With Java 17 and Android SDK 35 available, run from `android/`:
+
+```powershell
+.\gradlew.bat testDebugUnitTest assembleDebug lintDebug
+```
+
+On POSIX shells use `./gradlew` instead. `ApiClientTransferTest` exercises the real
+HTTP client against a disposable loopback MockWebServer, including truncated streams,
+group rollback, text/file discrimination, Unicode and invalid server responses. It
+does not contact a personal server or use a device clipboard. MockWebServer and the
+JVM JSON implementation are test-only dependencies, not additions to the release APK.
+
+These tests do not establish Android MediaStore, clipboard permissions, Quick Settings
+or sleep/background behavior. Complete the physical-device cases in
+[the manual acceptance plan](maintainer/MANUAL_TESTS.md) before claiming those results.
+
 ## Disposable Container Integration
 
 Build a local test image, then opt in to real HTTP/persistence tests:
