@@ -105,7 +105,7 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `build_windows_release.bat 2.0.15` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.15` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.

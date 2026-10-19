@@ -21,7 +21,7 @@ up, you do not need to reopen the Shortcuts editor for each transfer.
 **English** | [Italiano](README.it.md)
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
-[Downloads](#download) | [Start here](#start-here) |
+[Downloads](#download) | [Desktop demo](#desktop-in-action) | [Start here](#start-here) |
 [Full guide](GUIDE.md) | [Developers](#developers)
 
 New here? Follow the [step-by-step setup tutorial](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html).
@@ -31,6 +31,32 @@ and [sharing a clipboard between Apple and Android devices](https://mattboxx.git
 
 [![Tests](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
+
+## Desktop in action
+
+**Find a previous clipboard, preview an image or PDF, and copy it again.**
+The Windows app keeps search, file groups and Send/Receive together in one window.
+
+![Windows desktop app: searchable history, grouped files and image preview](docs/assets/windows-history.png)
+
+*Real application screen with public sample data, not private clipboard contents.*
+
+**Quick actions next to the clock.** Right-click the tray icon for Send, Receive
+and History; left-click opens History directly.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
+  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Real English Windows tray menu: Send clipboard, Receive latest and History" width="420">
+</picture>
+
+*Real Windows recording in English, cropped for privacy. It demonstrates the tray
+controls, not a phone-to-PC transfer.* [Replay GIF](docs/assets/demo/windows-tray-menu.gif)
+or [watch video](docs/assets/demo/windows-tray-menu.mp4).
+
+**Prefer automatic sharing?** Enable **Automatic synchronization** in
+**Settings > Automation** and keep the app running. Leave automatic file downloads
+enabled to receive files too. Manual Send/Receive buttons remain available.
+Auto-sync can also share sensitive text you copy, so enable it deliberately.
 
 ## Choose your setup
 
@@ -119,11 +145,7 @@ History supports search, type filters and previous/next pages. Search matches te
 previews and filenames, including group members, not the complete document contents.
 
 <details>
-<summary>See the Windows app and connection diagram</summary>
-
-![Windows history with image preview, search and type filters](docs/assets/windows-history.png)
-
-*Real application screen using public sample data.*
+<summary>Connection diagram: two alternative hosting modes</summary>
 
 ![Two alternative, bidirectional connection modes](docs/assets/two-modes.png)
 
@@ -146,13 +168,7 @@ without pressing Send or Receive each time. Keep the app running and leave
 **Automatically download new files** enabled to receive files automatically too.
 Only enable auto-sync if you want copied content to be shared, including sensitive text.
 
-<picture>
-  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/demo/windows-tray-menu.png">
-  <img src="docs/assets/demo/windows-tray-menu.gif" alt="Real English Windows tray menu: Send clipboard, Receive latest and History" width="620" height="660">
-</picture>
-
-Real Windows capture, cropped for privacy. [Replay the GIF](docs/assets/demo/windows-tray-menu.gif)
-or [watch the short video](docs/assets/demo/windows-tray-menu.mp4).
+See the [desktop screenshots and animated tray demo](#desktop-in-action).
 
 <details>
 <summary>Windows settings, notifications and history</summary>
@@ -481,7 +497,7 @@ space; latest raw content is an empty response. Retention limits remove old entr
 | Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_release_metadata.py` |
 | Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
-| Windows x64 packaging | `build_windows_release.bat 2.0.15`; requires x64 Python, PyInstaller and Inno Setup |
+| Windows x64 packaging | `scripts\windows\build_release.bat 2.0.15`; requires x64 Python, PyInstaller and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
 | Android build | Java 17, Android SDK 35; [Gradle and private signing instructions](android/README.md#build-from-source) |
 | Docker source build | `docker build -t clipboard-bridge-server:dev .` |
@@ -502,10 +518,17 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 | `Iphone Shortcuts/` | Signed Shortcut exports and update instructions |
 | `Dockerfile`, `compose.yaml`, `docker-compose.yml`, `.env.example` | Container deployment |
 | `requirements-*.txt` | Python dependencies |
-| `build_*.bat`, `Clipboard_Bridge_setup.iss`, `scripts/` | Packaging and verification |
+| `scripts/` | Development, validation and Windows build commands |
+| `packaging/windows/` | Inno Setup installer and generated Windows version metadata |
 | `tests/` | Regression tests |
 | `.github/workflows/` | Validation, native ARM64 build, images and website deployment |
 | `docs/` | GitHub Pages source and public sample screenshots |
+| `docs/development/` | Architecture, component boundaries and developer documentation |
+| `maintainer/` | Release checklists, manual validation and media provenance |
+| `distribution/` | Store adapters; the separate AppStore repository publishes the catalogs |
+
+[Architecture and repository layout](docs/development/ARCHITECTURE.md) |
+[Script commands](scripts/README.md) | [Windows packaging](packaging/windows/README.md)
 
 [Full user guide](GUIDE.md) | [Docker guide](DOCKER.md) | [Android documentation](android/README.md) |
 [Changelog](CHANGELOG.md) | [Security](SECURITY.md)

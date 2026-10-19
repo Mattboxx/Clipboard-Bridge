@@ -3,6 +3,11 @@
 Thanks for helping improve Clipboard Bridge. Keep changes focused, testable and
 compatible with the two supported operating modes.
 
+Start with the [architecture and repository map](docs/development/ARCHITECTURE.md).
+Build commands live in [scripts/](scripts/README.md); Windows installer sources live
+in [packaging/windows/](packaging/windows/README.md). User instructions stay in the
+root README, GUIDE and DOCKER documents; `docs/` also contains the public website.
+
 ## Development setup
 
 Use Python 3.12 on Windows for the client and any Python 3.12 environment for the
@@ -34,8 +39,12 @@ the signed Android APK and the two signed iPhone Shortcuts. Keep Python scripts
 and other developer sources in the repository, not as release attachments.
 Publish download checksums in the release notes.
 
-`build_windows_release.bat` builds the x64 portable executable and installer.
+`scripts\windows\build_release.bat` builds the x64 portable executable and installer.
 It rejects non-x64 Python to avoid incorrectly labeled packages.
+`scripts\windows\build_client.bat` builds a development portable executable only.
+Both commands locate the repository root automatically, even when launched from
+another working directory. Run `python scripts/release_metadata.py --write --check`
+after changing `VERSION`; generated metadata belongs in `packaging/windows/`.
 
 For native Windows ARM64, run the **Build Windows ARM64** GitHub Actions workflow.
 It uses a native `windows-11-arm` runner and ARM64 Python, not cross-compilation or
@@ -58,6 +67,9 @@ so changing architecture preserves the existing per-user settings and history.
 - Do not commit real clipboard data, credentials, local configuration or build
   output.
 - Update English and Italian documentation when user-facing behavior changes.
+- For desktop documentation, use real captures with an isolated profile and public
+  sample data. Never capture a personal history or connection settings. Follow the
+  [media provenance rules](docs/development/ARCHITECTURE.md#screenshots-and-demos).
 - Run `python scripts/release_metadata.py --check` and `python -m pytest -q`
   before submitting.
 

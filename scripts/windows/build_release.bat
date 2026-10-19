@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0..\.."
 
 set /p PROJECT_VERSION=<VERSION
 set "VERSION=%~1"
@@ -36,7 +36,7 @@ if errorlevel 1 exit /b 1
 echo [2/5] Building the portable Windows executable...
 "%PYTHON_EXE%" -m PyInstaller --noconfirm --clean ^
   --icon icon.ico --name "Clipboard Bridge" ^
-  --version-file windows_version_info.txt ^
+  --version-file packaging\windows\windows_version_info.txt ^
   --add-data "icon.ico;." ^
   --add-data "VERSION;." ^
   --hidden-import pystray._win32 ^
@@ -61,7 +61,7 @@ if not exist "%ISCC%" (
 )
 
 echo [3/5] Building the Windows installer...
-"%ISCC%" /DMyAppVersion=%VERSION% "Clipboard_Bridge_setup.iss"
+"%ISCC%" /DMyAppVersion=%VERSION% "packaging\windows\Clipboard_Bridge_setup.iss"
 if errorlevel 1 exit /b 1
 
 echo [4/5] Preparing the public GitHub release assets...
