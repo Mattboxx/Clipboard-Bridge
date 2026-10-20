@@ -49,7 +49,8 @@ not a current claim that its candidate releases remain unpublished.
 | Q14 | Native x64 compiled/installed packages lack the automated gate available for ARM64; verification gap | P1 delivery | Windows workflows and pinned build requirements | Candidate runs the actual x64 batch build, frozen smoke checks, disposable installer data preservation and dependency/provenance capture. ARM64 retains its native verification using the same PyInstaller pin. | Source tests alone do not prove frozen imports, PDFium architecture or installer preservation. Hosted native builds must pass before artifacts are called verified. |
 | Q15 | Main ruleset did not require PRs or successful checks; delivery policy risk | P1 governance | GitHub ruleset `20001324` | Added required PRs, resolved conversations and strict successful `validate`/`windows-client`/`android-client` checks tied to verified GitHub Actions integration `15368`. Both ruleset and effective-main APIs confirm enforcement; original three rules and empty bypass list preserved. | Zero external approvals avoids locking out the solo maintainer. Conditional native jobs remain release gates, not globally required jobs. No merge or release was performed. |
 | Q16 | Apple link uploads can arrive as downloaded HTML; reported interoperability defect | P1 usability | Apple Shortcut recipe and bilingual tutorial | User supplied Reddit HTML. Both host modes preserve URL text without fetching it; updated instructions explicitly extract URL strings and send a JSON text field, preserving file branches. | The installed Shortcut/action chain was not available for inspection. Do not infer the original URL from arbitrary HTML or mutate actual HTML documents. Signed exports unchanged; physical Apple validation remains required. |
-| Q17 | First x64 build provenance reports Inno Setup as `0.0.0.0`, and its installer sample uses the wrong local-history index name; demonstrated verification defects | P1 delivery evidence | Native x64 workflow | Downloaded artifact matches both EXE checksums and its source merge commit contains the expected PR head. Compiler output reports 6.7.1, but Windows executable metadata reports zero. Candidate captures the compiler banner, distinguishes source/PR/workflow commits and uses the actual local-history index name. | Two source-contract tests first failed; they do not replace executing the modified native workflow and inspecting its resulting artifact. |
+| Q17 | First x64 build provenance reports Inno Setup as `0.0.0.0`, and its installer sample uses the wrong local-history index name; demonstrated verification defects | P1 delivery evidence | Native x64 workflow | PR #57 passes both native jobs and all validation jobs. Downloaded artifact verifies compiler 6.7.1, compiler digest, expected PR head, tested merge commit and both EXE checksums. Fixture now uses the actual local-history index name. | Two source-contract tests first failed. Hosted execution now validates the corrected fixture; real standard-user upgrades still require physical acceptance. |
+| Q18 | Declared dependency floors permit upstream versions with known advisories; demonstrated maintenance defect, not proof of an exploitable installation | P1 dependency hygiene | Client/server requirements and security policy | Direct-minimum audit returned 41 rows representing 21 distinct advisory IDs in Flask 3.1, Requests 2.32 and Pillow 11. Candidate raises floors to 3.1.3, 2.33.0 and 12.3.0. Current local runtime already uses patched releases. | Direct-floor audit excludes transitives and does not prove an installable complete minimum stack. Verify the selected patched-floor runtime, fresh full resolution, native builds and container. Preserve existing upper bounds and do not blindly merge Gunicorn's major update. |
 
 ## Storage Candidate Contract
 
@@ -224,3 +225,23 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   The complete clean staged snapshot passed **330 Python tests, two explicit skips**
   with disposable Docker enabled. Executing the modified hosted x64 pipeline and
   inspecting its new compiler/source provenance is still required.
+- PR #57 head `fc651a4`: all five checks passed. The
+  [native x64 run 39388318819](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39388318819)
+  produced a downloaded artifact with compiler **6.7.1**, a nonzero compiler digest,
+  expected PR head `fc651a4`, and matching tested/workflow merge `ca1c448`. GitHub's
+  commit API confirms that merge includes the expected PR head. Both EXEs match
+  their SHA-256 records. No release was published and no local app was replaced.
+- Q18 candidate: the direct-floor audit changed from **21 distinct advisory IDs in
+  three packages** (41 rows due to duplicated feed entries) to **zero**, with no
+  skipped packages. A separate fresh full-resolution audit also reported zero.
+  The isolated Windows environment pins Flask 3.1.3, Requests 2.33.0 and Pillow
+  12.3.0 while resolving other dependencies normally; `pip check` succeeded.
+  Its clean staged-source suite passed **330 tests, two explicit skips**, against
+  a newly built disposable server image. Three additional manifest-policy tests
+  passed after that run. This is not an all-transitive-minimum or old-binary audit.
+- The final staged Q18 snapshot, including those three policy tests, passed
+  **333 tests, two explicit skips** in the selected patched-floor environment with
+  the new Docker image enabled. The advisory checks covered **nine direct minimum
+  pins** and a separate **twenty-package fresh resolution**, with zero findings and
+  zero skipped packages in each. All temporary test containers and volumes were
+  removed. Native hosted checks for the changed dependency manifests remain required.

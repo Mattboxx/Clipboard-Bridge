@@ -5,6 +5,32 @@
 Security fixes are applied to the latest Windows release and the latest server
 container image. Older releases should be upgraded before reporting a problem.
 
+## Dependency Maintenance
+
+For source installations, use a clean virtual environment and install the current
+requirements. Candidate minimum versions are Flask 3.1.3, Requests 2.33.0 and
+Pillow 12.3.0. The previous ranges permitted older releases with known advisories,
+even when a fresh installation normally selected a newer version. Updating these
+files does not upgrade an existing virtual environment, container or frozen EXE.
+
+These floors address the reviewed upstream advisories, not every hypothetical
+application exploit. For example, the Requests temporary-file advisory applies to
+direct callers of `extract_zipped_paths()`, which Clipboard Bridge does not call;
+the Flask cache advisory also has deployment-specific preconditions. Pillow handles
+untrusted image data, so its image-parser fixes remain important on a trusted LAN.
+
+When reviewing updates, audit both the freshly resolved dependency set (including
+transitive dependencies) and the declared direct minimum versions. Deduplicate
+advisory IDs before counting findings. Recheck at release time; a clean audit is
+time-specific and is not a security certification of already-published binaries.
+Major upgrades such as Gunicorn's pending update require their own compatibility
+review and running-container tests, not just a manifest change.
+
+Upstream references:
+[Flask session/cache advisory](https://github.com/pallets/flask/security/advisories/GHSA-68rp-wp8r-4726),
+[Requests temporary-file advisory](https://github.com/psf/requests/security/advisories/GHSA-gc5v-m9x4-r6x2),
+[Pillow 12.3.0 security release notes](https://pillow.readthedocs.io/en/stable/releasenotes/12.3.0.html).
+
 ## Report a vulnerability privately
 
 Do not open a public issue for a vulnerability or include credentials,

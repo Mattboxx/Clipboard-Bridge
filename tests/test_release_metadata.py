@@ -3,6 +3,10 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
+import pytest
+from packaging.requirements import Requirement
+from packaging.version import Version
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,6 +25,22 @@ def test_release_metadata_is_consistent():
 
     assert version == "2.0.15"
     metadata.validate(version)
+
+
+@pytest.mark.parametrize("manifest,name,patched,obsolete,next_major", [
+    ("requirements-server.txt", "flask", "3.1.3", ("3.1", "3.1.1", "3.1.2"), "4"),
+    ("requirements-client.txt", "requests", "2.33.0", ("2.32", "2.32.4", "2.32.5"), "3"),
+    ("requirements-client.txt", "pillow", "12.3.0", ("11", "12.1.1", "12.2.0"), "13"),
+])
+def test_reviewed_security_floors_exclude_obsolete_versions(manifest, name, patched, obsolete, next_major):
+    requirements = [Requirement(line) for line in (ROOT / manifest).read_text().splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")]
+    requirement = next(item for item in requirements if item.name.lower() == name)
+    floors = [Version(spec.version) for spec in requirement.specifier if spec.operator in (">=", "==")]
+    assert floors and max(floors) >= Version(patched)
+    assert max(floors) in requirement.specifier
+    assert all(version not in requirement.specifier for version in obsolete)
+    assert next_major not in requirement.specifier
 
 
 def test_installer_default_matches_project_version():

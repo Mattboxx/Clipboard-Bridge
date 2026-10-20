@@ -4,6 +4,9 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Raise supported Flask, Requests and Pillow minimum versions to the reviewed
+  patched releases. Existing installations and frozen downloads are not upgraded
+  by editing requirements; publication and compatibility checks remain separate.
 - Preserve previously added release-folder assets instead of deleting the directory
   during a Windows build. Fail on missing/empty inputs before replacing managed files.
 - Read the optional Android APK version from Gradle output metadata instead of
