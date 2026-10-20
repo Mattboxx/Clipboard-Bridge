@@ -269,6 +269,31 @@ def test_indexnow_payload_is_limited_to_public_project_pages():
     assert all(url.startswith(BASE) and "?" not in url for url in payload["urlList"])
 
 
+@pytest.mark.parametrize("filename", ["README.md", "README.it.md"])
+def test_readme_shows_both_optional_server_interface_screens(filename):
+    text = (ROOT / filename).read_text(encoding="utf-8")
+    for asset in ("server-web.png", "server-history.png"):
+        assert text.count(f"docs/assets/{asset}") == 1
+    assert "public sample data" in text or "dati di esempio pubblici" in text
+
+
+def test_server_screens_are_secondary_accessible_and_correctly_sized():
+    source = (DOCS / "index.html").read_text(encoding="utf-8")
+    assert source.index('id="server-preview"') > source.index('id="server"')
+    preview = source.split('id="server-preview"', 1)[1].split("</section>", 1)[0]
+    assert "optional Docker server" in preview
+    assert "not Windows Server mode" in preview
+    screenshots = Page(preview).tags("img")
+    assert {img["src"] for img in screenshots} == {
+        "assets/server-web.png", "assets/server-history.png"}
+    for img in screenshots:
+        assert img["alt"] and img["loading"] == "lazy"
+        data = (DOCS / img["src"]).read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n"
+        assert int(img["width"]) == int.from_bytes(data[16:20], "big")
+        assert int(img["height"]) == int.from_bytes(data[20:24], "big")
+
+
 @pytest.mark.parametrize("url", ["http://192.168.1.50:5088/", "https://example.com/",
                                  BASE + "tutorial.html?token=private", BASE + "../secret.html",
                                  BASE + "missing.html", BASE + "#download"])

@@ -122,6 +122,15 @@ h2{font-size:38px;line-height:1.18;letter-spacing:0;font-weight:700;margin:0 0 1
 .windows-alternative p{font-size:14px;color:var(--muted);margin:0 0 18px}
 .windows-alternative strong{color:var(--ink)}
 .server-more{margin-top:32px;border-color:#cadcd0;font-size:13px}
+#server-preview{padding-top:0;border-top:0}
+.server-gallery{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}
+.server-gallery figure{margin:0;min-width:0}
+.server-gallery a{display:block;border-radius:8px;overflow:hidden;border:1px solid #cadcd0;background:#fff}
+.server-gallery img{display:block;width:100%;height:auto}
+.server-gallery figcaption{font-size:14px;color:var(--muted);margin-top:14px;line-height:1.6}
+.server-gallery strong{color:var(--ink)}
+.server-capture-note{font-size:12px;color:var(--muted);margin:24px 0 0}
+@media(max-width:800px){.server-gallery{grid-template-columns:1fr;gap:28px}}
 .network-note{margin-top:34px;padding:28px 0 0;border-top:1px solid #cadcd0;max-width:1000px}
 .network-note h3{font-size:22px;margin:0 0 14px}
 .network-note p{font-size:14px;color:var(--muted);margin:0 0 14px}

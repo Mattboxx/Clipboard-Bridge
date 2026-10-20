@@ -319,6 +319,20 @@ Supporta Linux `amd64` e `arm64`. Il servizio ascolta sulla porta `5088`, conser
 i dati persistenti in `/data` e non richiede un database separato. La pagina web offre
 invio di testo/file, cronologia ricercabile, download, aggiornamento, eliminazione e login opzionale.
 
+### Interfaccia nel browser
+
+Salva testo o carica file da qualsiasi browser, senza installare un altro client.
+Questa interfaccia appartiene al **server indipendente opzionale**, non alla Modalità Server Windows.
+
+![Interfaccia web del server Docker: editor di testo e caricamento file](docs/assets/server-web.png)
+
+Cerca nella cronologia condivisa, scarica un elemento o eliminalo. I file inviati
+insieme rimangono in un unico riquadro; le immagini hanno una miniatura.
+
+![Cronologia del server Docker: testo, gruppo di due file e miniatura immagine](docs/assets/server-history.png)
+
+*Schermate reali del server Docker pubblicato, con soli dati di esempio pubblici.*
+
 **App Store:** segui [Clipboard Bridge App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme)
 per ZimaOS, Portainer, Umbrel, Runtipi e Dockge. Su ZimaOS aggiungi questa sorgente
 permanente **JSON v2**, non lo ZIP del repository:

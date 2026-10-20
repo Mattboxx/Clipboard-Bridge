@@ -312,6 +312,20 @@ Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persis
 data in `/data`, and needs no separate database. The web page supports text/file
 uploads, searchable history, downloads, refresh, deletion and optional login.
 
+### Browser interface
+
+Save text or upload files from any browser, without installing another client.
+This interface belongs to the **optional standalone server**, not Windows Server mode.
+
+![Docker server web interface: text editor and file upload](docs/assets/server-web.png)
+
+Search the shared history, download an item or delete it. Files sent together
+remain in one entry; images have a thumbnail.
+
+![Docker server history: text, a two-file group and an image thumbnail](docs/assets/server-history.png)
+
+*Real screens from the published Docker server, using public sample data only.*
+
 **App stores:** follow [Clipboard Bridge App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme)
 for ZimaOS, Portainer, Umbrel, Runtipi and Dockge. For ZimaOS, add this permanent
 **JSON v2 source**, not a repository ZIP:
