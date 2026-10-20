@@ -46,6 +46,15 @@ Both commands locate the repository root automatically, even when launched from
 another working directory. Run `python scripts/release_metadata.py --write --check`
 after changing `VERSION`; generated metadata belongs in `packaging/windows/`.
 
+Both scripts install the pinned `requirements-build.txt` toolchain and respect the
+active virtual environment. `PYTHON_EXE` can explicitly select another interpreter.
+Release staging preserves extra files; see [folder ownership and failure behavior](packaging/windows/README.md#release-folder-ownership).
+The **Build Windows x64** workflow executes the actual batch script, validates the
+native portable and installed payloads, and checks preservation of seeded settings
+and histories on an ephemeral runner. Its `clipboard-bridge-windows-x64` artifact
+also records checksums, resolved dependencies and build provenance. It is not a
+public release or a substitute for physical standard-user/upgrade acceptance.
+
 For native Windows ARM64, run the **Build Windows ARM64** GitHub Actions workflow.
 It uses a native `windows-11-arm` runner and ARM64 Python, not cross-compilation or
 an x64 executable renamed as ARM64. The workflow runs the client tests, verifies

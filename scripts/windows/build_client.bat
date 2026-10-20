@@ -1,10 +1,13 @@
 @echo off
+setlocal
 REM Build the portable Windows client in dist\.
 cd /d "%~dp0..\.."
+if errorlevel 1 exit /b 1
 
-set "PYTHON_EXE=python"
-if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (
-  set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+if not defined PYTHON_EXE (
+  set "PYTHON_EXE=python"
+  if exist "%LocalAppData%\Programs\Python\Python312\python.exe" set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+  if defined VIRTUAL_ENV if exist "%VIRTUAL_ENV%\Scripts\python.exe" set "PYTHON_EXE=%VIRTUAL_ENV%\Scripts\python.exe"
 )
 
 "%PYTHON_EXE%" --version >nul 2>&1
@@ -19,7 +22,8 @@ echo Preparing version metadata...
 if errorlevel 1 exit /b 1
 
 echo Installing/updating dependencies...
-"%PYTHON_EXE%" -m pip install --upgrade pyinstaller
+"%PYTHON_EXE%" -m pip install -r requirements-build.txt
+if errorlevel 1 exit /b 1
 "%PYTHON_EXE%" -m pip install -r requirements-client.txt
 if errorlevel 1 exit /b 1
 

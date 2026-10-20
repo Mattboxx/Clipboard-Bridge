@@ -92,6 +92,28 @@ def test_installer_supports_native_arm64_without_changing_app_identity():
     assert installer.count("AppId=") == 1
 
 
+def test_windows_builds_use_the_same_pinned_toolchain():
+    pin = (ROOT / "requirements-build.txt").read_text(encoding="utf-8")
+    assert re.search(r"(?m)^pyinstaller==\d+\.\d+\.\d+$", pin)
+    for name in ("build_client.bat", "build_release.bat"):
+        script = (ROOT / "scripts/windows" / name).read_text(encoding="utf-8")
+        assert "-m pip install -r requirements-build.txt" in script
+        assert "--upgrade pyinstaller" not in script
+        assert 'if not defined PYTHON_EXE (' in script
+        assert '%VIRTUAL_ENV%\\Scripts\\python.exe' in script
+    arm = (ROOT / ".github/workflows/windows-arm64.yml").read_text(encoding="utf-8")
+    x64 = (ROOT / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    for workflow in (arm, x64):
+        assert '"requirements-build.txt"' in workflow
+        assert "-r requirements-build.txt pytest" in workflow
+    assert 'cmd /d /c scripts\\windows\\build_release.bat' in x64
+    assert '--architecture x64 --smoke' in x64
+    assert 'Installer changed $name' in x64
+    assert 'Installer payload mismatch' in x64
+    assert 'Get-AuthenticodeSignature' in x64
+    assert 'clipboard-bridge-windows-x64' in x64
+
+
 def test_website_support_opens_donation_directly_and_stylesheet_exists():
     class Links(HTMLParser):
         def __init__(self):
@@ -212,5 +234,6 @@ def test_python_sources_are_developer_only_not_release_downloads():
     for source in ("clipboard_bridge-Server.py", "clipboard_bridge_windows.py"):
         assert f"/blob/main/{source}" in html
     build = (ROOT / "scripts/windows/build_release.bat").read_text(encoding="utf-8")
-    attachments = build.split("Preparing the public GitHub release assets...", 1)[1]
-    assert ".py" not in attachments
+    attachments = build.split("echo [4/5]", 1)[1]
+    assert 'scripts\\prepare_release_assets.py --version "%VERSION%"' in attachments
+    assert not re.search(r"(?im)^copy\s+.*\.py(?:\s|\")", attachments)

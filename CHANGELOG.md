@@ -4,6 +4,12 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Preserve previously added release-folder assets instead of deleting the directory
+  during a Windows build. Fail on missing/empty inputs before replacing managed files.
+- Read the optional Android APK version from Gradle output metadata instead of
+  assigning a hard-coded name; reject inconsistent/debug/split metadata.
+- Pin the shared PyInstaller toolchain, respect an active virtual environment or
+  explicit Python path, and add native x64 portable/installer verification in CI.
 - Bind Android operations and every member of a file group to their initial server
   and account. Discard obsolete results after a connection change instead of mixing
   sources or advancing the new account's receive cursor.
