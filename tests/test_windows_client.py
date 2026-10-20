@@ -84,6 +84,15 @@ def test_embedded_shared_html_document_keeps_original_bytes(embedded):
     assert "page.html" in received.headers["Content-Disposition"]
 
 
+def test_x64_installer_samples_match_actual_client_data_paths(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    root = Path(__file__).resolve().parents[1]
+    workflow = (root / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    for path in (client.CONFIG_FILE, client.LOCAL_INDEX, client.HOST_INDEX):
+        relative = Path(path).relative_to(client.DATA_DIR).as_posix()
+        assert f"'{relative}' = " in workflow, f"Installer preservation misses {relative}"
+
+
 def test_embedded_rejects_negative_bundle_member(embedded):
     client, address = embedded
     base = f"http://{address[0]}:{address[1]}"

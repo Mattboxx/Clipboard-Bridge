@@ -114,6 +114,18 @@ def test_windows_builds_use_the_same_pinned_toolchain():
     assert 'clipboard-bridge-windows-x64' in x64
 
 
+def test_x64_build_provenance_uses_compiler_output_and_identifies_pr_source():
+    workflow = (ROOT / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    assert "VersionInfo.ProductVersion" not in workflow
+    assert "Tee-Object -FilePath Output/x64-build.log" in workflow
+    assert "Compiler engine version:" in workflow
+    assert "Could not identify the Inno Setup compiler version" in workflow
+    assert "source_commit = (git rev-parse HEAD)" in workflow
+    assert "pull_request_head = $env:PR_HEAD_SHA" in workflow
+    assert "workflow_commit = $env:GITHUB_SHA" in workflow
+    assert "${{ github.event.pull_request.head.sha }}" in workflow
+
+
 def test_website_support_opens_donation_directly_and_stylesheet_exists():
     class Links(HTMLParser):
         def __init__(self):

@@ -8,6 +8,10 @@ Build commands live in [scripts/](scripts/README.md); Windows installer sources 
 in [packaging/windows/](packaging/windows/README.md). User instructions stay in the
 root README, GUIDE and DOCKER documents; `docs/` also contains the public website.
 
+Main requires a pull request and passing Python/Windows/Android checks. Read the
+[repository protection policy](maintainer/REPOSITORY_POLICY.md) before changing CI
+job names or preparing a release; successful CI does not replace maintainer approval.
+
 ## Development setup
 
 Use Python 3.12 on Windows for the client and any Python 3.12 environment for the
