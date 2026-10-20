@@ -238,7 +238,7 @@ def test_auto_sync_resends_text_after_clipboard_was_cleared(tmp_path, monkeypatc
     iterations = Iterations()
     client.config.update(auto_sync=True, auto_receive_files=False)
     monkeypatch.setattr(client, "stop_event", iterations)
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "_clipboard_sequence", lambda: iterations.step)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
     monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
@@ -392,7 +392,7 @@ def test_auto_sync_continues_with_a_damaged_optional_local_history(tmp_path, mon
 
     sent, notices = [], []
     monkeypatch.setattr(client, "stop_event", TwoIterations())
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "_clipboard_sequence", lambda: 1)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
@@ -414,7 +414,7 @@ def test_damaged_local_history_shows_a_localized_error_and_settings_still_save(t
     index.write_bytes(b"{damaged")
     monkeypatch.setattr(client, "_root", tk_test_root)
     monkeypatch.setattr(client, "fetch_history_page", lambda *args: {"items": []})
-    monkeypatch.setattr(client, "check_connection", lambda *args: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "unregister_hotkeys", lambda: None)
     monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
     errors = []
@@ -598,6 +598,188 @@ def test_older_connection_check_cannot_overwrite_newer_success(tmp_path, monkeyp
     assert client._connection_checked_server == "http://new-server:5088"
 
 
+@pytest.mark.parametrize("lang", ["en", "it"])
+@pytest.mark.parametrize("active_state,draft_status,expected_key", [
+    ("connected", 401, "status_auth"), ("offline", 200, "status_connected_short"),
+])
+def test_settings_draft_probe_does_not_change_active_connection_status(
+        tmp_path, monkeypatch, tk_test_root, lang, active_state, draft_status, expected_key):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, username="public-active-account")
+    client._set_connection_state(active_state, "http://active.example:5088")
+    generation = client._connection_check_generation
+    requests_seen, saved = [], []
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "save_config", lambda values: saved.append(dict(values)))
+
+    def get(url, **kwargs):
+        requests_seen.append(kwargs["params"])
+        return SimpleNamespace(status_code=draft_status, raise_for_status=lambda: None,
+                               json=lambda: {"items": []})
+
+    monkeypatch.setattr(client.requests, "get", get)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    window = None
+    try:
+        client.open_settings()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if isinstance(child, client.tk.Toplevel))
+        controls = list(descendants(window))
+        account = next(child for child in controls if isinstance(child, client.ttk.Entry)
+                       and child.get() == "public-active-account")
+        account.delete(0, "end")
+        account.insert(0, "public-draft-account")
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            tk_test_root.update()
+            while not client._cmd_q.empty():
+                client._cmd_q.get_nowait()()
+            if requests_seen and any(isinstance(child, client.tk.Label)
+                                     and child.cget("text") == client.t(expected_key)
+                                     for child in controls):
+                break
+            time.sleep(.01)
+        else:
+            pytest.fail("The draft result was not displayed in Settings")
+        assert requests_seen[-1]["user"] == "public-draft-account"
+        assert client._connection_state == active_state
+        assert client._connection_checked_server == "http://active.example:5088"
+        assert client._connection_check_generation == generation
+        assert client.config["username"] == "public-active-account" and saved == []
+    finally:
+        if window is not None and window.winfo_exists():
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+
+
+@pytest.mark.parametrize("response_status,payload,expected", [
+    (200, {"items": []}, "connected"), (401, None, "auth"), (403, None, "auth"),
+    (500, None, "offline"), (200, {"page": "unrelated"}, "offline"),
+    (200, {"items": "not an array"}, "offline"),
+])
+def test_private_connection_probe_reports_without_touching_tray_state(
+        tmp_path, monkeypatch, response_status, payload, expected):
+    client = load_client(tmp_path, monkeypatch)
+    client._set_connection_state("connected", "http://saved.example:5088")
+    generation = client._connection_check_generation
+    reports = []
+
+    def raise_status():
+        if response_status >= 400:
+            raise requests.HTTPError("synthetic response")
+
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        status_code=response_status, raise_for_status=raise_status, json=lambda: payload))
+    result = client.check_connection(dict(client.config, username="public-draft"), on_status=reports.append)
+    assert result is (expected == "connected")
+    assert reports == ["checking", expected]
+    assert client._connection_state == "connected"
+    assert client._connection_checked_server == "http://saved.example:5088"
+    assert client._connection_check_generation == generation
+
+
+def test_private_probe_cannot_cancel_a_running_saved_connection_check(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    waiting, release = threading.Event(), threading.Event()
+    reports = []
+
+    def get(url, **kwargs):
+        if kwargs["params"].get("user") == "public-draft":
+            return SimpleNamespace(status_code=401)
+        waiting.set()
+        assert release.wait(5)
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: {"items": []})
+
+    monkeypatch.setattr(client.requests, "get", get)
+    worker = threading.Thread(target=client.check_connection)
+    worker.start()
+    try:
+        assert waiting.wait(5)
+        generation = client._connection_check_generation
+        assert not client.check_connection(dict(client.config, username="public-draft"), on_status=reports.append)
+        assert client._connection_check_generation == generation
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive()
+    assert client._connection_state == "connected" and reports == ["checking", "auth"]
+
+
+@pytest.mark.parametrize("after_start", ["edit", "close"])
+def test_late_draft_probe_does_not_apply_to_changed_or_closed_settings(
+        tmp_path, monkeypatch, tk_test_root, after_start):
+    client = load_client(tmp_path, monkeypatch)
+    client.config["username"] = "public-active"
+    waiting, release, finished = threading.Event(), threading.Event(), threading.Event()
+    client._set_connection_state("offline")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+
+    def get(url, **kwargs):
+        waiting.set()
+        assert release.wait(5)
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: {"items": []})
+
+    original = client.check_connection
+
+    def check(*args, **kwargs):
+        try:
+            return original(*args, **kwargs)
+        finally:
+            finished.set()
+
+    monkeypatch.setattr(client.requests, "get", get)
+    monkeypatch.setattr(client, "check_connection", check)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def pump_until(predicate):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            tk_test_root.update()
+            while not client._cmd_q.empty():
+                client._cmd_q.get_nowait()()
+            if predicate():
+                return
+            time.sleep(.01)
+        pytest.fail("Draft test worker/UI did not finish")
+
+    window = None
+    try:
+        client.open_settings()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if isinstance(child, client.tk.Toplevel))
+        controls = list(descendants(window))
+        pump_until(waiting.is_set)
+        if after_start == "edit":
+            account = next(child for child in controls if isinstance(child, client.ttk.Entry)
+                           and child.get() == "public-active")
+            account.delete(0, "end")
+            account.insert(0, "public-other")
+        else:
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+        release.set()
+        pump_until(finished.is_set)
+        if after_start == "edit":
+            assert any(isinstance(child, client.tk.Label) and child.cget("text") == client.t("connection_changed")
+                       for child in controls)
+            button = next(child for child in controls if isinstance(child, client.ttk.Button)
+                          and child.cget("text") == client.t("check_connection"))
+            assert not button.instate(["disabled"])
+        assert client._connection_state == "offline" and client.config["username"] == "public-active"
+    finally:
+        release.set()
+        assert finished.wait(5)
+        if window is not None and window.winfo_exists():
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+
+
 def test_embedded_read_and_trim_are_serialized(embedded):
     from concurrent.futures import ThreadPoolExecutor
     client, address = embedded
@@ -729,7 +911,7 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, t
     client.config["lang"] = lang
     app = tk_test_root
     monkeypatch.setattr(client, "_root", app)
-    monkeypatch.setattr(client, "check_connection", lambda *args: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
 
     def descendants(parent):
         for child in parent.winfo_children():
@@ -952,7 +1134,7 @@ def test_settings_validate_and_persist_history_hotkey(tmp_path, monkeypatch, lan
     client = load_client(tmp_path, monkeypatch)
     client.config.update(lang=lang, username="alice", password="example-password")
     monkeypatch.setattr(client, "_root", tk_test_root)
-    monkeypatch.setattr(client, "check_connection", lambda *_args: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "register_hotkeys", lambda: None)
     monkeypatch.setattr(client, "notify", lambda *_args: None)
 
@@ -1004,7 +1186,7 @@ def test_unavailable_native_hotkey_does_not_save_settings(tmp_path, monkeypatch,
     saved_before = Path(client.CONFIG_FILE).read_bytes()
     workers = fake_native_hotkey_api(client, monkeypatch, rejected_key=ord("Y"))
     monkeypatch.setattr(client, "_root", tk_test_root)
-    monkeypatch.setattr(client, "check_connection", lambda *_: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "notify", lambda *_: None)
 
     def descendants(parent):
@@ -1049,7 +1231,7 @@ def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, t
     client.config.update(appearance="dark", username="alice", password="example-password")
     monkeypatch.setattr(client, "_root", tk_test_root)
     monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [], "total": 0})
-    monkeypatch.setattr(client, "check_connection", lambda *_args: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "_run_bg", lambda action: action())
     monkeypatch.setattr(client, "register_hotkeys", lambda: None)
     monkeypatch.setattr(client, "notify", lambda *_args, **_kw: None)
@@ -1724,7 +1906,7 @@ def test_auto_sync_notifies_when_remote_text_is_copied(tmp_path, monkeypatch):
         "notify_text": True,
     })
     monkeypatch.setattr(client, "stop_event", OneIteration())
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
     monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_text", lambda: "")
@@ -1783,7 +1965,7 @@ def test_auto_sync_does_not_receive_or_upload_its_own_text_again(tmp_path, monke
     })
     monkeypatch.setattr(client.requests, "post", post)
     monkeypatch.setattr(client, "stop_event", OneIteration())
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
     monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_text", lambda: "Sent from this PC")
@@ -1833,7 +2015,7 @@ def test_last_handled_item_is_not_notified_again_after_restart(tmp_path, monkeyp
         "monitor_clipboard": False,
     })
     monkeypatch.setattr(second, "stop_event", OneIteration())
-    monkeypatch.setattr(second, "check_connection", lambda: True)
+    monkeypatch.setattr(second, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(second, "get_clipboard_files", lambda: [])
     monkeypatch.setattr(second, "get_clipboard_image", lambda: None)
     monkeypatch.setattr(second, "get_clipboard_text", lambda: "")
@@ -2533,7 +2715,7 @@ def test_sync_retries_transient_clipboard_or_upload_failure(tmp_path, monkeypatc
             raise OSError("temporarily unavailable")
         return "uploaded"
     monkeypatch.setattr(client, "stop_event", TwoIterations())
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_text", lambda: "local" if operation == "upload" else "")
@@ -2609,7 +2791,7 @@ def test_unchanged_clipboard_skips_repeated_bitmap_reads(tmp_path, monkeypatch):
         def is_set(self): return self.count >= 2
         def wait(self, timeout): self.count += 1
     monkeypatch.setattr(client, "stop_event", TwoIterations())
-    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "_clipboard_sequence", lambda: 123)
     monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
     monkeypatch.setattr(client, "get_clipboard_image", lambda: reads.append(1))

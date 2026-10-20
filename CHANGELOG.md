@@ -4,6 +4,9 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Keep Windows draft connection checks inside Settings without changing the saved
+  connection's tray state or cancelling an active background check. Ignore late
+  draft results after editing or closing the form; reject malformed history replies.
 - Raise the standalone server's supported Flask minimum to the reviewed patched
   release; publishing a new stable container remains a separate step.
 - Bind Android operations and every member of a file group to their initial server

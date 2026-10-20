@@ -223,6 +223,7 @@ STRINGS = {
         "status_offline": "Connection: NOT CONNECTED",
         "status_auth": "Connection: SERVER FOUND, LOGIN REJECTED",
         "status_checking": "Connection: checking...",
+        "connection_changed": "Settings changed. Check the connection again.",
         "tray_connected": "🟢 Connected",
         "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
@@ -237,7 +238,7 @@ STRINGS = {
         "section_application": "Application",
         "section_server": "Server address",
         "section_account": "Authentication",
-        "section_status": "Connection status",
+        "section_status": "Connection test",
         "server_addr": "Server: {addr}  (click to copy)",
         "addr_copied": "Address copied: {addr}",
         "server_err": "Cannot start server: {e}",
@@ -349,6 +350,7 @@ STRINGS = {
         "status_offline": "Connessione: NON COLLEGATO",
         "status_auth": "Connessione: SERVER TROVATO, ACCESSO RIFIUTATO",
         "status_checking": "Connessione: verifica in corso...",
+        "connection_changed": "Impostazioni modificate. Verifica di nuovo la connessione.",
         "tray_connected": "🟢 Connesso",
         "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
@@ -363,7 +365,7 @@ STRINGS = {
         "section_application": "Applicazione",
         "section_server": "Indirizzo server",
         "section_account": "Autenticazione",
-        "section_status": "Stato connessione",
+        "section_status": "Verifica connessione",
         "server_addr": "Server: {addr}  (clic per copiare)",
         "addr_copied": "Indirizzo copiato: {addr}",
         "server_err": "Impossibile avviare il server: {e}",
@@ -648,14 +650,16 @@ def tray_connection_text():
     return t("tray_connected" if connected else "tray_disconnected")
 
 
-def settings_connection_status_text():
-    with _connection_lock:
-        connected = _connection_state == "connected"
-    return t("status_connected_short") if connected else connection_status_text()
+def settings_connection_status_text(state=None):
+    if state is None:
+        with _connection_lock:
+            state = _connection_state
+    return t({"connected": "status_connected_short", "auth": "status_auth",
+              "offline": "status_offline"}.get(state, "status_checking"))
 
 
-def check_connection(settings=None):
-    """Verify both server reachability and credentials for the selected space."""
+def check_connection(settings=None, *, on_status=None):
+    """Check a space; an explicit status callback keeps draft results private."""
     global _connection_check_generation
     values = dict(settings or config)
     if values.get("mode") == "server":
@@ -666,10 +670,18 @@ def check_connection(settings=None):
     params = auth_params({"limit": 1}, values)
     headers = auth_headers(values)
 
-    with _connection_lock:
-        _connection_check_generation += 1
-        generation = _connection_check_generation
-    _set_connection_state("checking", target, generation)
+    if on_status is None:
+        with _connection_lock:
+            _connection_check_generation += 1
+            generation = _connection_check_generation
+
+    def report(state):
+        if on_status is not None:
+            on_status(state)
+        else:
+            _set_connection_state(state, target, generation)
+
+    report("checking")
     try:
         response = requests.get(
             f"{target}/clipboard/history",
@@ -678,16 +690,16 @@ def check_connection(settings=None):
             timeout=4,
         )
         if response.status_code in (401, 403):
-            _set_connection_state("auth", target, generation)
+            report("auth")
             return False
         response.raise_for_status()
         payload = response.json()
-        if not isinstance(payload, dict) or "items" not in payload:
+        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
             raise ValueError("unexpected server response")
-        _set_connection_state("connected", target, generation)
+        report("connected")
         return True
     except Exception:
-        _set_connection_state("offline", target, generation)
+        report("offline")
         return False
 
 
@@ -3706,34 +3718,58 @@ def open_settings(icon=None, item=None):
         })
         return values
 
-    def show_connection_status():
+    probe_generation = 0
+
+    def probe_identity(values):
+        return tuple(values.get(key) for key in (
+            "mode", "server_ip", "server_port", "host_port", "username", "password", "token"))
+
+    def show_connection_status(state=None, message=None):
         try:
             exists = root.winfo_exists()
         except tk.TclError:
             return
         if not exists:
             return
-        state = _connection_state if _connection_state in ("connected", "checking", "auth", "offline") else "checking"
+        state = state or _connection_state
+        state = state if state in ("connected", "checking", "auth", "offline") else "checking"
         _paint(status_panel, background=state + "_bg")
         _paint(status_dot, background=state + "_bg", foreground=state + "_fg")
         _paint(status_label, background=state + "_bg", foreground=state + "_fg")
-        status_label.config(text=settings_connection_status_text())
-        connection_button.config(state="normal")
+        status_label.config(text=message or settings_connection_status_text(state))
 
     def test_connection(clear_message=True):
+        nonlocal probe_generation
         values = pending_connection_values(validate_interval=False)
         if values is None:
             connection_button.config(state="normal")
             return
         if clear_message:
             msg.config(text="")
+        probe_generation += 1
+        generation = probe_generation
+        identity = probe_identity(values)
+        show_connection_status("checking")
         connection_button.config(state="disabled")
-        _set_connection_state("checking")
-        show_connection_status()
+
+        def deliver(state):
+            if state == "checking" or generation != probe_generation:
+                return
+            try:
+                if not root.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            current = pending_connection_values(validate_interval=False)
+            if current is None or probe_identity(current) != identity:
+                show_connection_status("checking", t("connection_changed"))
+            else:
+                show_connection_status(state)
+            connection_button.config(state="normal")
 
         def work():
-            check_connection(values)
-            _cmd_q.put(show_connection_status)
+            # A draft probe belongs to this form, not the saved connection/tray.
+            check_connection(values, on_status=lambda state: _cmd_q.put(lambda: deliver(state)))
         threading.Thread(target=work, daemon=True).start()
 
     connection_button = ttk.Button(
@@ -3809,6 +3845,8 @@ def open_settings(icon=None, item=None):
         _run_bg(check_connection)
 
     def close_settings():
+        nonlocal probe_generation
+        probe_generation += 1
         recorder.finish()
         for job in (release_job, connection_job):
             root.after_cancel(job)

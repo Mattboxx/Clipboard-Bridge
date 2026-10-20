@@ -26,6 +26,9 @@ Use disposable example content, never personal clipboard data in screenshots.
 - [ ] Text/file notification preferences work independently; file notification opens Downloads.
 - [ ] Test Client mode and Windows Server mode, including a private-network firewall rule.
 - [ ] Disconnect the network/VPN: show offline, keep settings/data and recover after reconnection.
+- [ ] Try different unsaved credentials in Settings. The panel shows that draft's
+      result, while the tray retains the saved connection's status. Change a field
+      or close Settings during a slow test: no stale success or closed-window error.
 
 Windows binaries are unsigned. Record the actual SmartScreen/Smart App Control behavior;
 do not disable protection or treat a checksum as a trusted signature.
