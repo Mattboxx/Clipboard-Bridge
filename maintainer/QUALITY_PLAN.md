@@ -1,0 +1,299 @@
+# Product Quality Audit And Acceptance Gates
+
+Updated: **20 October 2026**. Status: **in progress**, not a completed certification
+or an assertion that every platform/device scenario has been physically tested.
+This is the working plan for improving the product, not just its appearance.
+
+## Scope And Constraints
+
+- Keep the trusted-LAN/private-VPN model, optional accounts and existing Apple URLs.
+- Keep Windows host mode usable without Docker or extra hardware.
+- Improve demonstrated reliability problems before adding features or abstractions.
+- Preserve installed settings, existing data and releases. Test with disposable profiles.
+- Keep production dependencies light. The shared storage helper uses only the standard library.
+- No new release, installer replacement, store publication or promotional submission
+  without the maintainer's approval. A tested development PR is not a published product release.
+- Trusted Windows signing is deferred by the maintainer, not silently claimed as complete.
+
+## Verified Public Baseline
+
+| Component | Verified baseline |
+| --- | --- |
+| Main repository | `118c28260afa92510cd55eea2977f5922ecbd1b1`; repository organization and desktop showcase, PR #49 |
+| Public downloads | Windows 2.0.15, Android 1.0.0-beta.11; four Windows EXEs, one APK and two signed Apple exports |
+| Standalone server | Public release 1.0.8 |
+| Custom AppStore repository | `c902e2a58c5993ac7d02bc5bdcf58329290eb7ae`; server 1.0.8 catalogs |
+| Windows signatures | All four public 2.0.15 EXEs are unsigned; hashes match GitHub's current asset digests |
+| Source-tree baseline checks | 231 Python tests passed, one optional external-server test skipped before this audit |
+
+The earlier [release audit](RELEASE_AUDIT.md) is historical evidence from 14 October,
+not a current claim that its candidate releases remain unpublished.
+
+## Findings And Evidence
+
+| ID | Finding and category | Priority | Files | Evidence / fix | Regression risk and required tests |
+| --- | --- | --- | --- | --- | --- |
+| Q1 | Existing malformed/unreadable history is treated as empty; bug | P1 data integrity | Server, Windows host and local history | Reproduced against baseline `118c282`: uploading after index corruption returned `200` and replaced the damaged index. Candidate now fails closed and preserves bytes/files. | New stores must still start empty; retain legacy JSON and healthy account access. Fault-injection and real HTTP tests. |
+| Q2 | A local cache error can interrupt otherwise healthy remote sharing; bug found while hardening Q1 | P1 usability | Windows monitor, manual actions, Settings and History | Candidate warns once, preserves the cache, keeps remote transfers working and shows a localized history error. | Do not suppress remote-store errors, loop notifications, or turn a successful send into a false failure. Send/sync and GUI regression tests. |
+| Q3 | Optional live-server test requires obsolete server 1.0.7; test defect | P1 verification | `tests/test_live_server.py` | Removed the stale hard-coded version. Validate version syntax; allow an explicit expected version. Reuse protocol assertions with a disposable current host. | Must not weaken transfer/content/account assertions. Current client-to-container round trip. |
+| Q4 | CI builds an image but does not test its running persistence contract; verification gap | P1 | Validation workflow, `tests/test_container.py` | Candidate adds real container transfers, account isolation, limits, cookie persistence, restart/recreation and corruption/restoration tests. | Never touch production resources; unique containers/volumes and localhost test ports. Cleanup verified after the run. |
+| Q5 | Signing documentation verifies an older release; documentation gap | P1 clarity | `CODE_SIGNING.md` | Rechecked 2.0.15 bytes against current GitHub digests and Authenticode. No trusted signature present. | No certification claims, self-signing workaround, or Windows security bypass advice. |
+| Q6 | Open dependency/action updates need compatibility and advisory review; risk, not a proven vulnerability | P1 maintenance | Dependency manifests and Dependabot PRs | Open PRs #14-18, #24, #26-29 observed. Android lint also reports five newer AndroidX/Compose dependencies. Review separately rather than blindly merging major updates. | Native x64/ARM64 packaging, runtime image and pipeline compatibility gates. |
+| Q7 | Several background operations swallow exceptions; diagnostic risk | P1 operability | Windows, Android service | Requires targeted fault tests and bounded, redacted diagnostics. Do not enable logging of clipboard values or URLs. | Avoid notification floods, leaking credentials, or destabilizing the UI. |
+| Q8 | Real device sleep, Share Sheet, Control Center and VPN routing remain unverified; acceptance gap | P1 launch evidence | Platform clients and manual test plan | Automated HTTP tests do not establish these OS-level results. | Run the actual device/NAS/VPN scenarios in [MANUAL_TESTS.md](MANUAL_TESTS.md). |
+| Q9 | Configured names can alias one physical account directory; demonstrated isolation bug on Windows | P1 confidentiality | Standalone account storage and server tests | Reproduced two case-distinct users reading one history on NTFS. Separate candidate guard uses actual filesystem identity, denies ambiguous accounts, and preserves the shared space, other users, existing paths and URLs. | Do not merge distinct Linux directories or silently reassign mixed data. Real Windows and Linux server tests, redacted error and permissions checks. |
+| Q10 | Android trusts incomplete responses and leaves files from failed cache downloads; demonstrated transfer bugs | P1 reliability | Android API client and loopback HTTP tests | Five new regression tests first failed: explicit text files became clipboard text, single/group downloads left partial files, missing upload IDs passed, and wrong JSON endpoints appeared connected. Candidate fixes these without changing authentication or Apple URLs. | Preserve normal Unicode, original document bytes, duplicate filenames, zero-byte files and unrelated cache entries. MediaStore/clipboard application and physical-device acceptance are separate gates. |
+| Q11 | Failed Android grouped receipt leaves already-published downloads; demonstrated application-flow defect | P1 reliability | Android receive helper and MediaStore adapter | Extracted the existing save/apply sequence without changing its behavior; four injected create/write/publish/clipboard failures reproduced retained targets. Candidate stages all writes, checks publication, rolls back every owned target on failure, cleans owned cache files and preserves the original error. | Fake-destination tests are not physical MediaStore evidence. Provider deletion can fail and process death is not transactional; report bounded content-free cleanup diagnostics and keep device checks open. |
+| Q12 | Android operations can change source mid-transfer and accept results from an obsolete connection; demonstrated consistency defects | P1 privacy/reliability | Android API, preferences, repository, clipboard, monitoring and UI request boundaries | Eight initial tests failed: six late/rerouted HTTP results and two cross-source seen-ID cases. Candidate binds operations to immutable settings/generations, guards the final commit, invalidates stale UI requests and tests unsaved Settings without changing the active source. | Preserve optional shared/account/token URLs and Unicode. Verify cursor compatibility, away-and-back changes, group rollback, old acknowledgements and race ordering. UI tickets and in-memory preferences do not prove real Activity/clipboard behavior. |
+| Q13 | Windows release preparation deletes existing extra assets, hides an intermediate copy failure and hard-codes the APK version; demonstrated packaging defects | P1 artifact integrity | Release batch and new staging helper | Three tests first failed by executing the actual preparation stage in private temporary projects. Candidate preserves extras, preflights inputs, stages copies and uses structured Gradle output metadata for APK naming. | Never run legacy deletion against real Output folders. Fault tests, actual batch stage, version/name checks and explicit per-file/nontransactional publication limits. |
+| Q14 | Native x64 compiled/installed packages lack the automated gate available for ARM64; verification gap | P1 delivery | Windows workflows and pinned build requirements | Candidate runs the actual x64 batch build, frozen smoke checks, disposable installer data preservation and dependency/provenance capture. ARM64 retains its native verification using the same PyInstaller pin. | Source tests alone do not prove frozen imports, PDFium architecture or installer preservation. Hosted native builds must pass before artifacts are called verified. |
+| Q15 | Main ruleset did not require PRs or successful checks; delivery policy risk | P1 governance | GitHub ruleset `20001324` | Added required PRs, resolved conversations and strict successful `validate`/`windows-client`/`android-client` checks tied to verified GitHub Actions integration `15368`. Both ruleset and effective-main APIs confirm enforcement; original three rules and empty bypass list preserved. | Zero external approvals avoids locking out the solo maintainer. Conditional native jobs remain release gates, not globally required jobs. No merge or release was performed. |
+| Q16 | Apple link uploads can arrive as downloaded HTML; reported interoperability defect | P1 usability | Apple Shortcut recipe and bilingual tutorial | User supplied Reddit HTML. Both host modes preserve URL text without fetching it; updated instructions explicitly extract URL strings and send a JSON text field, preserving file branches. | The installed Shortcut/action chain was not available for inspection. Do not infer the original URL from arbitrary HTML or mutate actual HTML documents. Signed exports unchanged; physical Apple validation remains required. |
+| Q17 | First x64 build provenance reports Inno Setup as `0.0.0.0`, and its installer sample uses the wrong local-history index name; demonstrated verification defects | P1 delivery evidence | Native x64 workflow | PR #57 passes both native jobs and all validation jobs. Downloaded artifact verifies compiler 6.7.1, compiler digest, expected PR head, tested merge commit and both EXE checksums. Fixture now uses the actual local-history index name. | Two source-contract tests first failed. Hosted execution now validates the corrected fixture; real standard-user upgrades still require physical acceptance. |
+| Q18 | Declared dependency floors permit upstream versions with known advisories; demonstrated maintenance defect, not proof of an exploitable installation | P1 dependency hygiene | Client/server requirements and security policy | Direct-minimum audit returned 41 rows representing 21 distinct advisory IDs in Flask 3.1, Requests 2.32 and Pillow 11. Candidate raises floors to 3.1.3, 2.33.0 and 12.3.0. Current local runtime already uses patched releases. | Direct-floor audit excludes transitives and does not prove an installable complete minimum stack. Verify the selected patched-floor runtime, fresh full resolution, native builds and container. Preserve existing upper bounds and do not blindly merge Gunicorn's major update. |
+| Q19 | Native Windows image writes ignore allocation/locking/clear/set failures and can mark a failed receipt as seen; demonstrated correctness/memory-safety defects | P1 reliability | Windows binary clipboard setters and tests | Seventeen initial simulated API checks failed, including a false successful image receipt after SetClipboardData failed. Candidate shares checked buffer transfer for DIB/HDROP, uses a message-only owner, balances locks, prepares before clearing, bounds contention retries and frees only untransferred memory. | Simulations never dereference null/native pointers or touch the user's clipboard. Actual API round trips require a child process with a fresh private window station; local isolation was denied and must not silently fall back to the interactive clipboard. Physical standard-user/app paste remains a separate gate. |
+
+## Windows File-Group Finding
+
+Q20 (P1 correctness): the native file clipboard setter silently filtered missing
+or invalid members. A partially unavailable selection could replace the clipboard
+with a smaller group while manual Receive marked the full item as received.
+Nine new regressions failed before the fix. The candidate validates the complete
+selection before invoking any native clipboard API, preserves generator order and
+zero-byte Unicode-named files, and reports the existing localized unavailable-item
+error. Paths are not added to that error. A file can still disappear after this
+preflight; CF_HDROP references paths rather than taking an atomic filesystem snapshot.
+
+## Storage Candidate Contract
+
+`clipboard_storage.py` is shared by the standalone server, embedded Windows host
+and optional local history. It preserves the existing list-of-objects JSON format.
+Malformed JSON, invalid UTF-8, the wrong root shape and read failures are not an
+empty store. A missing file still means a new store.
+
+An affected host responds with `503` and `code: history_unavailable`, without
+credential values, private paths or clipboard contents. The shared health check
+does not certify every account. A damaged account does not block healthy spaces.
+
+Writes use a unique temporary file in the destination directory, flush it before
+atomic replacement, and clean up temporary files on failure. Upload rollback also
+covers index-read failures. This is **not** an automatic backup system, full schema
+validation, multi-process coordination, or a guarantee against every power-loss
+scenario. See [recovery instructions](../DOCKER.md#history-storage-errors).
+
+## Acceptance Gates
+
+The broad professional-quality goal is not complete until these gates have direct,
+appropriately scoped evidence. Track remaining gaps rather than shrinking the goal
+to the work already done.
+
+| Gate | Required evidence | Current status |
+| --- | --- | --- |
+| Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | PR #50 candidate verified locally and in CI; not released |
+| Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
+| Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
+| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #55 native x64 and ARM64 checks passed. Real standard-user upgrade/desktop acceptance remains pending; no replacement installer published |
+| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10/Q11/Q12 tests, build and lint passed in CI; physical MediaStore/lifecycle acceptance remains pending |
+| Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
+| Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
+| User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
+| Privacy and security | No private material in public assets/logs, account isolation, optional auth kept simple | Existing safeguards and new redacted storage errors tested; continued review required |
+| Release quality | Candidate artifacts verified, changelog/checksums, approval before publication | Public versions unchanged; no candidate release authorized or published |
+| External usability | Beginner pilot and genuine cross-device demonstration | Not proven by a tray-menu GIF; voluntary pilot and real-device recordings remain open |
+
+## Reproducible Verification
+
+Use a clean checkout/snapshot; unrelated local site edits are not part of the candidate.
+
+```console
+python -m pytest -q
+python scripts/release_metadata.py --check
+docker build -t clipboard-bridge-server:test .
+```
+
+Then enable `CLIPBOARD_TEST_IMAGE=clipboard-bridge-server:test` and run
+`python -m pytest -q tests/test_container.py`. The container suite uses uniquely
+named disposable resources and deletes only those. Windows additionally exercises
+its actual client protocol code against that host. No phone, desktop clipboard or
+personal deployment is used by this test.
+
+Record clean-tree results, CI runs and PR links here after validation. Do not mark
+manual gates passed from source inspection, mocked APIs or successful HTTP alone.
+
+### Candidate Evidence, 20 October
+
+- Clean committed PR #50 source with `CLIPBOARD_TEST_IMAGE` enabled: **282 passed, 1 skipped**.
+  The skip is the separately configured external-host test, not the disposable Docker suite.
+- All five disposable Docker tests passed locally, including the real Windows
+  client's protocol round trips. No test containers or volumes remained afterward.
+- Real Tk tests cover localized error display and saving Settings with damaged
+  local history. Manual send and automatic sync continue against a healthy remote host.
+- Critical static checks (`E9`, `F821`, `F822`, `F823`) and release metadata check passed.
+- No authorized Android device was connected when checked. No physical Apple or
+  NAS/VPN acceptance results are inferred from the above.
+- `pip-audit` 2.10.1 ran successfully in an isolated tooling environment after the
+  global command proved unusable. The freshly resolved server/client requirements
+  contained **20 dependencies, zero known advisories and zero skipped packages**.
+  This does not clear older frozen EXE/APK/container dependency graphs or unknown
+  vulnerabilities, and it does not replace compatibility review of open updates.
+- The first Linux CI run exposed a test-harness race: Gunicorn can reject a large
+  upload before draining its body, and urllib reports BrokenPipe before reading
+  the valid 413 response. The test now writes and reads concurrently, still requires
+  the actual 413 and confirms history is unchanged; it does not accept a connection
+  reset as a successful size-limit check.
+- PR #50 latest head `f793076`: all checks passed in
+  [validation run 39339209727](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39339209727)
+  and [native ARM64 run 39339209708](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39339209708).
+  This verifies the candidate, not publication of new binaries or a store image.
+- The follow-up Q9 guard has **85 server tests passing locally on Windows**, with
+  actual case/trailing-dot alias behavior and explicit denial checks. Full candidate
+  verification before the large-account check: **284 passed, 6 opt-in tests skipped**;
+  the five disposable-container checks also passed separately against its rebuilt
+  image. The additional large-account check verifies 10,000 users without scanning
+  unrelated user directories on each request. The committed follow-up `28cfa97`
+  passed **290 tests, one opt-in skip**, with disposable Docker tests enabled.
+- PR #51 head `28cfa97`: all checks passed in
+  [validation run 39340281138](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39340281138),
+  including Windows standalone-server tests on NTFS. Both PRs remain draft and unmerged.
+- Q10 candidate: **21 Android JVM tests passed**, including 14 real loopback HTTP
+  checks. Five of the new regressions were first observed failing before the fixes.
+  `testDebugUnitTest assembleDebug lintDebug` completed successfully using a clean
+  temporary project copy. Lint reported **zero errors and eight warnings**: five
+  dependency-update notices, one obsolete resource qualifier and two unused strings.
+  Warnings were not suppressed. No APK was installed or published.
+- The Q10 working candidate retained **290 passing Python tests and one opt-in skip**
+  with Docker enabled. Disposable containers and volumes were removed after testing.
+  Android CI now runs lint and retains test/lint reports for 14 days; the hosted
+  outcome is recorded below.
+- PR #52 head `0bc3a85`: all checks passed in
+  [validation run 39341789210](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39341789210).
+  The `android-verification-reports` artifact was uploaded successfully. PR remains draft.
+- Q11 candidate: the four fault tests first failed with the extracted original
+  save/apply sequence. After the fix, **31 Android JVM tests passed**, including ten
+  receive-operation tests using an in-memory destination. Debug compilation and lint
+  succeeded, with the same eight maintenance warnings and no errors. Tests cover
+  write/create/publish/clipboard failures, success ordering, empty files, cleanup
+  refusal and a failing diagnostic callback. No physical MediaStore result is claimed.
+- PR #53 head `9fef5a6`: all checks passed in
+  [validation run 39342381729](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39342381729).
+  Downloaded hosted reports confirmed **31 tests, zero failures/errors/skips**.
+  Hosted lint reports nine warnings, including an additional `OldTargetApi` notice
+  not emitted by the local SDK tooling; none were suppressed. SDK/target review is open.
+- Q12 candidate: **63 JVM tests passed**, including sixteen source-switch HTTP tests,
+  nine preference/commit-gate checks and six UI request-ticket checks. Eight initial
+  regressions failed before the fix. `testDebugUnitTest assembleDebug lintDebug`
+  succeeded locally, with zero errors and the same eight local maintenance warnings.
+  A fake destination also verifies rollback if the source changes immediately before
+  the clipboard commit. These are not rendered-Activity or real MediaStore tests;
+  on-device pause/resume, notification and selection cases remain unchecked.
+- The Q12 staged-source snapshot also passed **290 Python tests, one external-host
+  opt-in skip**, with disposable Docker enabled. All seventeen staged Kotlin files
+  matched the locally tested copy byte-for-byte. Release metadata remains 2.0.15;
+  no public binary, store image, installed application or configuration was replaced.
+- PR #54 head `c2e353a`: all checks passed in
+  [validation run 39382721882](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39382721882).
+  Downloaded hosted reports confirmed **63 tests, zero failures/errors/skips** and
+  the same nine hosted maintenance warnings. Device acceptance remains open.
+- Q13/Q14 working candidate: clean staged source passed **320 Python tests, two
+  explicit skips** with disposable Docker enabled. The skips are the external-host
+  opt-in and directory symlink creation unavailable to the local Windows user;
+  the Windows junction guard and three actual batch-stage regressions passed.
+  All workflows passed actionlint 1.7.12; its official release archive was checked
+  against GitHub's SHA-256 digest before use. Critical Python checks and version
+  metadata validation passed.
+- PR #55 head `34ba058`: native x64 passed in
+  [run 39386200197](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200197),
+  native ARM64 in [run 39386200113](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200113),
+  and all three validation jobs in [run 39386200245](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200245).
+  The x64 log confirms **195 tests**, actual batch compilation, portable/installed
+  frozen smoke checks, pre-existing profile hash comparisons and a five-file artifact
+  containing packages, checksums, dependency versions and provenance. These disposable
+  runner tests do not establish a real standard-user upgrade or SmartScreen reputation.
+- Q16 candidate: **212 server/Windows tests passed**, including eight new synthetic
+  URL/HTML regressions. Link text retains query characters, fragments, Unicode and
+  line breaks; outbound socket connections are forbidden except the embedded test
+  client's own loopback connection. Actual `.html` files retain their name and bytes.
+  Both tutorial pages also passed eight selected site checks. No user HTML or
+  credentials were copied into the fixtures. No iPhone action chain was executed,
+  and signed Shortcut exports remain byte-for-byte unchanged.
+- The complete staged Q16 source snapshot passed **328 Python tests, two explicit
+  skips**, with disposable Docker enabled. The skips remain the external-host
+  opt-in and local directory-symlink permission, not the container integration tests.
+  Downloaded PR #55 x64 packages match both recorded SHA-256 checksums. Its tested
+  merge commit `fc440d8` has PR head `34ba058` as a parent. Inspecting the artifact
+  exposed Q17; a green build alone is not sufficient provenance/preservation evidence.
+- PR #56 head `c94b781`: all five checks passed, including native x64/ARM64 and
+  [validation run 39387798283](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39387798283).
+  This verifies the documented host protocol, not the installed iPhone action chain.
+- Q15 is active remotely: GitHub's ruleset and effective-main APIs confirm five
+  rules, strict checks from integration `15368`, zero required external approvals
+  and no bypass actors. No test push to main, merge or release was used to probe it.
+  See [repository policy](REPOSITORY_POLICY.md) for scope and maintenance constraints.
+- Q17 candidate: both new source-contract tests failed before the fix, then passed.
+  The fixture test derives its expected filenames from the actual isolated client
+  constants rather than duplicating a guessed filename. Seven synthetic PowerShell
+  banner cases cover normal CRLF/LF and four-component versions, missing/zero
+  versions and ambiguous duplicate banners. Actionlint passes for all workflows.
+  The complete clean staged snapshot passed **330 Python tests, two explicit skips**
+  with disposable Docker enabled. Executing the modified hosted x64 pipeline and
+  inspecting its new compiler/source provenance is still required.
+- PR #57 head `fc651a4`: all five checks passed. The
+  [native x64 run 39388318819](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39388318819)
+  produced a downloaded artifact with compiler **6.7.1**, a nonzero compiler digest,
+  expected PR head `fc651a4`, and matching tested/workflow merge `ca1c448`. GitHub's
+  commit API confirms that merge includes the expected PR head. Both EXEs match
+  their SHA-256 records. No release was published and no local app was replaced.
+- Q18 candidate: the direct-floor audit changed from **21 distinct advisory IDs in
+  three packages** (41 rows due to duplicated feed entries) to **zero**, with no
+  skipped packages. A separate fresh full-resolution audit also reported zero.
+  The isolated Windows environment pins Flask 3.1.3, Requests 2.33.0 and Pillow
+  12.3.0 while resolving other dependencies normally; `pip check` succeeded.
+  Its clean staged-source suite passed **330 tests, two explicit skips**, against
+  a newly built disposable server image. Three additional manifest-policy tests
+  passed after that run. This is not an all-transitive-minimum or old-binary audit.
+- The final staged Q18 snapshot, including those three policy tests, passed
+  **333 tests, two explicit skips** in the selected patched-floor environment with
+  the new Docker image enabled. The advisory checks covered **nine direct minimum
+  pins** and a separate **twenty-package fresh resolution**, with zero findings and
+  zero skipped packages in each. All temporary test containers and volumes were
+  removed. Native hosted checks for the changed dependency manifests remain required.
+- PR #58 head `5d0a366`: all five hosted checks passed, including
+  [native x64 39389190066](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190066),
+  [native ARM64 39389190039](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190039)
+  and [validation 39389190064](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190064).
+  No public binary, production container, store manifest or installed app changed.
+- Q19 working candidate: **30 targeted tests passed**, covering both binary formats,
+  seven failure stages, repeated clipboard contention, pointer-size signatures,
+  invisible owner creation and receive cursor/notification behavior. Five checks
+  guard the native worker's isolation boundary. The native round-trip test skipped
+  locally because Windows denied a new named station and the CREATE_ONLY unnamed
+  attempt found an existing station; neither attempt accessed clipboard contents.
+  CI must run this check successfully rather than treating unavailability as a pass.
+- The full staged Q19 snapshot passed **363 Python tests, three explicit skips**
+  with disposable Docker enabled and the selected patched-floor runtime. The new
+  skip is private-window-station creation denied locally; the two previous skips
+  remain external-host opt-in and directory-symlink permission. No interactive
+  clipboard data was read or written. Critical Python checks, compilation and all
+  actionlint checks passed; native hosted clipboard execution is still required.
+- PR #59 head `ec8ead7`: all five hosted checks passed. Native
+  [x64 run 39391218560](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39391218560)
+  reports **235 passing tests, no skips**; native
+  [ARM64 run 39391218547](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39391218547)
+  reports **205 passing tests, no skips**. Both test selections include the private
+  window-station round trip, which fails rather than skips when GitHub Actions
+  cannot establish isolation. This verifies real DIB pixels and Unicode file-group
+  payloads on disposable native runners, not physical paste into a user's apps.
+- PR #61 head `4b195aa` replaces the pointer-bearing Windows screenshot and adds
+  two actual Docker 1.0.8 UI captures. Local site checks: **39 passed**. Browser
+  screenshots at 1440 and 390 pixels confirm loaded assets and no horizontal
+  overflow or page errors. Capture provenance is in [SCREENSHOTS.md](SCREENSHOTS.md).
+  Only public samples and isolated profiles/containers were used; unrelated local
+  website edits were left uncommitted. Main/site deployment has not changed.
+- Q20 candidate: **12 targeted tests passed**, including localized invalid-member
+  errors, empty selections, Unicode/zero-byte generator order and a manual Receive
+  retry after restoring the missing member. Nine initial tests failed before the
+  fix. Native API calls are simulated for these error cases; none touches the
+  interactive clipboard. The first clean staged snapshot, with disposable Docker
+  enabled, passed **378 tests, three explicit skips**. A direct dirty-tree run has
+  the known unrelated network-guidance test failure from uncommitted website edits;
+  those edits were preserved, not hidden or reverted.

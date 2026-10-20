@@ -2,6 +2,8 @@ import base64
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import threading
 import zipfile
 import io
@@ -44,6 +46,53 @@ def embedded(tmp_path, monkeypatch):
     server.shutdown()
     server.server_close()
     thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("text", [
+    "https://www.reddit.com/r/example/comments/demo/title/?x=1&y=%23value#section",
+    "https://example.com/?q=caff\u00e8\U0001f600&literal=%26%3D",
+    "Read this: https://example.com/one\nhttps://example.org/two",
+])
+def test_embedded_apple_json_link_is_text_without_fetching_the_page(embedded, monkeypatch, text):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    connect = socket.socket.connect
+
+    def loopback_only(connection, destination):
+        assert destination == address, "Storing clipboard text must not connect to a shared URL"
+        return connect(connection, destination)
+
+    monkeypatch.setattr(socket.socket, "connect", loopback_only)
+    response = requests.post(base + "/clipboard", json={"text": text}, timeout=5)
+    assert response.status_code == 200
+    assert response.json()["type"] == "text"
+    item = requests.get(base + "/clipboard/latest", timeout=5).json()
+    assert item["text"] == text and item["mime"] == "text/plain"
+    received = requests.get(base + "/clipboard/latest/raw", timeout=5)
+    assert received.content == text.encode("utf-8")
+    assert received.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+
+def test_embedded_shared_html_document_keeps_original_bytes(embedded):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    raw = b'<!DOCTYPE html><html><body><a href="https://example.com/">Link</a></body></html>'
+    response = requests.post(base + "/clipboard?filename=page.html", data=raw,
+                             headers={"Content-Type": "text/html; charset=utf-8"}, timeout=5)
+    assert response.status_code == 200
+    assert response.json()["type"] == "file"
+    received = requests.get(base + "/clipboard/latest/raw", timeout=5)
+    assert received.content == raw
+    assert "page.html" in received.headers["Content-Disposition"]
+
+
+def test_x64_installer_samples_match_actual_client_data_paths(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    root = Path(__file__).resolve().parents[1]
+    workflow = (root / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    for path in (client.CONFIG_FILE, client.LOCAL_INDEX, client.HOST_INDEX):
+        relative = Path(path).relative_to(client.DATA_DIR).as_posix()
+        assert f"'{relative}' = " in workflow, f"Installer preservation misses {relative}"
 
 
 def test_embedded_rejects_negative_bundle_member(embedded):
@@ -266,6 +315,144 @@ def test_failed_embedded_index_commit_keeps_old_files(tmp_path, monkeypatch):
         client._host_add_bundle([(b"one", "first.bin", None), (b"two", "second.bin", None)])
     assert set(Path(client.HOST_ITEMS).iterdir()) == before
     assert client._host_with_content(client._host_load()[0])["text"] == "keep me"
+
+
+@pytest.mark.parametrize("damaged", [b'{"unfinished":', b'{}', b'[null]', b'\xff'])
+def test_damaged_windows_host_index_preserves_every_stored_file(embedded, damaged):
+    client, address = embedded
+    client._host_add("text", "original item")
+    Path(client.HOST_INDEX).write_bytes(damaged)
+    before = {path.name: path.read_bytes() for path in Path(client.HOST_ITEMS).iterdir()}
+    base = f"http://{address[0]}:{address[1]}"
+    for method, route in ((requests.get, "/clipboard/history"),
+                          (requests.post, "/clipboard"),
+                          (requests.delete, "/clipboard/history")):
+        response = method(base + route, data=b"new item", headers={"Content-Type": "text/plain"}, timeout=5)
+        assert response.status_code == 503
+        assert response.json()["code"] == "history_unavailable"
+        assert Path(client.HOST_INDEX).read_bytes() == damaged
+        assert {path.name: path.read_bytes() for path in Path(client.HOST_ITEMS).iterdir()} == before
+
+
+@pytest.mark.parametrize("damaged", [b'{"unfinished":', b'{}', b'[null]', b'\xff'])
+def test_damaged_local_index_is_not_replaced_by_new_clipboard_text(tmp_path, monkeypatch, damaged):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(damaged)
+    with pytest.raises(client.HistoryStoreError):
+        client.record_local_text("new item")
+    assert Path(client.LOCAL_INDEX).read_bytes() == damaged
+
+
+def test_windows_host_recovers_after_restoring_a_valid_index(embedded):
+    client, address = embedded
+    client._host_add("text", "preserved text")
+    index = Path(client.HOST_INDEX)
+    backup = index.read_bytes()
+    index.write_bytes(b"{damaged")
+    base = f"http://{address[0]}:{address[1]}"
+    assert requests.get(base + "/health", timeout=5).status_code == 503
+    response = requests.post(base + "/clipboard", data=b"new", headers={"Content-Type": "text/plain"}, timeout=5)
+    assert response.status_code == 503
+    assert str(client.HOST_DIR) not in response.text
+    index.write_bytes(backup)
+    assert requests.get(base + "/clipboard/latest/raw", timeout=5).content == b"preserved text"
+    assert requests.get(base + "/health", timeout=5).status_code == 200
+
+
+def test_optional_local_history_warns_once_and_does_not_fail_a_successful_send(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(b"{damaged")
+    sent, notices = [], []
+    monkeypatch.setattr(client, "notify", lambda message, **kwargs: notices.append(message))
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "public sample")
+    monkeypatch.setattr(client, "push_text", lambda text: sent.append(text) or "sent")
+    client.action_send_clipboard()
+    client.action_send_clipboard()
+    assert sent == ["public sample", "public sample"]
+    assert notices.count(client.t("local_history_error")) == 1
+    assert notices.count(client.t("text_sent")) == 2
+    assert Path(client.LOCAL_INDEX).read_bytes() == b"{damaged"
+    assert "public sample" not in Path(client.ERROR_LOG).read_text(encoding="utf-8")
+    Path(client.LOCAL_INDEX).write_text("[]", encoding="utf-8")
+    assert client._try_local_history(client.record_local_text, "after recovery")
+    assert not client._local_history_warning
+
+
+def test_auto_sync_continues_with_a_damaged_optional_local_history(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    Path(client.LOCAL_INDEX).write_bytes(b"{damaged")
+    client.config.update(auto_sync=True, auto_receive_files=False, monitor_clipboard=True)
+
+    class TwoIterations:
+        count = 0
+        def is_set(self): return self.count >= 2
+        def wait(self, timeout): self.count += 1
+
+    sent, notices = [], []
+    monkeypatch.setattr(client, "stop_event", TwoIterations())
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: 1)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "public sample")
+    monkeypatch.setattr(client, "push_text", lambda text: sent.append(text) or "uploaded")
+    monkeypatch.setattr(client, "poll_latest", lambda known: {"type": "empty"})
+    monkeypatch.setattr(client, "notify", lambda message, **kwargs: notices.append(message))
+    client.sync_loop()
+    assert sent == ["public sample"]
+    assert notices.count(client.t("local_history_error")) == 1
+    assert Path(client.LOCAL_INDEX).read_bytes() == b"{damaged"
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_damaged_local_history_shows_a_localized_error_and_settings_still_save(tmp_path, monkeypatch, tk_test_root, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, hotkeys_enabled=False, mode="client")
+    index = Path(client.LOCAL_INDEX)
+    index.write_bytes(b"{damaged")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *args: {"items": []})
+    monkeypatch.setattr(client, "check_connection", lambda *args: True)
+    monkeypatch.setattr(client, "unregister_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
+    errors = []
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "history")
+        widgets = list(descendants(window))
+        local = next(child for child in widgets if isinstance(child, client.ttk.Radiobutton)
+                     and child.cget("text") == client.t("tab_local"))
+        local.invoke()
+        tk_test_root.update()
+        assert any(isinstance(child, client.ttk.Label) and child.cget("textvariable")
+                   and tk_test_root.getvar(child.cget("textvariable")) == client.t("local_history_error")
+                   for child in widgets)
+        window._close_history()
+        client.open_settings()
+        window = next(child for child in tk_test_root.winfo_children()
+                      if getattr(child, "_view_name", None) == "settings")
+        save = next(child for child in descendants(window) if isinstance(child, client.ttk.Button)
+                    and child.cget("text") == client.t("save"))
+        save.invoke()
+        tk_test_root.update()
+        assert not window.winfo_exists()
+        assert json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))["lang"] == lang
+        assert index.read_bytes() == b"{damaged"
+        assert not errors
+    finally:
+        for child in tk_test_root.winfo_children():
+            close = getattr(child, "_close_history", None)
+            close() if close else child.destroy()
 
 
 def test_partial_embedded_bundle_is_cleaned_up(tmp_path, monkeypatch):
@@ -1124,10 +1311,273 @@ def load_client(tmp_path, monkeypatch):
     return module
 
 
+@pytest.fixture()
+def clipboard_api(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    state = SimpleNamespace(failure=None, events=[], payload=None)
+    handle, pointer, owner = 0x100000042, 0x100000084, 0x100000126
+
+    def function(name, result):
+        def call(*args):
+            state.events.append((name, args))
+            return 0 if state.failure == name else result
+        return call
+
+    user32 = SimpleNamespace(
+        CreateWindowExW=function("window", owner),
+        DestroyWindow=function("destroy", True),
+        OpenClipboard=function("open", True),
+        CloseClipboard=function("close", True),
+        EmptyClipboard=function("empty", True),
+        SetClipboardData=function("set", handle),
+    )
+    kernel32 = SimpleNamespace(
+        GlobalAlloc=function("allocate", handle),
+        GlobalLock=function("lock", pointer),
+        GlobalUnlock=function("unlock", True),
+        GlobalFree=function("free", 0),
+    )
+
+    def copy(destination, data, size):
+        state.events.append(("copy", (destination, size)))
+        if state.failure == "copy":
+            raise OSError("synthetic memory copy failure")
+        state.payload = bytes(data[:size])
+
+    monkeypatch.setattr(client.ctypes, "windll", SimpleNamespace(user32=user32, kernel32=kernel32))
+    monkeypatch.setattr(client.ctypes, "memmove", copy)
+    monkeypatch.setattr(client.time, "sleep", lambda value: None)
+    return client, state, handle, pointer, owner
+
+
+def write_sample_clipboard(client, kind, tmp_path):
+    if kind == "image":
+        client.set_clipboard_image(client.Image.new("RGB", (2, 2), "red"))
+    else:
+        path = tmp_path / "public-example.pdf"
+        path.write_bytes(b"public sample")
+        client.set_clipboard_files([str(path)])
+
+
+@pytest.mark.parametrize("invalid_member", ["missing", "directory", "empty", "none"])
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_native_file_group_rejects_every_unavailable_member_before_clipboard_access(
+        clipboard_api, tmp_path, invalid_member, lang):
+    client, state, *_ = clipboard_api
+    client.config["lang"] = lang
+    present = tmp_path / "public-note.txt"
+    present.write_bytes(b"public example")
+    invalid = {
+        "missing": str(tmp_path / "missing.pdf"), "directory": str(tmp_path),
+        "empty": "", "none": None,
+    }[invalid_member]
+    with pytest.raises(FileNotFoundError) as error:
+        client.set_clipboard_files([str(present), invalid])
+    assert str(error.value) == client.t("unavailable")
+    assert state.events == [], "Do not replace the clipboard with only part of a group"
+    assert present.read_bytes() == b"public example"
+
+
+def test_native_file_group_keeps_generator_order_unicode_and_empty_files(clipboard_api, tmp_path):
+    client, state, *_ = clipboard_api
+    paths = [tmp_path / "public-\u03b1.txt", tmp_path / "public-\u00e9.shortcut"]
+    for path in paths:
+        path.write_bytes(b"")
+    client.set_clipboard_files(path for path in reversed(paths))
+    assert state.payload == client._build_hdrop([str(path) for path in reversed(paths)])
+    assert [name for name, _ in state.events].count("set") == 1
+
+
+@pytest.mark.parametrize("as_generator", [False, True])
+def test_native_empty_file_selection_keeps_previous_clipboard(clipboard_api, as_generator):
+    client, state, *_ = clipboard_api
+    with pytest.raises(ValueError) as error:
+        client.set_clipboard_files(iter(()) if as_generator else [])
+    assert str(error.value) == client.t("unavailable")
+    assert state.events == []
+
+
+def test_incomplete_received_group_is_not_remembered_or_announced_as_copied(
+        clipboard_api, tmp_path, monkeypatch):
+    client, state, *_ = clipboard_api
+    present = tmp_path / "public-note.txt"
+    present.write_bytes(b"public example")
+    paths = [str(present), str(tmp_path / "removed-before-copy.pdf")]
+    remembered, markers, notices = [], [], []
+    monkeypatch.setattr(client, "pull_latest", lambda: {"id": "public-group", "type": "bundle"})
+    monkeypatch.setattr(client, "save_remote_files", lambda item: paths)
+    monkeypatch.setattr(client, "_remember_item", lambda *a, **kw: remembered.append(a))
+    monkeypatch.setattr(client, "_set_local_upload_marker", lambda *a: markers.append(a))
+    monkeypatch.setattr(client, "notify", lambda message, **kw: notices.append(message))
+    client.action_get_latest()
+    assert state.events == []
+    assert remembered == [] and markers == []
+    assert notices == [client.t("recv_err", e=client.t("unavailable"))]
+    Path(paths[1]).write_bytes(b"restored public sample")
+    client.action_get_latest()
+    assert state.payload == client._build_hdrop(paths)
+    assert remembered == [("public-group",)]
+    assert len(markers) == 1 and markers[0][0] == "files"
+    assert notices[-1] == client.t("files_arrived", n=2)
+
+
+@pytest.mark.parametrize("kind", ["image", "files"])
+@pytest.mark.parametrize("failure", ["window", "allocate", "lock", "copy", "open", "empty", "set"])
+def test_native_clipboard_failure_does_not_claim_success_or_leak_owned_memory(clipboard_api, tmp_path, kind, failure):
+    client, state, handle, pointer, owner = clipboard_api
+    state.failure = failure
+    error = MemoryError if failure == "allocate" else OSError
+    with pytest.raises(error):
+        write_sample_clipboard(client, kind, tmp_path)
+    names = [name for name, _ in state.events]
+    if failure in ("window", "allocate", "lock", "copy", "open"):
+        assert "empty" not in names, "Do not clear the previous clipboard before preparation succeeds"
+    if "allocate" in names and failure != "allocate":
+        assert [args for name, args in state.events if name == "free"] == [(handle,)]
+    else:
+        assert "free" not in names
+    assert names.count("unlock") == (1 if "lock" in names and failure != "lock" else 0)
+    assert names.count("close") == (1 if "open" in names and failure != "open" else 0)
+    assert names.count("destroy") == (0 if failure == "window" else 1)
+    assert names.count("open") <= 10
+
+
+@pytest.mark.parametrize("kind,format_id", [("image", 8), ("files", 15)])
+def test_native_clipboard_success_transfers_memory_to_windows_once(clipboard_api, tmp_path, kind, format_id):
+    client, state, handle, pointer, owner = clipboard_api
+    write_sample_clipboard(client, kind, tmp_path)
+    names = [name for name, _ in state.events]
+    assert names == ["window", "allocate", "lock", "copy", "unlock", "open", "empty", "set", "close", "destroy"]
+    assert [args for name, args in state.events if name == "open"] == [(owner,)]
+    creation = next(args for name, args in state.events if name == "window")
+    assert creation[8] == -3 and creation[3] & 0x10000000 == 0  # HWND_MESSAGE, no WS_VISIBLE.
+    assert [args for name, args in state.events if name == "set"] == [(format_id, handle)]
+    assert [args[0] for name, args in state.events if name == "copy"] == [pointer]
+    assert "free" not in names, "Transferred memory is owned by Windows"
+    assert client.ctypes.windll.kernel32.GlobalAlloc.restype is client.ctypes.c_void_p
+    assert client.ctypes.windll.user32.SetClipboardData.restype is client.ctypes.c_void_p
+    if kind == "image":
+        assert int.from_bytes(state.payload[:4], "little") == 40  # DIB header, not BMP file header.
+    else:
+        assert state.payload == client._build_hdrop([str(tmp_path / "public-example.pdf")])
+
+
+@pytest.mark.parametrize("kind", ["image", "files"])
+def test_native_clipboard_retries_temporary_contention_with_the_same_owner(clipboard_api, tmp_path, monkeypatch, kind):
+    client, state, handle, pointer, owner = clipboard_api
+    attempts, delays = [], []
+    original = client.ctypes.windll.user32.OpenClipboard
+
+    def open_clipboard(window):
+        attempts.append(window)
+        original(window)
+        return len(attempts) >= 3
+
+    monkeypatch.setattr(client.ctypes.windll.user32, "OpenClipboard", open_clipboard)
+    monkeypatch.setattr(client.time, "sleep", delays.append)
+    write_sample_clipboard(client, kind, tmp_path)
+    assert attempts == [owner, owner, owner]
+    assert delays == [0.05, 0.05]
+    assert [name for name, _ in state.events].count("close") == 1
+    assert not any(name == "free" for name, _ in state.events)
+
+
+@pytest.mark.parametrize("failure", ["window", "allocate", "lock", "copy", "open", "empty", "set"])
+def test_failed_native_image_receive_keeps_cursor_and_does_not_notify_success(clipboard_api, monkeypatch, failure):
+    client, state, *_ = clipboard_api
+    state.failure = failure
+    image = client.Image.new("RGB", (2, 2), "red")
+    data = {"id": "public-image", "type": "image",
+            "data": base64.b64encode(client.image_to_png(image)).decode("ascii")}
+    remembered, markers, notices = [], [], []
+    monkeypatch.setattr(client, "pull_latest", lambda: data)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "_remember_item", lambda *a, **kw: remembered.append(a))
+    monkeypatch.setattr(client, "_set_local_upload_marker", lambda *a: markers.append(a))
+    monkeypatch.setattr(client, "notify", lambda message, **kw: notices.append(message))
+    client.action_get_latest()
+    assert remembered == [] and markers == []
+    assert len(notices) == 1 and notices[0] != client.t("image_recv")
+
+
+def load_clipboard_worker():
+    path = Path(__file__).with_name("windows_clipboard_worker.py")
+    spec = importlib.util.spec_from_file_location("clipboard_worker_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("station_name", ["WinSta0", "other-station", ""])
+def test_native_worker_rejects_wrong_station_before_clipboard_access(monkeypatch, station_name):
+    worker = load_clipboard_worker()
+
+    def information(handle, kind, buffer, size, needed):
+        buffer.value = station_name
+        return True
+
+    user32 = SimpleNamespace(
+        CreateWindowStationW=lambda *args: 123,
+        SetProcessWindowStation=lambda handle: True,
+        GetProcessWindowStation=lambda: 123,
+        GetUserObjectInformationW=information,
+    )
+    monkeypatch.setattr(worker.ctypes, "WinDLL", lambda *args, **kw: user32)
+    with pytest.raises(RuntimeError, match="isolation was not established"):
+        worker.isolate_clipboard()
+
+
+def test_native_worker_never_attaches_to_an_existing_fallback_station(monkeypatch):
+    worker = load_clipboard_worker()
+    attempts = []
+
+    def create(name, flags, access, security):
+        attempts.append((name, flags))
+        return 0
+
+    user32 = SimpleNamespace(
+        CreateWindowStationW=create,
+        SetProcessWindowStation=lambda handle: pytest.fail("No private station was created"),
+        GetProcessWindowStation=lambda: pytest.fail("No private station was created"),
+        GetUserObjectInformationW=lambda *args: pytest.fail("No private station was created"),
+    )
+    monkeypatch.setattr(worker.ctypes, "WinDLL", lambda *args, **kw: user32)
+    monkeypatch.setattr(worker.ctypes, "get_last_error", lambda: 5 if len(attempts) == 1 else 183)
+    with pytest.raises(OSError) as error:
+        worker.isolate_clipboard()
+    assert error.value.errno == 183
+    assert len(attempts) == 2 and all(flags == 1 for _, flags in attempts)
+    assert attempts[1][0] is None  # CREATE_ONLY, not an existing unnamed station.
+
+
+def test_native_worker_does_not_run_checks_when_isolation_is_unavailable(monkeypatch, capsys):
+    worker = load_clipboard_worker()
+    monkeypatch.setattr(worker.sys, "argv", ["windows_clipboard_worker.py"])
+    monkeypatch.setattr(worker, "isolate_clipboard",
+                        lambda: (_ for _ in ()).throw(OSError(5, "synthetic permission denial")))
+    monkeypatch.setattr(worker, "run_checks", lambda *args: pytest.fail("Do not touch an unisolated clipboard"))
+    assert worker.main() == 77
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "unavailable", "reason": "private_clipboard_unavailable", "error_code": 5,
+    }
+
+
+def test_real_clipboard_round_trip_uses_a_private_window_station():
+    worker = Path(__file__).with_name("windows_clipboard_worker.py")
+    result = subprocess.run([sys.executable, str(worker)], capture_output=True, text=True, timeout=30)
+    if result.returncode == 77 and os.environ.get("GITHUB_ACTIONS") != "true":
+        pytest.skip("Windows refused a fresh private clipboard; interactive clipboard was not used")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {
+        "status": "passed", "private_station": True, "image_pixels": True,
+        "unicode_file_group": True, "background_threads": True,
+    }
+
+
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.15"
+    assert client.APP_VERSION == "2.0.16"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

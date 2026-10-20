@@ -49,6 +49,7 @@ import threading
 import zipfile
 from datetime import datetime, timedelta
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
+from clipboard_storage import HistoryStoreError, read_history, write_history
 
 app = Flask(__name__)
 
@@ -107,6 +108,30 @@ if _ACCOUNTS_FILE and os.path.isfile(_ACCOUNTS_FILE):
     with open(_ACCOUNTS_FILE, encoding="utf-8") as _f:
         ACCOUNTS.update(_parse_accounts(_f.read()))   # file entries extend / override
 
+
+def _account_alias_groups(accounts):
+    """Preselect possible filesystem aliases without scanning every user per request."""
+    groups = {}
+    for name in accounts:
+        groups.setdefault(name.casefold().rstrip("."), []).append(name)
+    return groups
+
+
+_ACCOUNT_ALIASES = _account_alias_groups(ACCOUNTS)
+
+
+class AccountStorageError(RuntimeError):
+    def __init__(self, reason):
+        self.reason = reason
+        message = (
+            "Account storage is ambiguous on this filesystem. "
+            "Ask the administrator to review account names; existing data was not changed."
+            if reason == "alias" else
+            "Account storage is unavailable. Ask the administrator to check its permissions and configuration."
+        )
+        super().__init__(message)
+
+
 os.makedirs(ITEMS_DIR, exist_ok=True)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 app.config.update(
@@ -158,10 +183,23 @@ def _use_general():
 
 def _use_account(name):
     base = os.path.join(DATA_DIR, "users", name)
+    items = os.path.join(base, "items")
+    try:
+        os.makedirs(items, exist_ok=True)
+        for other in _ACCOUNT_ALIASES[name.casefold().rstrip(".")]:
+            if other == name:
+                continue
+            try:
+                aliased = os.path.samefile(base, os.path.join(DATA_DIR, "users", other))
+            except FileNotFoundError:
+                continue
+            if aliased:
+                raise AccountStorageError("alias")
+    except OSError as error:
+        raise AccountStorageError("unavailable") from error
     g.account = name
-    g.items_dir = os.path.join(base, "items")
+    g.items_dir = items
     g.index_file = os.path.join(base, "index.json")
-    os.makedirs(g.items_dir, exist_ok=True)
 
 
 def _same_secret(first, second):
@@ -199,23 +237,11 @@ def _history_page(items, params):
 
 
 def _load_index():
-    index_file = _index_file()
-    if os.path.exists(index_file):
-        try:
-            with open(index_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    return read_history(_index_file())
 
 
 def _save_index(index):
-    index_file = _index_file()
-    os.makedirs(os.path.dirname(index_file), exist_ok=True)
-    tmp = index_file + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, index_file)  # atomic write
+    write_history(_index_file(), index)
 
 
 def _trim(index):
@@ -227,10 +253,10 @@ def _trim(index):
 
 def _commit_entry(entry):
     with _lock:
-        index = _load_index()
-        index.insert(0, entry)
-        expired = _trim(index)
         try:
+            index = _load_index()
+            index.insert(0, entry)
+            expired = _trim(index)
             _save_index(index)
         except Exception:
             _delete_entry_files(entry)
@@ -787,6 +813,20 @@ def _set_response_headers(response):
 @app.errorhandler(BadRequest)
 def _bad_request(_error):
     return jsonify({"error": "invalid request or JSON body"}), 400
+
+
+@app.errorhandler(HistoryStoreError)
+def _history_unavailable(error):
+    # Log only the failure category, never account names, paths or clipboard data.
+    app.logger.error("Clipboard history unavailable: %s", error.reason)
+    return jsonify({"error": str(error), "code": "history_unavailable"}), 503, {"Retry-After": "5"}
+
+
+@app.errorhandler(AccountStorageError)
+def _account_storage_unavailable(error):
+    app.logger.error("Clipboard account storage unavailable: %s", error.reason)
+    code = "account_storage_conflict" if error.reason == "alias" else "account_storage_unavailable"
+    return jsonify({"error": str(error), "code": code}), 503
 
 
 @app.errorhandler(RequestEntityTooLarge)

@@ -11,6 +11,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import java.io.File
@@ -50,73 +51,91 @@ class ClipboardController(private val context: Context) {
         onFailure = { OperationResult.Error(it.message ?: "Clipboard unavailable.") },
     )
 
-    fun apply(received: ReceivedClipboard): OperationResult<AppliedItem> = runCatching {
-        config.suppressClipboardFor()
+    fun apply(received: ReceivedClipboard, settings: BridgeSettings = config.load()): OperationResult<AppliedItem> = runCatching {
+        config.withCurrentConnection(settings) { }
         when (received) {
             is ReceivedClipboard.Text -> {
-                clipboard.setPrimaryClip(ClipData.newPlainText("Clipboard Bridge", received.value))
-                AppliedItem(received.id, "text", null, null, received.value)
+                applyClip(ClipData.newPlainText("Clipboard Bridge", received.value),
+                    AppliedItem(received.id, "text", null, null, received.value), settings)
             }
 
             is ReceivedClipboard.FileItem -> {
-                val uri = saveToDownloads(received)
-                val clip = ClipData.newUri(context.contentResolver, received.filename, uri)
-                clipboard.setPrimaryClip(clip)
-                AppliedItem(received.id, "file", uri, received.mime, received.filename)
+                storeReceivedFiles(listOf(received), fileDestination, ::logFileCleanupFailure) { saved ->
+                    val uri = saved.first()
+                    val clip = ClipData.newUri(context.contentResolver, received.filename, uri)
+                    applyClip(clip, AppliedItem(received.id, "file", uri, received.mime, received.filename), settings)
+                }
             }
 
             is ReceivedClipboard.FileGroup -> {
-                val saved = received.items.map { item -> item to saveToDownloads(item) }
-                val first = saved.first()
-                val clip = ClipData.newUri(context.contentResolver, first.first.filename, first.second)
-                saved.drop(1).forEach { (item, uri) ->
-                    clip.addItem(context.contentResolver, ClipData.Item(uri))
+                storeReceivedFiles(received.items, fileDestination, ::logFileCleanupFailure) { saved ->
+                    val first = received.items.first()
+                    val clip = ClipData.newUri(context.contentResolver, first.filename, saved.first())
+                    saved.drop(1).forEach { uri ->
+                        clip.addItem(context.contentResolver, ClipData.Item(uri))
+                    }
+                    applyClip(clip, AppliedItem(
+                        received.id,
+                        "bundle",
+                        saved.first(),
+                        first.mime,
+                        "${saved.size} files",
+                    ), settings)
                 }
-                clipboard.setPrimaryClip(clip)
-                AppliedItem(
-                    received.id,
-                    "bundle",
-                    first.second,
-                    first.first.mime,
-                    "${saved.size} files",
-                )
             }
         }
     }.fold(
-        onSuccess = {
-            if (it.id.isNotBlank()) config.setLastSeenId(it.id)
-            OperationResult.Success(it)
+        onSuccess = { OperationResult.Success(it) },
+        onFailure = {
+            received.discardCachedFiles()
+            OperationResult.Error(it.message ?: "Unable to store the received item.")
         },
-        onFailure = { OperationResult.Error(it.message ?: "Unable to store the received item.") },
     )
 
-    private fun saveToDownloads(item: ReceivedClipboard.FileItem): Uri {
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, item.filename)
-            put(MediaStore.Downloads.MIME_TYPE, item.mime)
-            put(
-                MediaStore.Downloads.RELATIVE_PATH,
-                "${Environment.DIRECTORY_DOWNLOADS}/Clipboard Bridge",
-            )
-            put(MediaStore.Downloads.IS_PENDING, 1)
+    private fun applyClip(clip: ClipData, item: AppliedItem, settings: BridgeSettings): AppliedItem =
+        config.withCurrentConnection(settings) {
+            config.suppressClipboardFor()
+            clipboard.setPrimaryClip(clip)
+            if (item.id.isNotBlank()) config.setLastSeenId(item.id, settings)
+            item
         }
-        val uri = context.contentResolver.insert(
-            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-            values,
-        ) ?: error("Android could not create the downloaded file.")
-        try {
-            context.contentResolver.openOutputStream(uri)?.use { output ->
+
+    private fun logFileCleanupFailure() {
+        Log.w("ClipboardBridge", "Received file cleanup could not be completed.")
+    }
+
+    private val fileDestination = object : ReceivedFileDestination<Uri> {
+        override fun create(item: ReceivedClipboard.FileItem): Uri {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, item.filename)
+                put(MediaStore.Downloads.MIME_TYPE, item.mime)
+                put(
+                    MediaStore.Downloads.RELATIVE_PATH,
+                    "${Environment.DIRECTORY_DOWNLOADS}/Clipboard Bridge",
+                )
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            return context.contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: error("Android could not create the downloaded file.")
+        }
+
+        override fun write(item: ReceivedClipboard.FileItem, target: Uri) {
+            context.contentResolver.openOutputStream(target)?.use { output ->
                 item.file.inputStream().use { input -> input.copyTo(output) }
             } ?: error("Android could not write the downloaded file.")
-            values.clear()
-            values.put(MediaStore.Downloads.IS_PENDING, 0)
-            context.contentResolver.update(uri, values, null, null)
-            return uri
-        } catch (error: Throwable) {
-            context.contentResolver.delete(uri, null, null)
-            throw error
-        } finally {
-            item.file.delete()
+        }
+
+        override fun publish(target: Uri) {
+            val values = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+            check(context.contentResolver.update(target, values, null, null) == 1) {
+                "Android could not publish the downloaded file."
+            }
+        }
+
+        override fun remove(target: Uri) {
+            context.contentResolver.delete(target, null, null)
         }
     }
 }

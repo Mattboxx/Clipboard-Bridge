@@ -37,7 +37,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows e iPhone</a></div>
     <p><strong>Su iPhone, tieni Invia e Ricevi nel Centro di Controllo o invia dal menu Condividi di un'altra app.</strong> Dopo la configurazione, non serve riaprire l'editor a ogni trasferimento.</p>
     <p>Guide specifiche in inglese: <a href="windows-iphone-clipboard.html" lang="en">Windows e iPhone</a> e <a href="apple-android-clipboard.html" lang="en">Apple e Android</a>.</p>
-    <div class="tutorial-meta">Aggiornato il 15 ottobre 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
+    <div class="tutorial-meta">Aggiornato il 20 ottobre 2026 &middot; Windows 2.0.16 &middot; Android beta.11 &middot; server 1.0.8</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Windows e iPhone</a><a href="#help">Problemi comuni</a></aside>
@@ -66,7 +66,7 @@
         <h2>3. Collega iPhone o iPad</h2>
         <p>Bastano due Comandi Rapidi: uno invia l'elemento corrente, l'altro riceve il pi&ugrave; recente. Si eseguono quando li avvii: non esiste una sincronizzazione continua in background su iPhone.</p>
         <ol>
-          <li>Dall'iPhone scarica e apri <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> e <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Aggiungili all'app Comandi Rapidi di Apple.</li>
+          <li>Dall'iPhone scarica e apri <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> e <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Aggiungili all'app Comandi Rapidi di Apple.</li>
           <li>Modifica <strong>Load Clipboard</strong>: in <strong>Ottieni contenuti dell'URL</strong> sostituisci l'intero URL di esempio con l'indirizzo del tuo host seguito da <code>/clipboard</code>. Mantieni <strong>POST</strong>.</li>
           <li>Modifica <strong>Download Clipboard</strong>: inserisci lo stesso host seguito da <code>/clipboard/latest/raw</code>. Mantieni <strong>GET</strong>.</li>
           <li>Per la clipboard generale non protetta su rete fidata, lascia vuoti token e account. Se l'amministratore li ha impostati, segui le <a href="#accounts">istruzioni sugli account</a> in entrambi i comandi.</li>
@@ -96,7 +96,7 @@ Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
       <section id="android">
         <h2>4. Collega Android</h2>
         <ol>
-          <li>Installa l'<a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">APK Android firmato</a>. Richiede Android 10 o successivo ed &egrave; una beta pubblica.</li>
+          <li>Installa l'<a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">APK Android firmato</a>. Richiede Android 10 o successivo ed &egrave; una beta pubblica.</li>
           <li>Apri le impostazioni dell'app, inserisci l'indirizzo del PC o del server Docker e salva. Lascia vuote le credenziali facoltative, salvo che siano state configurate sul server.</li>
           <li>Copia un messaggio di esempio, apri l'app e premi <strong>Invia clipboard</strong>. Ricevilo da Windows.</li>
           <li>Invia un altro messaggio da Windows e premi <strong>Ricevi ultimo</strong> su Android. Incolla il risultato in una nota.</li>
@@ -165,6 +165,7 @@ http://TUO_HOST:5088/clipboard/latest/raw?user=alice&amp;password=TUA_PASSWORD</
       </section>
       <section id="help">
         <h2>Se qualcosa non funziona</h2>
+        <details><summary>Condivido un link Reddit ma ricevo HTML anzich&eacute; l'indirizzo</summary><p>Il flusso di invio potrebbe aver scaricato la pagina, oppure l'app di origine potrebbe aver fornito HTML. In Load Clipboard, inserisci il link in un'azione Testo; per una pagina Safari estrai prima la propriet&agrave; URL. Invia quel testo al tuo host Clipboard Bridge con <strong>POST &gt; Corpo della richiesta: JSON &gt; text (Testo)</strong>, non File con l'URL originale. L'indirizzo della richiesta deve essere quello del tuo host, non Reddit. I rami di foto e file restano invariati. Segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#sharing-a-link-sends-html-instead-of-its-address">procedura dettagliata</a>. La modifica va applicata sul dispositivo Apple: i file firmati scaricabili non sono stati cambiati.</p></details>
         <details><summary>Il telefono non raggiunge l'host</summary><p>Verifica host acceso, rete fidata comune e indirizzo corretto, non localhost. Controlla firewall su rete privata, isolamento Wi-Fi e rotte VPN. La modalit&agrave; server Windows non ha una pagina browser: la sua assenza non indica da sola un errore.</p></details>
         <details><summary>Vedo una cronologia diversa da quella attesa</summary><p>Controlla indirizzo e account su ogni client. Senza username accedi alla clipboard generale; gli account nominativi hanno cronologie separate. Usa lo stesso account anche in entrambi gli URL Apple.</p></details>
         <details><summary>Un file non si incolla in un'altra app</summary><p>Non tutte le app accettano file dalla clipboard. Aprilo da Downloads o usa il selettore file/Condividi dell'app destinataria. Il browser riceve i gruppi come ZIP; Apple richiede la variante di estrazione per ripristinarne i membri.</p></details>

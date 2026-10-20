@@ -6,10 +6,20 @@ repository.
 
 ## Verified status
 
-On 14 October 2026, the four Windows artifacts downloaded from release **2.0.14**
+On 20 October 2026, the four Windows artifacts from public release **2.0.15**
 (x64/ARM64 portable executables and installers) all returned `NotSigned` from
 `Get-AuthenticodeSignature`. Their SHA-256 hashes matched GitHub's asset digests
-and the release notes. A checksum verifies integrity, not publisher identity or trust.
+queried again for that release. A checksum verifies integrity, not publisher identity or trust.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| x64 portable | `203c09257bcd2a49953519e506bbcdb4b04faa728591fe039ef461fb71be3b52` |
+| x64 installer | `0d190aabce5ad1f3402fe14c42df91bd6f075523e8c8b8793fa2a11c0c540b43` |
+| ARM64 portable | `328e06636f601220ba4d711b7be2a5e6506b57f3b51faf35c4c3595cbac5d8a3` |
+| ARM64 installer | `21a98b9debf0f71bd41d4af8f12a51cadcfea1202202851703822a6937dbff55` |
+
+No certificate was present. This is not an independent verification of signatures
+on files extracted from the installers; the public installers themselves are unsigned.
 
 SignPath integration is **deferred by the maintainer**. There is no active signing
 workflow, certificate or signing secret configured in this repository. Do not

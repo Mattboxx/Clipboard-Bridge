@@ -5,4 +5,5 @@
 !requirements-server.txt
 !clipboard_bridge-Server.py
 !clipboard_text.py
+!clipboard_storage.py
 !LICENSE

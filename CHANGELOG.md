@@ -2,6 +2,62 @@
 
 All notable user-facing changes are documented here.
 
+## Unreleased
+
+- Raise the standalone server's supported Flask minimum to the reviewed patched
+  release; publishing a new stable container remains a separate step.
+- Bind Android operations and every member of a file group to their initial server
+  and account. Discard obsolete results after a connection change instead of mixing
+  sources or advancing the new account's receive cursor.
+- Ignore late Android history/operation results after pause, refresh or account
+  changes; retain the source of history selections and delete confirmations.
+- Test draft Android connection settings without saving them. Keep unrelated
+  automation/notification changes from resetting the connection or receive cursor.
+- Reject an empty username in Android Account mode instead of silently requesting
+  the general clipboard. Shared space without credentials remains supported.
+- Stage Android file groups before publishing them to Downloads. If writing,
+  publishing or applying the clipboard fails, attempt cleanup of every newly
+  created download and remove this operation's cached files. Preserve existing files.
+- Treat a failed MediaStore publication as an error rather than claiming receipt;
+  log a content-free warning if rollback cannot remove an owned file.
+- Preserve Android downloads marked as files even when their MIME type is `text/*`.
+  Ordinary clipboard text remains plain Unicode; actual documents keep their bytes.
+- Remove files created by an interrupted Android cache download, including completed
+  members of a failed group, without touching unrelated cached files.
+- Reject missing upload acknowledgements and non-history responses instead of showing
+  false Android send/connection success.
+- Refuse account access when distinct configured names resolve to the same physical
+  directory on a case-insensitive or filename-normalizing filesystem. Keep the
+  general clipboard and unrelated accounts available; do not relocate existing data.
+- Preserve existing history when its index is malformed or unreadable instead of
+  treating it as empty, in the standalone host, Windows host and local history.
+- Return a safe `503 history_unavailable` response rather than overwriting damaged
+  history; unaffected standalone accounts remain available.
+- Flush a complete temporary index before atomic replacement and remove temporary
+  files after failed commits. Keep previous indexed files on failed uploads.
+
+## Windows 2.0.16 - 2026-10-20
+
+- Check native image/file clipboard failures before claiming receipt. Prepare
+  memory before clearing the clipboard, use an invisible owner, retry brief
+  contention and release only buffers still owned by the application.
+- Reject incomplete file selections rather than silently copying fewer files
+  and marking the whole group as received. Keep the previous clipboard intact
+  when a file is already unavailable at the preflight check.
+- Preserve damaged local/Windows-host history instead of treating it as empty;
+  warn clearly and keep healthy remote sharing working when the local cache fails.
+- Build with reviewed Requests and Pillow security floors and a pinned PyInstaller.
+- Preserve extra release-folder assets; preflight files and read optional APK
+  metadata instead of hard-coding its version during packaging.
+- Verify native x64 and ARM64 executables and installers, configuration preservation
+  and actual clipboard round trips on disposable CI runners.
+- Refresh the Windows screenshot without a mouse pointer; add real Docker web
+  interface screenshots to the bilingual README and responsive website.
+- Keep the existing signed Apple exports and Android beta.11 download available
+  unchanged. No new stable server image or Android release is included.
+- Windows packages remain unsigned. Physical device acceptance is not implied
+  by automated tests; see the release notes and manual test plan.
+
 ## 2.0.15 / Server 1.0.8 / Android 1.0.0-beta.11 - 2026-10-14
 
 - Deliver copied RTF as plain Unicode text in both server modes; preserve emoji and visible hyperlink labels.

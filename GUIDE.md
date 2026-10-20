@@ -105,14 +105,14 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.15` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.16` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.15 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.16 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -169,7 +169,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 - **History…**: browse the server and local history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
-In Windows 2.0.15, History also offers a search field, type filter
+In Windows 2.0.16, History also offers a search field, type filter
 and previous/next server pages. Search matches previews and filenames, including all
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
@@ -249,10 +249,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.15 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.15):
+[Clipboard Bridge 2.0.16 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.16):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -280,7 +280,7 @@ Apple documents the same procedure in its
 ### 5.1 Send (clipboard to server)
 
 Copied text is stored and received as **plain Unicode text**. Server 1.0.8 and
-Windows Server mode 2.0.15 remove RTF formatting without removing emoji or accents.
+Windows Server mode 2.0.16 remove RTF formatting without removing emoji or accents.
 Documents sent as files, including `.rtf`, keep their original bytes.
 
 This version automatically handles a single item or a list received from the iOS Share
@@ -299,15 +299,50 @@ Sheet. Enable **Show in Share Sheet** in the Shortcut details and allow **Any** 
    - Method: **POST**
    - Request Body: **File**, using the **Archive** result.
 8. In **Otherwise**, add **Get Item from List** and choose **First Item** from `Transfer`.
-9. Add **Get Type** for the selected item and an **If** action:
-   - when the type is **Text** or **Rich Text**, use **Get Text from Input** on the
-     selected item, then POST that text as a **File** request body to
-     `http://SERVER_IP:5088/clipboard`. Set `Content-Type` to
-     `text/plain; charset=utf-8` and do not add a filename for copied text;
+9. Add **Get Type** for the selected item and nested **If** actions:
+   - for a **URL**, insert the selected URL into a **Text** action, keeping its
+     variable type **URL**, not Article or Contents of URL;
+   - for a **Safari Web Page**, use **Get Details of Safari Web Page > URL**, then
+     insert that URL into a **Text** action. Do not extract the page body;
+   - for **Text** or **Rich Text**, use **Get Text from Input** on the selected item;
+   - send the resulting text to `http://SERVER_IP:5088/clipboard` with method
+     **POST**, Request Body **JSON**, adding a field named `text` of type **Text**.
+     Its value must be the text result from the appropriate branch, not the original
+     URL/web-page variable. Let Shortcuts encode the JSON; do not construct JSON by
+     concatenating strings. Do not add a filename or a File-body header here;
    - otherwise, use **Get Details of Files > Name**, URL-encode that name, and POST the
      selected item as a **File** request body to
      `http://SERVER_IP:5088/clipboard?filename=ENCODED_NAME`.
-10. Close both **End If** blocks and add **Show Notification**.
+10. Close the **If** blocks and add **Show Notification**.
+
+Keep the ZIP branch for multiple files. For several links, combine the URL strings
+with line breaks and send them in the same JSON `text` field instead of archiving
+URL objects. Files remain files, even when an HTML or text document contains links.
+
+### Sharing a link sends HTML instead of its address
+
+If a Reddit or other website link arrives as `<!DOCTYPE html>...`, page contents
+were fetched somewhere in the sending workflow, or the source app supplied HTML.
+Clipboard Bridge stores the received content; its upload endpoints do not visit
+URLs or recover an original link from a downloaded page.
+[Apple documents automatic type conversion in Shortcuts](https://support.apple.com/guide/shortcuts/the-content-graph-engine-apd4618db957/ios).
+
+In **Load Clipboard**, keep the URL in **Get Contents of URL** fixed to your
+Clipboard Bridge host, not the shared Reddit address. Use the URL/Safari branches
+above and send **JSON > text (Text) > text result**, not **File > original input**.
+Do not add **Get Contents of Web Page** or an extra GET to the shared address.
+Account/token query parameters on the host URL stay unchanged.
+
+To diagnose your installed variant, temporarily put **Show Result** immediately
+before the POST and select the outgoing text value. It should show only the link
+(or intended copied text), never HTML or an article. If it already shows HTML,
+inspect the preceding actions or the source app's Share Sheet output. As a quick
+fallback, use the source app's **Copy Link**, then run Load Clipboard on that copied
+text. Remove the temporary preview after testing; it can display private content.
+The signed downloads have not been edited or re-signed by this documentation change;
+the change must be applied and tested on the Apple device.
+
+### File names and grouped transfers
 
 The ZIP exists only during transport. `/clipboard/bundle` validates it, ignores Apple
 metadata, strips paths and creates one ordered server-history group. Selecting one or
@@ -491,6 +526,7 @@ Official reference: [Tailscale subnet routers](https://tailscale.com/docs/featur
 |---------|-------|
 | The web page won't open | Is the server running? Right `SERVER_IP`? Same network? Port 5088 allowed in the firewall? |
 | `401 unauthorized` | The token is missing or wrong (`X-Auth-Token` / Settings → Token). |
-| iPhone shortcut fails | Verify the URL and method; if you use a token, the header must be present. For universal sending use POST with **File → Clipboard**. |
+| iPhone shortcut fails | Verify the host URL and method. Only if a token is configured, include it in the URL or `X-Auth-Token` header. Send text/links as **JSON > text (Text)**; reserve **File** for actual files. See the send recipe above. |
 | A received image isn't on the Windows clipboard | Some apps only accept certain formats; the client copies images as bitmap (works in Office, Paint, chats). |
 | Duplicate tray icons | Make sure only one instance of the client is running (close extra ones from Task Manager). |
+| `503 history_unavailable` in the candidate update | Stop the host and follow [storage recovery](DOCKER.md#history-storage-errors). Do not delete the index or reset configuration to hide the error. |

@@ -1,6 +1,7 @@
 """Optional Windows-to-Docker integration: set CLIPBOARD_TEST_SERVER_URL."""
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -11,8 +12,13 @@ from test_windows_client import load_client
 
 @pytest.mark.skipif(not os.environ.get("CLIPBOARD_TEST_SERVER_URL"), reason="No isolated live server configured")
 def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeypatch):
+    assert_windows_round_trips(os.environ["CLIPBOARD_TEST_SERVER_URL"], tmp_path, monkeypatch)
+
+
+def assert_windows_round_trips(base, tmp_path, monkeypatch):
+    """Shared assertions for an explicitly isolated live server, never a personal host."""
     from urllib.parse import urlparse
-    base = os.environ["CLIPBOARD_TEST_SERVER_URL"].rstrip("/")
+    base = base.rstrip("/")
     address = urlparse(base)
     client = load_client(tmp_path, monkeypatch)
     client.config.update(mode="client", server_ip=address.hostname, server_port=address.port,
@@ -21,7 +27,11 @@ def test_windows_client_round_trips_against_live_docker_server(tmp_path, monkeyp
     shared_before.raise_for_status()
     auth = client.auth_params()
     assert client.check_connection()
-    assert requests.get(base + "/health", timeout=5).json()["version"] == "1.0.7"
+    health = requests.get(base + "/health", timeout=5).json()
+    assert health["status"] == "ok" and re.fullmatch(r"\d+\.\d+\.\d+", health["version"])
+    expected_version = os.environ.get("CLIPBOARD_TEST_SERVER_VERSION")
+    if expected_version:
+        assert health["version"] == expected_version
     text = "\u96ea\U0001f600\r\n\t \r\nend\r"
     text_id = client.push_text(text)
     assert client.fetch_item(text_id)["text"] == text

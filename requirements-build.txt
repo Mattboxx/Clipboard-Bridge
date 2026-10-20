@@ -1,0 +1,2 @@
+# Verified PyInstaller bootloader/toolchain for native Windows x64 and ARM64.
+pyinstaller==6.22.3

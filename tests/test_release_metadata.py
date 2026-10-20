@@ -3,6 +3,10 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
+import pytest
+from packaging.requirements import Requirement
+from packaging.version import Version
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,8 +23,24 @@ def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
 
-    assert version == "2.0.15"
+    assert version == "2.0.16"
     metadata.validate(version)
+
+
+@pytest.mark.parametrize("manifest,name,patched,obsolete,next_major", [
+    ("requirements-server.txt", "flask", "3.1.3", ("3.1", "3.1.1", "3.1.2"), "4"),
+    ("requirements-client.txt", "requests", "2.33.0", ("2.32", "2.32.4", "2.32.5"), "3"),
+    ("requirements-client.txt", "pillow", "12.3.0", ("11", "12.1.1", "12.2.0"), "13"),
+])
+def test_reviewed_security_floors_exclude_obsolete_versions(manifest, name, patched, obsolete, next_major):
+    requirements = [Requirement(line) for line in (ROOT / manifest).read_text().splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")]
+    requirement = next(item for item in requirements if item.name.lower() == name)
+    floors = [Version(spec.version) for spec in requirement.specifier if spec.operator in (">=", "==")]
+    assert floors and max(floors) >= Version(patched)
+    assert max(floors) in requirement.specifier
+    assert all(version not in requirement.specifier for version in obsolete)
+    assert next_major not in requirement.specifier
 
 
 def test_installer_default_matches_project_version():
@@ -75,10 +95,11 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
     assert rules[0] == "*"
     assert set(rules[1:]) == {
         "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
-        "!clipboard_text.py", "!LICENSE",
+        "!clipboard_text.py", "!clipboard_storage.py", "!LICENSE",
     }
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile
+    assert "COPY clipboard_storage.py ." in dockerfile
 
 
 def test_installer_supports_native_arm64_without_changing_app_identity():
@@ -89,6 +110,40 @@ def test_installer_supports_native_arm64_without_changing_app_identity():
     assert "ArchitecturesAllowed=x64compatible" in installer
     assert "setup_{#MyAppArchitecture}_V{#MyAppVersion}" in installer
     assert installer.count("AppId=") == 1
+
+
+def test_windows_builds_use_the_same_pinned_toolchain():
+    pin = (ROOT / "requirements-build.txt").read_text(encoding="utf-8")
+    assert re.search(r"(?m)^pyinstaller==\d+\.\d+\.\d+$", pin)
+    for name in ("build_client.bat", "build_release.bat"):
+        script = (ROOT / "scripts/windows" / name).read_text(encoding="utf-8")
+        assert "-m pip install -r requirements-build.txt" in script
+        assert "--upgrade pyinstaller" not in script
+        assert 'if not defined PYTHON_EXE (' in script
+        assert '%VIRTUAL_ENV%\\Scripts\\python.exe' in script
+    arm = (ROOT / ".github/workflows/windows-arm64.yml").read_text(encoding="utf-8")
+    x64 = (ROOT / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    for workflow in (arm, x64):
+        assert '"requirements-build.txt"' in workflow
+        assert "-r requirements-build.txt pytest" in workflow
+    assert 'cmd /d /c scripts\\windows\\build_release.bat' in x64
+    assert '--architecture x64 --smoke' in x64
+    assert 'Installer changed $name' in x64
+    assert 'Installer payload mismatch' in x64
+    assert 'Get-AuthenticodeSignature' in x64
+    assert 'clipboard-bridge-windows-x64' in x64
+
+
+def test_x64_build_provenance_uses_compiler_output_and_identifies_pr_source():
+    workflow = (ROOT / ".github/workflows/windows-x64.yml").read_text(encoding="utf-8")
+    assert "VersionInfo.ProductVersion" not in workflow
+    assert "Tee-Object -FilePath Output/x64-build.log" in workflow
+    assert "Compiler engine version:" in workflow
+    assert "Could not identify the Inno Setup compiler version" in workflow
+    assert "source_commit = (git rev-parse HEAD)" in workflow
+    assert "pull_request_head = $env:PR_HEAD_SHA" in workflow
+    assert "workflow_commit = $env:GITHUB_SHA" in workflow
+    assert "${{ github.event.pull_request.head.sha }}" in workflow
 
 
 def test_website_support_opens_donation_directly_and_stylesheet_exists():
@@ -211,5 +266,6 @@ def test_python_sources_are_developer_only_not_release_downloads():
     for source in ("clipboard_bridge-Server.py", "clipboard_bridge_windows.py"):
         assert f"/blob/main/{source}" in html
     build = (ROOT / "scripts/windows/build_release.bat").read_text(encoding="utf-8")
-    attachments = build.split("Preparing the public GitHub release assets...", 1)[1]
-    assert ".py" not in attachments
+    attachments = build.split("echo [4/5]", 1)[1]
+    assert 'scripts\\prepare_release_assets.py --version "%VERSION%"' in attachments
+    assert not re.search(r"(?im)^copy\s+.*\.py(?:\s|\")", attachments)

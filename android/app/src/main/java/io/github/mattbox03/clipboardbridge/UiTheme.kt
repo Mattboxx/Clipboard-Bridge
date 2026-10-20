@@ -68,6 +68,7 @@ data class UiCopy(
     val cancel: String,
     val deleted: String,
     val backgroundNotice: String,
+    val operationFailed: String,
 ) {
     companion object {
         fun current(): UiCopy = if (Locale.getDefault().language == "it") {
@@ -98,6 +99,7 @@ data class UiCopy(
                 cancel = "Annulla",
                 deleted = "Elemento eliminato",
                 backgroundNotice = "Il controllo continuo mostra una notifica permanente.",
+                operationFailed = "Impossibile completare l'operazione. Riprova.",
             )
         } else {
             UiCopy(
@@ -127,6 +129,7 @@ data class UiCopy(
                 cancel = "Cancel",
                 deleted = "Item deleted",
                 backgroundNotice = "Continuous monitoring displays a permanent notification.",
+                operationFailed = "Unable to complete the operation. Please try again.",
             )
         }
     }

@@ -12,6 +12,7 @@ steps in a transfer.
 | Standalone host | `clipboard_bridge-Server.py` | Flask API, browser interface, persistence, shared space and optional isolated accounts |
 | Windows app | `clipboard_bridge_windows.py` | Tray commands, Tk history/settings, clipboard access, optional automation and embedded HTTP host |
 | Shared Python text conversion | `clipboard_text.py` | Normalize copied rich text to plain Unicode; preserve actual files |
+| Shared Python history storage | `clipboard_storage.py` | Refuse malformed/unreadable indices; flush and atomically commit complete replacements |
 | Android app | `android/app/src/main/` | Native UI, server history, Share target, notifications and optional incoming monitoring |
 | Apple integration | `Iphone Shortcuts/` | User-triggered Send and Receive Shortcuts for iPhone, iPad and Mac |
 
@@ -35,6 +36,11 @@ See the [API reference](../../README.md#api-reference) for payloads and endpoint
 
 - Windows uses a single Tk event loop; network work must not block it. Tray actions
   schedule UI work rather than creating competing Tk roots or event loops.
+- Binary Windows clipboard writes share one checked buffer transfer. A message-only
+  window belongs to the calling worker thread, not the Tk thread. Prepare and unlock
+  memory before clearing the clipboard; transfer ownership only on API success.
+  Clearing and setting are not atomic: a later set failure cannot restore old OS
+  contents, but it must not advance the receive cursor or report success.
 - Windows Server mode exposes the lightweight API and history, not a browser UI
   or multiple accounts. The standalone host supplies those additional features.
 - Android incoming monitoring uses a user-enabled foreground service. Do not
@@ -45,12 +51,34 @@ See the [API reference](../../README.md#api-reference) for payloads and endpoint
   Authentication values in URLs are not encryption. Use a trusted LAN or private
   VPN; do not encourage direct public exposure of port 5088.
 
+## Android Operation Boundaries
+
+An action captures immutable connection settings, including an internal generation.
+Group metadata and members use that same source. Checks before dispatch and before
+accepting a result reject a superseded connection; they do not reroute an in-flight
+operation. Changing away and back also advances the generation. Notification and
+automation preferences do not change it.
+
+Settings writes and the final clipboard/seen-ID update share a short in-process
+gate. Network work and file copying do not hold that gate. A source change before
+the clipboard update causes receipt to fail and attempts cleanup of the new files.
+An already-sent upload/delete may still finish on the original host; there is no
+remote transaction rollback. Existing optional account/token URLs are unchanged.
+
+History and command responses have separate UI request tickets. Pause, superseding
+refreshes and source changes invalidate old results; periodic refreshes do not pile
+up while one is running. A history selection carries its original source through
+download/delete confirmation. Testing draft Settings does not modify the active
+configuration: only Save does. Device lifecycle and real clipboard behavior still
+require the [manual acceptance checks](../../maintainer/MANUAL_TESTS.md).
+
 ## Directory Ownership
 
 ```text
 clipboard_bridge-Server.py   Standalone server entry point
 clipboard_bridge_windows.py Windows entry point and embedded host
 clipboard_text.py           Shared text conversion
+clipboard_storage.py        Shared history persistence
 android/                    Android application and Gradle wrapper
 Iphone Shortcuts/           Signed exports and update instructions
 packaging/windows/          Installer definition and generated version metadata

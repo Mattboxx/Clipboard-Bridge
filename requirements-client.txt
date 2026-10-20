@@ -1,8 +1,8 @@
 # Windows client dependencies (not required when using a release executable)
-requests>=2.32,<3
+requests>=2.33.0,<3
 pyperclip>=1.9,<2
 pystray>=0.19,<1
-pillow>=11,<13
+pillow>=12.3.0,<13
 pypdfium2>=5.13,<6
 keyboard>=0.13,<1
 striprtf==0.0.33

@@ -86,6 +86,36 @@ For a backup, stop the service and copy the directory configured by `DATA_ROOT`.
 Restore it to the same location before restarting. Do not run
 `docker compose down --volumes` when preserving data.
 
+### History storage errors
+
+The unreleased storage-integrity update fails closed when an existing `index.json`
+is unreadable, invalid JSON, or not a list of objects. History endpoints return
+`503` with `code: history_unavailable` instead of silently starting an empty
+history. Uploads and deletes do not replace the damaged index, and newly staged
+upload files are removed. Other healthy accounts remain usable.
+
+1. Stop the service. Copy the **whole** data directory to a separate backup before
+   attempting repairs, including `items/`, every `users/` directory and `secret.key`.
+2. Check free disk space, volume availability and the container's read/write
+   permissions. Do not print credential URLs or personal clipboard data in a bug report.
+3. If the index is damaged, restore a consistent backup of the affected space
+   together with its referenced files. Do not delete the index to dismiss the error:
+   that loses the history references and is not a repair.
+4. Start the service and check `/health` and the affected account's history.
+   `/health` checks the shared store; success does not certify every account.
+
+There is no automatic backup or guaranteed recovery of files already lost to a
+disk failure. Flushing a temporary index before an atomic rename helps preserve
+the last committed state; it does not replace backups or guarantee power-loss
+durability on every filesystem. One process owns the JSON store; independent
+Gunicorn workers or multiple containers must not write to the same data directory.
+
+Windows uses the same protections for its embedded host and local history in the
+candidate update. Quit the app before backing up or restoring its per-user data
+directory. Existing releases do not yet include this update.
+If only the optional Windows local history is damaged, a localized warning is
+shown without blocking healthy remote sending/receiving or saving Settings.
+
 ## Security and accounts
 
 `API_TOKEN`, `WEB_PASSWORD` and `ACCOUNTS` are optional. With all three empty, the
@@ -95,6 +125,21 @@ arbitrary practical number of comma-separated `user:password` pairs. Every
 account has isolated history and files. URL credentials remain supported for
 iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 `X-Clipboard-Password` headers.
+
+Accounts are loaded at startup; restart the host after editing their configuration.
+For portable deployments, choose names that do not differ only by letter case or
+trailing dots. Such names can refer to one directory on Windows or a case-insensitive
+NAS volume. The unreleased account-storage guard returns `503` with
+`code: account_storage_conflict` rather than allowing those accounts to share data.
+The shared space and unrelated users remain available. A healthy case-sensitive
+filesystem keeps existing distinct directories and behavior unchanged.
+
+To resolve a conflict, stop the host and back up all affected directories first.
+Review the configured names and choose unambiguous ones. If accounts have already
+shared a directory, do not automatically assign its mixed history to another user:
+review and separate or securely archive it before restoring access. The guard does
+not rename directories, migrate or delete data, or change Shortcut credential URLs.
+`account_storage_unavailable` instead indicates a directory/permissions problem.
 
 Remembered web logins keep the existing 3650-day default for compatibility.
 Set `CLIPBOARD_SESSION_DAYS` to a value from 1 to 3650, for example 90 on a shared

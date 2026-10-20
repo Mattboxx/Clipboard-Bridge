@@ -1,6 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0..\.."
+if errorlevel 1 exit /b 1
 
 set /p PROJECT_VERSION=<VERSION
 set "VERSION=%~1"
@@ -10,9 +11,10 @@ if not "%VERSION%"=="%PROJECT_VERSION%" (
   exit /b 1
 )
 
-set "PYTHON_EXE=python"
-if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (
-  set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+if not defined PYTHON_EXE (
+  set "PYTHON_EXE=python"
+  if exist "%LocalAppData%\Programs\Python\Python312\python.exe" set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+  if defined VIRTUAL_ENV if exist "%VIRTUAL_ENV%\Scripts\python.exe" set "PYTHON_EXE=%VIRTUAL_ENV%\Scripts\python.exe"
 )
 
 "%PYTHON_EXE%" --version >nul 2>&1
@@ -23,13 +25,14 @@ if errorlevel 1 (
 )
 
 echo Preparing version metadata...
-"%PYTHON_EXE%" -c "import platform; assert platform.machine().lower() in ('amd64', 'x86_64'), 'This script builds x64 packages. Use the Build Windows ARM64 workflow for native ARM64 packages.'"
+"%PYTHON_EXE%" -c "import sysconfig; assert sysconfig.get_platform() == 'win-amd64', 'This script builds x64 packages. Use the Build Windows ARM64 workflow for native ARM64 packages.'"
 if errorlevel 1 exit /b 1
 "%PYTHON_EXE%" scripts\release_metadata.py --write
 if errorlevel 1 exit /b 1
 
 echo [1/5] Installing build dependencies...
-"%PYTHON_EXE%" -m pip install --upgrade pyinstaller
+"%PYTHON_EXE%" -m pip install -r requirements-build.txt
+if errorlevel 1 exit /b 1
 "%PYTHON_EXE%" -m pip install -r requirements-client.txt
 if errorlevel 1 exit /b 1
 
@@ -64,21 +67,14 @@ echo [3/5] Building the Windows installer...
 "%ISCC%" /DMyAppVersion=%VERSION% "packaging\windows\Clipboard_Bridge_setup.iss"
 if errorlevel 1 exit /b 1
 
-echo [4/5] Preparing the public GitHub release assets...
+echo [4/5] Preparing local release assets without deleting existing files...
 set "RELEASE_DIR=Output\Clipboard.Bridge.Release.V%VERSION%"
-if exist "%RELEASE_DIR%" rmdir /S /Q "%RELEASE_DIR%"
-mkdir "%RELEASE_DIR%"
-copy /Y "Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe" "%RELEASE_DIR%\" >nul
-copy /Y "Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe" "%RELEASE_DIR%\" >nul
-copy /Y "Iphone Shortcuts\Load Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Load.Clipboard.shortcut" >nul
-copy /Y "Iphone Shortcuts\Download Clipboard.shortcut" "%RELEASE_DIR%\iPhone.Download.Clipboard.shortcut" >nul
-if exist "android\app\build\outputs\apk\release\app-release.apk" (
-  copy /Y "android\app\build\outputs\apk\release\app-release.apk" "%RELEASE_DIR%\Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk" >nul
-)
+"%PYTHON_EXE%" scripts\prepare_release_assets.py --version "%VERSION%"
 if errorlevel 1 exit /b 1
 
 echo [5/5] Build complete.
 echo Portable: Output\Clipboard.Bridge.Portable.Windows.x64.V%VERSION%.exe
 echo Installer: Output\Clipboard.Bridge_windows_client_and_server_setup_x64_V%VERSION%.exe
 echo Public release assets: %RELEASE_DIR%
+echo Existing extra files are preserved, not revalidated. Verify assets before publishing.
 exit /b 0

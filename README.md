@@ -77,14 +77,14 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.15 | Android 1.0.0-beta.11 | Server 1.0.8
+**Current releases:** Windows 2.0.16 | Android 1.0.0-beta.11 | Server 1.0.8
 
 | Your device | Ready-to-use downloads |
 |---|---|
-| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.15.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Portable.Windows.x64.V2.0.15.exe) |
-| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.15.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Portable.Windows.arm64.V2.0.15.exe) |
-| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk), currently a public beta |
-| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut) |
+| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.16.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge.Portable.Windows.x64.V2.0.16.exe) |
+| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.16.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge.Portable.Windows.arm64.V2.0.16.exe) |
+| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk), currently a public beta |
+| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
 
@@ -97,7 +97,7 @@ app before switching between x64 and ARM64; both architectures share your settin
 > Defender or Smart App Control may block them. Read [CODE_SIGNING.md](CODE_SIGNING.md);
 > do not disable Windows protection to bypass a warning.
 
-All assets, checksums and release notes are in the [2.0.15 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.15).
+All assets, checksums and release notes are in the [2.0.16 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.16).
 Image/PDF previews and native ARM64 packages are included. See [CHANGELOG.md](CHANGELOG.md)
 for the full changes; Android and the standalone server have independent version numbers.
 
@@ -135,7 +135,7 @@ documents, archives, audio, video and custom extensions such as `.shortcut`.
 **Copied text arrives as plain Unicode text**, even if the source app uses RTF.
 Emoji, accents, tabs and line breaks are retained; fonts, colours and bold styling
 are not transferred. Actual `.rtf` documents sent as files remain unchanged.
-This works with server 1.0.8 or Windows Server mode 2.0.15, for every connected client.
+This works with server 1.0.8 or Windows Server mode 2.0.16, for every connected client.
 
 **The latest upload always wins.** Text, images and files have equal priority.
 Several files sent together stay in **one history item**; restoring or deleting it
@@ -311,6 +311,20 @@ actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file
 uploads, searchable history, downloads, refresh, deletion and optional login.
+
+### Browser interface
+
+Save text or upload files from any browser, without installing another client.
+This interface belongs to the **optional standalone server**, not Windows Server mode.
+
+![Docker server web interface: text editor and file upload](docs/assets/server-web.png)
+
+Search the shared history, download an item or delete it. Files sent together
+remain in one entry; images have a thumbnail.
+
+![Docker server history: text, a two-file group and an image thumbnail](docs/assets/server-history.png)
+
+*Real screens from the published Docker server, using public sample data only.*
 
 **App stores:** follow [Clipboard Bridge App Store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme)
 for ZimaOS, Portainer, Umbrel, Runtipi and Dockge. For ZimaOS, add this permanent
@@ -494,10 +508,10 @@ space; latest raw content is an empty response. Retention limits remove old entr
 
 | Task | Command or documentation |
 |---|---|
-| Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_release_metadata.py` |
-| Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py` on Windows |
+| Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
+| Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
-| Windows x64 packaging | `scripts\windows\build_release.bat 2.0.15`; requires x64 Python, PyInstaller and Inno Setup |
+| Windows x64 packaging | **Build Windows x64** Actions workflow, or `scripts\windows\build_release.bat 2.0.16`; requires x64 Python and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
 | Android build | Java 17, Android SDK 35; [Gradle and private signing instructions](android/README.md#build-from-source) |
 | Docker source build | `docker build -t clipboard-bridge-server:dev .` |
@@ -514,6 +528,7 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 | `clipboard_bridge_windows.py` | Windows client and built-in server |
 | `clipboard_bridge-Server.py` | Standalone Flask server and web interface |
 | `clipboard_text.py` | Shared Unicode/RTF conversion; keep alongside either Python script |
+| `clipboard_storage.py` | Shared fail-safe history reads and atomic index writes; keep alongside either Python script |
 | `android/` | Android source and build files |
 | `Iphone Shortcuts/` | Signed Shortcut exports and update instructions |
 | `Dockerfile`, `compose.yaml`, `docker-compose.yml`, `.env.example` | Container deployment |
@@ -529,6 +544,9 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 
 [Architecture and repository layout](docs/development/ARCHITECTURE.md) |
 [Script commands](scripts/README.md) | [Windows packaging](packaging/windows/README.md)
+
+[Quality audit and remaining verification gates](maintainer/QUALITY_PLAN.md) |
+[Backup and recovery](DOCKER.md#history-storage-errors)
 
 [Full user guide](GUIDE.md) | [Docker guide](DOCKER.md) | [Android documentation](android/README.md) |
 [Changelog](CHANGELOG.md) | [Security](SECURITY.md)

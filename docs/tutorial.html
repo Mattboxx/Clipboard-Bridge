@@ -37,7 +37,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 15 October 2026 &middot; Windows 2.0.15 &middot; Android beta.11 &middot; server 1.0.8</div>
+    <div class="tutorial-meta">Updated 20 October 2026 &middot; Windows 2.0.16 &middot; Android beta.11 &middot; server 1.0.8</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -66,7 +66,7 @@
         <h2>3. Connect an iPhone or iPad</h2>
         <p>Apple devices use two user-triggered Shortcuts: one sends the current item, the other receives the newest item. There is no native iOS app or continuous background clipboard synchronization.</p>
         <ol>
-          <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
+          <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
           <li>Edit <strong>Load Clipboard</strong>. In <strong>Get Contents of URL</strong>, replace the entire example URL with your host's address followed by <code>/clipboard</code>. Keep the method <strong>POST</strong>.</li>
           <li>Edit <strong>Download Clipboard</strong>. Replace its URL with the same host followed by <code>/clipboard/latest/raw</code>. Keep the method <strong>GET</strong>.</li>
           <li>Leave accounts and tokens empty for an unprotected shared clipboard on a trusted network. If your administrator enabled them, use the <a href="#accounts">account instructions</a> below in both Shortcuts.</li>
@@ -96,7 +96,7 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
       <section id="android">
         <h2>4. Connect Android</h2>
         <ol>
-          <li>Install the <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">signed Android APK</a>. It requires Android 10 or newer and is currently a public beta.</li>
+          <li>Install the <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.16/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">signed Android APK</a>. It requires Android 10 or newer and is currently a public beta.</li>
           <li>Open Settings in the app and enter the same host address as Windows or your Docker server. Save. Leave optional credentials empty unless your administrator configured them.</li>
           <li>Copy a sample message on Android. Open the app and tap <strong>Send clipboard</strong>. Use Receive on Windows to get it.</li>
           <li>Send another message from Windows, then tap <strong>Receive latest</strong> on Android. Paste the result into a note.</li>
@@ -165,6 +165,7 @@ http://YOUR_HOST:5088/clipboard/latest/raw?user=alice&amp;password=YOUR_PASSWORD
       </section>
       <section id="help">
         <h2>If something does not work</h2>
+        <details><summary>Sharing a Reddit link sends HTML instead of the address</summary><p>The sending workflow may have downloaded the page, or the source app may have supplied HTML. In Load Clipboard, turn a URL into a Text result; for a Safari Web Page, extract its URL property first. POST that text to your Clipboard Bridge host with <strong>Request Body: JSON &gt; text (Text)</strong>, not File with the original URL. Keep the request URL pointed at your host, not Reddit. Photo and file branches stay unchanged. See the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#sharing-a-link-sends-html-instead-of-its-address">step-by-step fix</a>. Apply it on your Apple device; the signed downloads have not been changed.</p></details>
         <details><summary>My phone cannot reach the host</summary><p>Check that the host is running, both devices are on the same trusted network and the phone uses the host's actual address, not localhost. Check private-network firewall permission, Wi-Fi client isolation and VPN routes. Windows Server mode intentionally has no browser page; do not use a missing page as its connection test.</p></details>
         <details><summary>I see a different history than expected</summary><p>Check the host address and selected account on every client. With no username you access the general shared space; named accounts have separate histories. Set the same account in both Apple URLs too.</p></details>
         <details><summary>A file will not paste into another app</summary><p>Not every app accepts file clipboard items. Open the received file from Downloads or use that app's file picker/Share command. A browser receives a group as ZIP; Apple needs the extraction variant to restore its members.</p></details>
