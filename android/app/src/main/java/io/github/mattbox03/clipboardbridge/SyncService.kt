@@ -49,27 +49,33 @@ class SyncService : Service() {
 
     private suspend fun monitorServer() {
         val repository = BridgeRepository(applicationContext)
+        val config = AppConfig(applicationContext)
         while (scope.isActive) {
             try {
-                when (val history = repository.history()) {
+                val settings = config.load()
+                when (val history = repository.history(settings)) {
                     is OperationResult.Success -> {
                         val newest = history.value.firstOrNull()
+                        val seen = repository.latestSeenId(settings)
                         if (
                             newest != null &&
-                            repository.latestSeenId().isNotBlank() &&
-                            newest.id != repository.latestSeenId()
+                            seen.isNotBlank() &&
+                            newest.id != seen
                         ) {
-                            repository.receiveItem(newest.id, notify = true)
-                        } else if (newest != null && repository.latestSeenId().isBlank()) {
-                            AppConfig(applicationContext).setLastSeenId(newest.id)
+                            repository.receiveItem(newest.id, notify = true, settings = settings)
+                        } else if (newest != null && seen.isBlank()) {
+                            config.setLastSeenId(newest.id, settings)
                         }
                     }
 
                     is OperationResult.Error -> Unit
                 }
+                if (!settings.matchesConnection(config.load())) continue
                 delay(AppConfig(applicationContext).load().pollSeconds * 1000L)
             } catch (_: CancellationException) {
                 break
+            } catch (_: ConnectionChangedException) {
+                continue
             } catch (_: Throwable) {
                 delay(10_000)
             }

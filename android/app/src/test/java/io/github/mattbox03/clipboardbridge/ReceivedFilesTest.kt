@@ -135,6 +135,28 @@ class ReceivedFilesTest {
         assertEquals(setOf("existing"), destination.targets)
     }
 
+    @Test fun sourceChangeBeforeClipboardCommitRollsBackTheNewDownloads() {
+        val config = AppConfig(MemoryPreferences())
+        val settings = config.load()
+        val items = sampleFiles()
+        val destination = Destination()
+        var applied = false
+        val failure = runCatching {
+            storeReceivedFiles(items, destination) {
+                config.save(settings.copy(accountMode = true, username = "alice"))
+                config.withCurrentConnection(settings) {
+                    applied = true
+                    config.setLastSeenId("obsolete", settings)
+                }
+            }
+        }.exceptionOrNull()
+        assertTrue(failure is ConnectionChangedException)
+        assertFalse(applied)
+        assertEquals("", config.lastSeenId())
+        assertEquals(setOf("existing"), destination.targets)
+        assertTrue(items.none { it.file.exists() })
+    }
+
     private fun sampleFiles(
         names: List<String> = listOf("one.bin", "two.bin", "three.bin"),
     ): List<ReceivedClipboard.FileItem> =

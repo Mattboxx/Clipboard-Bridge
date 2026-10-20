@@ -1,6 +1,7 @@
 package io.github.mattbox03.clipboardbridge
 
 import android.content.Context
+import android.content.SharedPreferences
 
 data class BridgeSettings(
     val serverUrl: String = "http://192.168.1.100:5088",
@@ -14,27 +15,34 @@ data class BridgeSettings(
     val notifyText: Boolean = true,
     val notifyFiles: Boolean = true,
     val notifySent: Boolean = false,
+    internal val connectionGeneration: Long = 0,
 )
 
-class AppConfig(context: Context) {
-    private val prefs = context.getSharedPreferences("clipboard_bridge", Context.MODE_PRIVATE)
-
-    fun load() = BridgeSettings(
-        serverUrl = prefs.getString("server_url", null) ?: BridgeSettings().serverUrl,
-        accountMode = prefs.getBoolean("account_mode", false),
-        token = prefs.getString("token", "") ?: "",
-        username = prefs.getString("username", "") ?: "",
-        password = prefs.getString("password", "") ?: "",
-        autoReceive = prefs.getBoolean("auto_receive", false),
-        autoUploadVisible = prefs.getBoolean("auto_upload_visible", false),
-        pollSeconds = prefs.getInt("poll_seconds", 5).coerceIn(3, 60),
-        notifyText = prefs.getBoolean("notify_text", true),
-        notifyFiles = prefs.getBoolean("notify_files", true),
-        notifySent = prefs.getBoolean("notify_sent", false),
+class AppConfig internal constructor(private val prefs: SharedPreferences) {
+    constructor(context: Context) : this(
+        context.getSharedPreferences("clipboard_bridge", Context.MODE_PRIVATE),
     )
 
-    fun save(settings: BridgeSettings) {
-        prefs.edit()
+    fun load(): BridgeSettings = synchronized(connectionLock) {
+        BridgeSettings(
+            serverUrl = prefs.getString("server_url", null) ?: BridgeSettings().serverUrl,
+            accountMode = prefs.getBoolean("account_mode", false),
+            token = prefs.getString("token", "") ?: "",
+            username = prefs.getString("username", "") ?: "",
+            password = prefs.getString("password", "") ?: "",
+            autoReceive = prefs.getBoolean("auto_receive", false),
+            autoUploadVisible = prefs.getBoolean("auto_upload_visible", false),
+            pollSeconds = prefs.getInt("poll_seconds", 5).coerceIn(3, 60),
+            notifyText = prefs.getBoolean("notify_text", true),
+            notifyFiles = prefs.getBoolean("notify_files", true),
+            notifySent = prefs.getBoolean("notify_sent", false),
+            connectionGeneration = prefs.getLong("connection_generation", 0L),
+        )
+    }
+
+    fun save(settings: BridgeSettings) = synchronized(connectionLock) {
+        val previous = load()
+        val editor = prefs.edit()
             .putString("server_url", normalizeServerUrl(settings.serverUrl))
             .putBoolean("account_mode", settings.accountMode)
             .putString("token", settings.token.trim())
@@ -46,14 +54,26 @@ class AppConfig(context: Context) {
             .putBoolean("notify_text", settings.notifyText)
             .putBoolean("notify_files", settings.notifyFiles)
             .putBoolean("notify_sent", settings.notifySent)
-            .apply()
+        if (!previous.hasSameConnectionDetails(settings)) {
+            editor.putLong("connection_generation", previous.connectionGeneration + 1)
+                .remove("last_seen_id")
+        }
+        editor.apply()
     }
 
-    fun lastSeenId(): String = prefs.getString("last_seen_id", "") ?: ""
+    fun lastSeenId(settings: BridgeSettings = load()): String = withCurrentConnection(settings) {
+        prefs.getString("last_seen_id", "") ?: ""
+    }
 
-    fun setLastSeenId(id: String) {
+    fun setLastSeenId(id: String, settings: BridgeSettings = load()) = withCurrentConnection(settings) {
         prefs.edit().putString("last_seen_id", id).apply()
     }
+
+    internal fun <T> withCurrentConnection(settings: BridgeSettings, action: () -> T): T =
+        synchronized(connectionLock) {
+            settings.requireCurrentConnection(load())
+            action()
+        }
 
     fun suppressClipboardUntil(): Long = prefs.getLong("suppress_clipboard_until", 0L)
 
@@ -65,6 +85,8 @@ class AppConfig(context: Context) {
     }
 
     companion object {
+        private val connectionLock = Any()
+
         fun normalizeServerUrl(value: String): String {
             var result = value.trim().trimEnd('/')
             if (result.isEmpty()) return ""
@@ -75,3 +97,24 @@ class AppConfig(context: Context) {
         }
     }
 }
+
+internal fun BridgeSettings.hasSameConnectionDetails(other: BridgeSettings): Boolean {
+    if (AppConfig.normalizeServerUrl(serverUrl) != AppConfig.normalizeServerUrl(other.serverUrl) ||
+        accountMode != other.accountMode) return false
+    return if (accountMode) {
+        username.trim() == other.username.trim() && password == other.password
+    } else {
+        token.trim() == other.token.trim()
+    }
+}
+
+internal fun BridgeSettings.matchesConnection(other: BridgeSettings): Boolean =
+    connectionGeneration == other.connectionGeneration && hasSameConnectionDetails(other)
+
+internal fun BridgeSettings.requireCurrentConnection(current: BridgeSettings) {
+    if (!matchesConnection(current)) throw ConnectionChangedException()
+}
+
+internal class ConnectionChangedException : IllegalStateException(
+    "Connection settings changed. Retry using the selected server and account.",
+)

@@ -21,18 +21,22 @@ import java.util.concurrent.TimeUnit
 
 class ApiClient internal constructor(
     private val readSettings: () -> BridgeSettings,
-    private val rememberSent: (String) -> Unit,
+    private val rememberSent: (String, BridgeSettings) -> Unit,
     private val client: OkHttpClient,
 ) {
-    constructor(config: AppConfig, client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .build(),
+    constructor(
+        config: AppConfig,
+        client: OkHttpClient = defaultHttpClient(),
     ) : this(config::load, config::setLastSeenId, client)
 
-    private fun request(path: String): Request.Builder {
-        val settings = readSettings()
+    // An unsaved Settings probe must not read or modify the active connection.
+    internal constructor(settings: BridgeSettings) : this({ settings }, { _, _ -> }, defaultHttpClient())
+
+    private fun request(path: String, settings: BridgeSettings): Request.Builder {
+        settings.requireCurrentConnection(readSettings())
+        require(!settings.accountMode || settings.username.isNotBlank()) {
+            "Enter an account username or select Shared space."
+        }
         val base = AppConfig.normalizeServerUrl(settings.serverUrl)
         val builder = Request.Builder().url(buildRequestUrl(base, path, settings))
         if (settings.accountMode && settings.username.isNotBlank() &&
@@ -46,9 +50,9 @@ class ApiClient internal constructor(
         return builder
     }
 
-    fun testConnection(): OperationResult<String> = runCatching {
-        require(readSettings().serverUrl.isNotBlank()) { "Enter a server address." }
-        client.newCall(request("/clipboard/history?limit=1").get().build()).execute().use { response ->
+    fun testConnection(settings: BridgeSettings = readSettings()): OperationResult<String> = runCatching {
+        require(settings.serverUrl.isNotBlank()) { "Enter a server address." }
+        client.newCall(request("/clipboard/history?limit=1", settings).get().build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 error(httpError(response.code, payload))
@@ -56,6 +60,7 @@ class ApiClient internal constructor(
             require(JSONObject(payload).optJSONArray("items") != null) {
                 "The server did not return clipboard history. Check its address."
             }
+            settings.requireCurrentConnection(readSettings())
             "Connected"
         }
     }.fold(
@@ -63,8 +68,8 @@ class ApiClient internal constructor(
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
 
-    fun history(limit: Int = 200): OperationResult<List<HistoryItem>> = runCatching {
-        client.newCall(request("/clipboard/history?limit=$limit").get().build()).execute().use { response ->
+    fun history(limit: Int = 200, settings: BridgeSettings = readSettings()): OperationResult<List<HistoryItem>> = runCatching {
+        client.newCall(request("/clipboard/history?limit=$limit", settings).get().build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
             val root = JSONObject(payload)
@@ -100,16 +105,16 @@ class ApiClient internal constructor(
                         ),
                     )
                 }
-            }
+            }.also { settings.requireCurrentConnection(readSettings()) }
         }
     }.fold(
         onSuccess = { OperationResult.Success(it) },
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
 
-    fun uploadText(text: String): OperationResult<String> {
+    fun uploadText(text: String, settings: BridgeSettings = readSettings()): OperationResult<String> {
         val body = text.toRequestBody("text/plain; charset=utf-8".toMediaTypeOrNull())
-        return upload(body, null)
+        return upload(body, null, settings)
     }
 
     fun uploadUri(
@@ -117,14 +122,17 @@ class ApiClient internal constructor(
         uri: Uri,
         filename: String = resolver.displayName(uri),
         mime: String = resolver.getType(uri) ?: "application/octet-stream",
+        settings: BridgeSettings = readSettings(),
     ): OperationResult<String> = uploadUris(
         resolver,
         listOf(OutgoingClipboard.Content(uri, filename, mime)),
+        settings,
     )
 
     fun uploadUris(
         resolver: ContentResolver,
         items: List<OutgoingClipboard.Content>,
+        settings: BridgeSettings = readSettings(),
     ): OperationResult<String> {
         return runCatching {
             require(items.isNotEmpty()) { "No files were selected." }
@@ -136,10 +144,10 @@ class ApiClient internal constructor(
                     uriRequestBody(resolver, item.uri, item.mime),
                 )
             }
-            client.newCall(request("/clipboard").post(multipart.build()).build()).execute().use { response ->
+            client.newCall(request("/clipboard", settings).post(multipart.build()).build()).execute().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) error(httpError(response.code, payload))
-                acknowledgeUpload(payload)
+                acknowledgeUpload(payload, settings)
             }
         }.fold(
             onSuccess = { OperationResult.Success(it) },
@@ -163,8 +171,8 @@ class ApiClient internal constructor(
         }
     }
 
-    private fun upload(body: RequestBody, filename: String?): OperationResult<String> = runCatching {
-        val builder = request("/clipboard")
+    private fun upload(body: RequestBody, filename: String?, settings: BridgeSettings): OperationResult<String> = runCatching {
+        val builder = request("/clipboard", settings)
             .post(body)
         if (!filename.isNullOrBlank()) {
             builder.header("X-Clipboard-Filename", filename)
@@ -172,30 +180,32 @@ class ApiClient internal constructor(
         client.newCall(builder.build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
-            acknowledgeUpload(payload)
+            acknowledgeUpload(payload, settings)
         }
     }.fold(
         onSuccess = { OperationResult.Success(it) },
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
 
-    fun downloadLatest(cacheDir: File): OperationResult<ReceivedClipboard> =
-        download("/clipboard/latest/raw", cacheDir)
+    fun downloadLatest(cacheDir: File, settings: BridgeSettings = readSettings()): OperationResult<ReceivedClipboard> =
+        download("/clipboard/latest/raw", cacheDir, settings)
 
-    private fun acknowledgeUpload(payload: String): String {
+    private fun acknowledgeUpload(payload: String, settings: BridgeSettings): String {
         val id = JSONObject(payload).opt("id") as? String
         require(!id.isNullOrBlank()) { "The server did not confirm the saved clipboard item." }
-        rememberSent(id)
+        settings.requireCurrentConnection(readSettings())
+        rememberSent(id, settings)
         return id
     }
 
-    fun downloadItem(id: String, cacheDir: File): OperationResult<ReceivedClipboard> =
-        download("/clipboard/item/$id/raw", cacheDir)
+    fun downloadItem(id: String, cacheDir: File, settings: BridgeSettings = readSettings()): OperationResult<ReceivedClipboard> =
+        download("/clipboard/item/$id/raw", cacheDir, settings)
 
-    fun deleteItem(id: String): OperationResult<String> = runCatching {
-        client.newCall(request("/clipboard/item/$id").delete().build()).execute().use { response ->
+    fun deleteItem(id: String, settings: BridgeSettings = readSettings()): OperationResult<String> = runCatching {
+        client.newCall(request("/clipboard/item/$id", settings).delete().build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
+            settings.requireCurrentConnection(readSettings())
             id
         }
     }.fold(
@@ -203,8 +213,8 @@ class ApiClient internal constructor(
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
 
-    private fun download(path: String, cacheDir: File): OperationResult<ReceivedClipboard> = runCatching {
-        client.newCall(request(path).get().build()).execute().use { response ->
+    private fun download(path: String, cacheDir: File, settings: BridgeSettings): OperationResult<ReceivedClipboard> = runCatching {
+        client.newCall(request(path, settings).get().build()).execute().use { response ->
             if (!response.isSuccessful) {
                 error(httpError(response.code, response.body?.string().orEmpty()))
             }
@@ -213,8 +223,8 @@ class ApiClient internal constructor(
             val mime = response.body?.contentType()?.toString()
                 ?.substringBefore(';')
                 ?: "application/octet-stream"
-            if (type == "bundle") {
-                downloadBundle(id, cacheDir)
+            val received = if (type == "bundle") {
+                downloadBundle(id, cacheDir, settings)
             } else if (type == "text" || (type.isBlank() && mime.startsWith("text/"))) {
                 ReceivedClipboard.Text(id, response.body?.string().orEmpty())
             } else {
@@ -226,15 +236,22 @@ class ApiClient internal constructor(
                 val file = cacheFile(response.body, cacheDir)
                 ReceivedClipboard.FileItem(id, file, filename, mime)
             }
+            try {
+                settings.requireCurrentConnection(readSettings())
+                received
+            } catch (error: Throwable) {
+                received.discardCachedFiles()
+                throw error
+            }
         }
     }.fold(
         onSuccess = { OperationResult.Success(it) },
         onFailure = { OperationResult.Error(it.userMessage()) },
     )
 
-    private fun downloadBundle(id: String, cacheDir: File): ReceivedClipboard.FileGroup {
+    private fun downloadBundle(id: String, cacheDir: File, settings: BridgeSettings): ReceivedClipboard.FileGroup {
         require(id.isNotBlank()) { "The server did not identify the file group." }
-        val metadata = client.newCall(request("/clipboard/item/$id").get().build()).execute().use { response ->
+        val metadata = client.newCall(request("/clipboard/item/$id", settings).get().build()).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error(httpError(response.code, payload))
             JSONObject(payload)
@@ -250,7 +267,7 @@ class ApiClient internal constructor(
                 )
                 val mime = member.stringOrNull("mime") ?: "application/octet-stream"
                 val file = client.newCall(
-                    request("/clipboard/item/$id/file/$memberIndex/raw").get().build(),
+                    request("/clipboard/item/$id/file/$memberIndex/raw", settings).get().build(),
                 ).execute().use { response ->
                     if (!response.isSuccessful) {
                         error(httpError(response.code, response.body?.string().orEmpty()))
@@ -305,6 +322,12 @@ class ApiClient internal constructor(
         }
     }
 }
+
+private fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
+    .connectTimeout(6, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .writeTimeout(60, TimeUnit.SECONDS)
+    .build()
 
 internal fun canUseCredentialHeaders(vararg values: String): Boolean =
     values.all { value -> value == value.trim() && value.all { it in ' '..'~' } }

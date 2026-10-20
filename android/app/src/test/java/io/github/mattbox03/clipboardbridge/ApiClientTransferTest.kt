@@ -27,7 +27,7 @@ class ApiClientTransferTest {
         val settings = BridgeSettings(serverUrl = server.url("/").toString())
         api = ApiClient(
             { settings },
-            { remembered.add(it) },
+            { id, _ -> remembered.add(id) },
             OkHttpClient.Builder().retryOnConnectionFailure(false)
                 .readTimeout(2, TimeUnit.SECONDS).build(),
         )

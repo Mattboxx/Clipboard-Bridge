@@ -44,6 +44,7 @@ not a current claim that its candidate releases remain unpublished.
 | Q9 | Configured names can alias one physical account directory; demonstrated isolation bug on Windows | P1 confidentiality | Standalone account storage and server tests | Reproduced two case-distinct users reading one history on NTFS. Separate candidate guard uses actual filesystem identity, denies ambiguous accounts, and preserves the shared space, other users, existing paths and URLs. | Do not merge distinct Linux directories or silently reassign mixed data. Real Windows and Linux server tests, redacted error and permissions checks. |
 | Q10 | Android trusts incomplete responses and leaves files from failed cache downloads; demonstrated transfer bugs | P1 reliability | Android API client and loopback HTTP tests | Five new regression tests first failed: explicit text files became clipboard text, single/group downloads left partial files, missing upload IDs passed, and wrong JSON endpoints appeared connected. Candidate fixes these without changing authentication or Apple URLs. | Preserve normal Unicode, original document bytes, duplicate filenames, zero-byte files and unrelated cache entries. MediaStore/clipboard application and physical-device acceptance are separate gates. |
 | Q11 | Failed Android grouped receipt leaves already-published downloads; demonstrated application-flow defect | P1 reliability | Android receive helper and MediaStore adapter | Extracted the existing save/apply sequence without changing its behavior; four injected create/write/publish/clipboard failures reproduced retained targets. Candidate stages all writes, checks publication, rolls back every owned target on failure, cleans owned cache files and preserves the original error. | Fake-destination tests are not physical MediaStore evidence. Provider deletion can fail and process death is not transactional; report bounded content-free cleanup diagnostics and keep device checks open. |
+| Q12 | Android operations can change source mid-transfer and accept results from an obsolete connection; demonstrated consistency defects | P1 privacy/reliability | Android API, preferences, repository, clipboard, monitoring and UI request boundaries | Eight initial tests failed: six late/rerouted HTTP results and two cross-source seen-ID cases. Candidate binds operations to immutable settings/generations, guards the final commit, invalidates stale UI requests and tests unsaved Settings without changing the active source. | Preserve optional shared/account/token URLs and Unicode. Verify cursor compatibility, away-and-back changes, group rollback, old acknowledgements and race ordering. UI tickets and in-memory preferences do not prove real Activity/clipboard behavior. |
 
 ## Storage Candidate Contract
 
@@ -74,7 +75,7 @@ to the work already done.
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
 | Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #50 native ARM64 packaging and settings-preservation checks passed; no replacement installer published |
-| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10 HTTP tests passed in CI; Q11 save/apply failure tests, debug build and lint passed locally. Physical MediaStore/lifecycle acceptance remains pending |
+| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10/Q11 tests, build and lint passed in CI. Q12 source-consistency checks pass locally; physical MediaStore/lifecycle acceptance remains pending |
 | Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
 | Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
 | User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
@@ -155,3 +156,19 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   succeeded, with the same eight maintenance warnings and no errors. Tests cover
   write/create/publish/clipboard failures, success ordering, empty files, cleanup
   refusal and a failing diagnostic callback. No physical MediaStore result is claimed.
+- PR #53 head `9fef5a6`: all checks passed in
+  [validation run 39342381729](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39342381729).
+  Downloaded hosted reports confirmed **31 tests, zero failures/errors/skips**.
+  Hosted lint reports nine warnings, including an additional `OldTargetApi` notice
+  not emitted by the local SDK tooling; none were suppressed. SDK/target review is open.
+- Q12 candidate: **63 JVM tests passed**, including sixteen source-switch HTTP tests,
+  nine preference/commit-gate checks and six UI request-ticket checks. Eight initial
+  regressions failed before the fix. `testDebugUnitTest assembleDebug lintDebug`
+  succeeded locally, with zero errors and the same eight local maintenance warnings.
+  A fake destination also verifies rollback if the source changes immediately before
+  the clipboard commit. These are not rendered-Activity or real MediaStore tests;
+  on-device pause/resume, notification and selection cases remain unchecked.
+- The Q12 staged-source snapshot also passed **290 Python tests, one external-host
+  opt-in skip**, with disposable Docker enabled. All seventeen staged Kotlin files
+  matched the locally tested copy byte-for-byte. Release metadata remains 2.0.15;
+  no public binary, store image, installed application or configuration was replaced.

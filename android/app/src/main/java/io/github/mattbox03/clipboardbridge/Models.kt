@@ -52,3 +52,12 @@ sealed interface OperationResult<out T> {
     data class Success<T>(val value: T) : OperationResult<T>
     data class Error(val message: String) : OperationResult<Nothing>
 }
+
+internal fun ReceivedClipboard.discardCachedFiles() {
+    val items = when (this) {
+        is ReceivedClipboard.Text -> emptyList()
+        is ReceivedClipboard.FileItem -> listOf(this)
+        is ReceivedClipboard.FileGroup -> this.items
+    }
+    items.forEach { runCatching { it.file.delete() } }
+}

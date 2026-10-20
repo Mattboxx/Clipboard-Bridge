@@ -51,20 +51,19 @@ class ClipboardController(private val context: Context) {
         onFailure = { OperationResult.Error(it.message ?: "Clipboard unavailable.") },
     )
 
-    fun apply(received: ReceivedClipboard): OperationResult<AppliedItem> = runCatching {
-        config.suppressClipboardFor()
+    fun apply(received: ReceivedClipboard, settings: BridgeSettings = config.load()): OperationResult<AppliedItem> = runCatching {
+        config.withCurrentConnection(settings) { }
         when (received) {
             is ReceivedClipboard.Text -> {
-                clipboard.setPrimaryClip(ClipData.newPlainText("Clipboard Bridge", received.value))
-                AppliedItem(received.id, "text", null, null, received.value)
+                applyClip(ClipData.newPlainText("Clipboard Bridge", received.value),
+                    AppliedItem(received.id, "text", null, null, received.value), settings)
             }
 
             is ReceivedClipboard.FileItem -> {
                 storeReceivedFiles(listOf(received), fileDestination, ::logFileCleanupFailure) { saved ->
                     val uri = saved.first()
                     val clip = ClipData.newUri(context.contentResolver, received.filename, uri)
-                    clipboard.setPrimaryClip(clip)
-                    AppliedItem(received.id, "file", uri, received.mime, received.filename)
+                    applyClip(clip, AppliedItem(received.id, "file", uri, received.mime, received.filename), settings)
                 }
             }
 
@@ -75,24 +74,31 @@ class ClipboardController(private val context: Context) {
                     saved.drop(1).forEach { uri ->
                         clip.addItem(context.contentResolver, ClipData.Item(uri))
                     }
-                    clipboard.setPrimaryClip(clip)
-                    AppliedItem(
+                    applyClip(clip, AppliedItem(
                         received.id,
                         "bundle",
                         saved.first(),
                         first.mime,
                         "${saved.size} files",
-                    )
+                    ), settings)
                 }
             }
         }
     }.fold(
-        onSuccess = {
-            if (it.id.isNotBlank()) config.setLastSeenId(it.id)
-            OperationResult.Success(it)
+        onSuccess = { OperationResult.Success(it) },
+        onFailure = {
+            received.discardCachedFiles()
+            OperationResult.Error(it.message ?: "Unable to store the received item.")
         },
-        onFailure = { OperationResult.Error(it.message ?: "Unable to store the received item.") },
     )
+
+    private fun applyClip(clip: ClipData, item: AppliedItem, settings: BridgeSettings): AppliedItem =
+        config.withCurrentConnection(settings) {
+            config.suppressClipboardFor()
+            clipboard.setPrimaryClip(clip)
+            if (item.id.isNotBlank()) config.setLastSeenId(item.id, settings)
+            item
+        }
 
     private fun logFileCleanupFailure() {
         Log.w("ClipboardBridge", "Received file cleanup could not be completed.")

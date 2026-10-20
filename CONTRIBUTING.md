@@ -101,6 +101,21 @@ These tests do not establish Android MediaStore, clipboard permissions, Quick Se
 or sleep/background behavior. Complete the physical-device cases in
 [the manual acceptance plan](maintainer/MANUAL_TESTS.md) before claiming those results.
 
+`ApiClientConnectionTest` changes accounts/servers while the actual HTTP client is
+waiting for responses. It checks that group members are never rerouted, stale
+downloads are discarded and old acknowledgements cannot mark a new account as seen.
+`AppConfigConnectionTest` uses in-memory preferences to exercise source generations,
+legacy settings, cursor resets and the short commit gate shared by Settings and
+clipboard application. `ConnectionRequestGateTest` checks UI request invalidation;
+it does not instantiate an Android Activity or prove the rendered lifecycle behavior.
+
+The generation protects in-process ordering, not disk durability or a multi-process
+transaction. The application keeps the existing
+[SharedPreferences `apply()` behavior](https://developer.android.com/reference/android/content/SharedPreferences.Editor#apply()):
+memory changes become available before its asynchronous disk write. Network requests
+and copying file bytes remain outside the commit gate. An already-sent request may
+still finish on its original host; changing Settings cannot undo that remote action.
+
 ## Disposable Container Integration
 
 Build a local test image, then opt in to real HTTP/persistence tests:

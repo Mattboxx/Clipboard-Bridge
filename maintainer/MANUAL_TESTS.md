@@ -25,6 +25,16 @@ do not disable protection or treat a checksum as a trusted signature.
 
 - [ ] Install the beta.11 APK over beta.10 with the same signing certificate; settings survive.
 - [ ] Shared space with no token; shared space with token; two isolated accounts.
+- [ ] Test different draft credentials, then go Back without Save: the active account,
+      monitoring and existing receive cursor remain unchanged. Save explicitly to switch.
+- [ ] Switch accounts/servers during a slow grouped download and during an upload.
+      No late history/status, notification or clipboard update is assigned to the new
+      account. An already-sent upload may complete on its original host; do not claim rollback.
+- [ ] Switch away and back while a request is pending; old results are still ignored.
+- [ ] Pause/resume during history refresh, then rapidly refresh/select/delete: no old
+      confirmation targets a different account, spinner sticks or stale history reappears.
+- [ ] Use a test host slower than five seconds: periodic refreshes do not starve the
+      first successful response or create an unbounded queue.
 - [ ] Unicode password/token, including an accented character: no invalid-header exception.
 - [ ] Receive Windows/Apple plain text with emoji; paste in a separate application.
 - [ ] Share text, a photo, an unfamiliar extension, and a multi-file group from other apps.

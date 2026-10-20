@@ -46,6 +46,27 @@ See the [API reference](../../README.md#api-reference) for payloads and endpoint
   Authentication values in URLs are not encryption. Use a trusted LAN or private
   VPN; do not encourage direct public exposure of port 5088.
 
+## Android Operation Boundaries
+
+An action captures immutable connection settings, including an internal generation.
+Group metadata and members use that same source. Checks before dispatch and before
+accepting a result reject a superseded connection; they do not reroute an in-flight
+operation. Changing away and back also advances the generation. Notification and
+automation preferences do not change it.
+
+Settings writes and the final clipboard/seen-ID update share a short in-process
+gate. Network work and file copying do not hold that gate. A source change before
+the clipboard update causes receipt to fail and attempts cleanup of the new files.
+An already-sent upload/delete may still finish on the original host; there is no
+remote transaction rollback. Existing optional account/token URLs are unchanged.
+
+History and command responses have separate UI request tickets. Pause, superseding
+refreshes and source changes invalidate old results; periodic refreshes do not pile
+up while one is running. A history selection carries its original source through
+download/delete confirmation. Testing draft Settings does not modify the active
+configuration: only Save does. Device lifecycle and real clipboard behavior still
+require the [manual acceptance checks](../../maintainer/MANUAL_TESTS.md).
+
 ## Directory Ownership
 
 ```text

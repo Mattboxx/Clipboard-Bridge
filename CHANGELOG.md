@@ -4,6 +4,15 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Bind Android operations and every member of a file group to their initial server
+  and account. Discard obsolete results after a connection change instead of mixing
+  sources or advancing the new account's receive cursor.
+- Ignore late Android history/operation results after pause, refresh or account
+  changes; retain the source of history selections and delete confirmations.
+- Test draft Android connection settings without saving them. Keep unrelated
+  automation/notification changes from resetting the connection or receive cursor.
+- Reject an empty username in Android Account mode instead of silently requesting
+  the general clipboard. Shared space without credentials remains supported.
 - Stage Android file groups before publishing them to Downloads. If writing,
   publishing or applying the clipboard fails, attempt cleanup of every newly
   created download and remove this operation's cached files. Preserve existing files.

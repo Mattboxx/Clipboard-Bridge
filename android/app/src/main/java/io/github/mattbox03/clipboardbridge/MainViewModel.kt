@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -25,40 +27,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = BridgeRepository(application)
     private val _state = MutableStateFlow(MainUiState(settings = config.load()))
     val state = _state.asStateFlow()
+    private val historyRequests = ConnectionRequestGate()
+    private val operations = ConnectionRequestGate()
+    private var historyVisible = true
+    private var historyJob: Job? = null
 
     init {
         refresh()
     }
 
     fun reloadSettings() {
+        val settings = config.load()
+        val changed = !_state.value.settings.matchesConnection(settings)
+        if (changed) operations.invalidate()
+        historyVisible = true
         _state.update {
             it.copy(
-                settings = config.load(),
+                settings = settings,
                 serverHistory = emptyList(),
+                loading = if (changed) false else it.loading,
+                message = if (changed) null else it.message,
             )
         }
         refresh()
     }
 
     fun clearServerHistory() {
+        historyVisible = false
+        historyJob?.cancel()
+        historyRequests.invalidate()
         _state.update { it.copy(serverHistory = emptyList()) }
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        if (!historyVisible) return
+        historyJob?.cancel()
+        historyJob = viewModelScope.launch {
             _state.update { it.copy(connection = ConnectionState.Checking) }
             loadServerHistory(reportError = true)
         }
     }
 
     fun refreshSilently() {
-        viewModelScope.launch {
+        if (!historyVisible || historyJob?.isActive == true) return
+        historyJob = viewModelScope.launch {
             loadServerHistory(reportError = false)
         }
     }
 
     private suspend fun loadServerHistory(reportError: Boolean) {
-        when (val history = repository.history()) {
+        if (!historyVisible) return
+        val settings = config.load()
+        val ticket = historyRequests.begin(settings)
+        val history = try {
+            repository.history(settings)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            OperationResult.Error(UiCopy.current().operationFailed)
+        }
+        if (!historyVisible || !historyRequests.isCurrent(ticket, config.load())) return
+        when (history) {
             is OperationResult.Error -> _state.update {
                 it.copy(
                     connection = ConnectionState.Disconnected,
@@ -76,32 +105,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendClipboard() = runOperation {
-        repository.sendClipboard().mapSuccess(UiCopy.current().sent)
+    fun sendClipboard() = runOperation { settings ->
+        repository.sendClipboard(settings).mapSuccess(UiCopy.current().sent)
     }
 
-    fun sendUri(uri: Uri) = runOperation {
-        repository.sendUri(uri).mapSuccess(UiCopy.current().sent)
+    fun sendUri(uri: Uri) = runOperation { settings ->
+        repository.sendUri(uri, settings).mapSuccess(UiCopy.current().sent)
     }
 
-    fun sendUris(uris: List<Uri>) = runOperation {
-        repository.sendUris(uris).mapSuccess(UiCopy.current().sent)
+    fun sendUris(uris: List<Uri>) = runOperation { settings ->
+        repository.sendUris(uris, settings).mapSuccess(UiCopy.current().sent)
     }
 
-    fun sendSharedIntent(intent: Intent) = runOperation {
-        repository.sendSharedIntent(intent).mapSuccess(UiCopy.current().sent)
+    fun sendSharedIntent(intent: Intent) = runOperation { settings ->
+        repository.sendSharedIntent(intent, settings).mapSuccess(UiCopy.current().sent)
     }
 
-    fun receiveLatest() = runOperation {
-        repository.receiveLatest().mapSuccess(UiCopy.current().received)
+    fun receiveLatest() = runOperation { settings ->
+        repository.receiveLatest(settings = settings).mapSuccess(UiCopy.current().received)
     }
 
-    fun receiveItem(id: String) = runOperation {
-        repository.receiveItem(id).mapSuccess(UiCopy.current().received)
+    fun receiveItem(id: String, source: BridgeSettings = _state.value.settings) = runOperation(source) { settings ->
+        repository.receiveItem(id, settings = settings).mapSuccess(UiCopy.current().received)
     }
 
-    fun deleteItem(id: String) = runOperation {
-        repository.deleteItem(id).mapSuccess(UiCopy.current().deleted)
+    fun deleteItem(id: String, source: BridgeSettings = _state.value.settings) = runOperation(source) { settings ->
+        repository.deleteItem(id, settings).mapSuccess(UiCopy.current().deleted)
     }
 
     fun autoSendClipboardIfAllowed() {
@@ -114,18 +143,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(message = null) }
     }
 
-    private fun runOperation(block: suspend () -> OperationResult<String>) {
+    private fun runOperation(
+        settings: BridgeSettings = config.load(),
+        block: suspend (BridgeSettings) -> OperationResult<String>,
+    ) {
         if (_state.value.loading) return
+        if (!settings.matchesConnection(config.load())) {
+            refresh()
+            return
+        }
+        val ticket = operations.begin(settings)
+        _state.update { it.copy(loading = true, message = null) }
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, message = null) }
-            when (val result = block()) {
-                is OperationResult.Error -> showError(result.message)
-                is OperationResult.Success -> {
-                    _state.update { it.copy(message = result.value) }
-                    refresh()
+            try {
+                val result = block(settings)
+                if (!operations.isCurrent(ticket, config.load())) return@launch
+                when (result) {
+                    is OperationResult.Error -> showError(result.message)
+                    is OperationResult.Success -> {
+                        _state.update { it.copy(message = result.value) }
+                        refresh()
+                    }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                if (operations.isCurrent(ticket, config.load())) {
+                    showError(UiCopy.current().operationFailed)
+                }
+            } finally {
+                if (operations.isCurrent(ticket, config.load())) {
+                    _state.update { it.copy(loading = false) }
                 }
             }
-            _state.update { it.copy(loading = false) }
         }
     }
 

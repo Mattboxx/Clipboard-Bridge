@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class SettingsActivity : ComponentActivity() {
@@ -74,9 +76,9 @@ class SettingsActivity : ComponentActivity() {
                     close = ::finish,
                     save = ::saveSettings,
                     test = { settings, callback ->
-                        config.save(settings)
                         lifecycleScope.launch {
-                            callback(BridgeRepository(this@SettingsActivity).testConnection())
+                            val result = withContext(Dispatchers.IO) { ApiClient(settings).testConnection() }
+                            callback(result)
                         }
                     },
                 )
@@ -244,8 +246,9 @@ private fun SettingsScreen(
                         onClick = {
                             testing = true
                             testResult = null
-                            test(settings) {
-                                testResult = it
+                            val tested = settings
+                            test(tested) {
+                                if (tested.hasSameConnectionDetails(settings)) testResult = it
                                 testing = false
                             }
                         },

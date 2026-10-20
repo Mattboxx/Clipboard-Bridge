@@ -134,7 +134,7 @@ private fun MainScreen(
     val state by viewModel.state.collectAsState()
     val copy = remember { UiCopy.current() }
     val snackbar = remember { SnackbarHostState() }
-    var pendingDelete by remember { mutableStateOf<HistoryItem?>(null) }
+    var pendingDelete by remember { mutableStateOf<HistorySelection?>(null) }
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
@@ -153,14 +153,15 @@ private fun MainScreen(
         }
     }
 
-    LaunchedEffect(state.settings.serverUrl) {
+    LaunchedEffect(state.settings.connectionGeneration) {
+        pendingDelete = null
         while (true) {
             delay(5_000)
             viewModel.refreshSilently()
         }
     }
 
-    pendingDelete?.let { item ->
+    pendingDelete?.let { selection ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(copy.delete) },
@@ -169,7 +170,7 @@ private fun MainScreen(
                 TextButton(
                     onClick = {
                         pendingDelete = null
-                        viewModel.deleteItem(item.id)
+                        viewModel.deleteItem(selection.item.id, selection.settings)
                     },
                 ) {
                     Text(copy.delete, color = MaterialTheme.colorScheme.error)
@@ -296,8 +297,8 @@ private fun MainScreen(
                     HistoryRow(
                         item = item,
                         copy = copy,
-                        onDownload = { viewModel.receiveItem(item.id) },
-                        onDelete = { pendingDelete = item },
+                        onDownload = { viewModel.receiveItem(item.id, state.settings) },
+                        onDelete = { pendingDelete = HistorySelection(item, state.settings) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 64.dp))
                 }
@@ -305,6 +306,8 @@ private fun MainScreen(
         }
     }
 }
+
+private class HistorySelection(val item: HistoryItem, val settings: BridgeSettings)
 
 @Composable
 private fun ConnectionBand(state: ConnectionState, settings: BridgeSettings, copy: UiCopy) {
