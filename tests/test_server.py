@@ -3,6 +3,7 @@ import importlib.util
 import io
 import json
 import os
+import socket
 import sys
 import uuid
 import zipfile
@@ -519,6 +520,42 @@ def test_original_published_shortcut_routes_remain_compatible(server):
     assert latest.status_code == 200
     assert latest.data == b"original shortcut"
     assert latest.headers["X-Clipboard-Type"] == "text"
+
+
+@pytest.mark.parametrize("text", [
+    "https://www.reddit.com/r/example/comments/demo/title/?x=1&y=%23value#section",
+    "https://example.com/?q=caff\u00e8\U0001f600&literal=%26%3D",
+    "Read this: https://example.com/one\nhttps://example.org/two",
+])
+def test_apple_json_link_is_text_without_fetching_the_page(server, monkeypatch, text):
+    def reject_connect(*args, **kwargs):
+        pytest.fail("Storing clipboard text must not connect to a shared URL")
+
+    monkeypatch.setattr(socket.socket, "connect", reject_connect)
+    client = server.app.test_client()
+    query = {"user": "alice", "password": "p&ss?word"}
+    response = client.post("/clipboard", query_string=query, json={"text": text})
+    assert response.status_code == 200
+    assert response.get_json()["type"] == "text"
+    item = client.get("/clipboard/latest", query_string=query).get_json()
+    assert item["text"] == text and item["mime"] == "text/plain"
+    received = client.get("/clipboard/latest/raw", query_string=query)
+    assert received.data == text.encode("utf-8")
+    assert received.content_type == "text/plain; charset=utf-8"
+    assert client.get("/clipboard/latest/raw?token=shared-token").data == b""
+    assert client.get("/clipboard/history?token=shared-token").get_json()["items"] == []
+
+
+def test_shared_html_document_keeps_original_bytes(server):
+    client = server.app.test_client()
+    raw = b'<!DOCTYPE html><html><body><a href="https://example.com/">Link</a></body></html>'
+    route = "/clipboard?token=shared-token&filename=page.html"
+    response = client.post(route, data=raw, content_type="text/html; charset=utf-8")
+    assert response.status_code == 200
+    assert response.get_json()["type"] == "file"
+    received = client.get("/clipboard/latest/raw?token=shared-token")
+    assert received.data == raw
+    assert "page.html" in received.headers["Content-Disposition"]
 
 
 def test_iphone_text_variants_preserve_every_character(server):

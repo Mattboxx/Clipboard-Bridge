@@ -60,6 +60,9 @@ or a provider refusing deletion can leave new files behind despite attempted rol
 - [ ] Import both unmodified signed exports on a supported OS version.
 - [ ] Change only the server address and optional existing URL credentials.
 - [ ] Send/receive plain text, rich text, emoji, a photo and a PDF.
+- [ ] Share a Reddit link from its app and from Safari: the text/JSON branch sends
+      the original address, not fetched HTML. Check Copy Link and Control Center too.
+- [ ] Send a real `.html` file: preserve its filename and original bytes, not its URLs.
 - [ ] Share a `.rtf` document as a file: original bytes and extension are preserved.
 - [ ] Run the documented multi-file variant; receive/extract the transport group correctly.
 - [ ] Test a URL-encoded password containing spaces, `&` and accented characters.

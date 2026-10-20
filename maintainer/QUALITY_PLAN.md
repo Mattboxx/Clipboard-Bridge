@@ -48,6 +48,8 @@ not a current claim that its candidate releases remain unpublished.
 | Q13 | Windows release preparation deletes existing extra assets, hides an intermediate copy failure and hard-codes the APK version; demonstrated packaging defects | P1 artifact integrity | Release batch and new staging helper | Three tests first failed by executing the actual preparation stage in private temporary projects. Candidate preserves extras, preflights inputs, stages copies and uses structured Gradle output metadata for APK naming. | Never run legacy deletion against real Output folders. Fault tests, actual batch stage, version/name checks and explicit per-file/nontransactional publication limits. |
 | Q14 | Native x64 compiled/installed packages lack the automated gate available for ARM64; verification gap | P1 delivery | Windows workflows and pinned build requirements | Candidate runs the actual x64 batch build, frozen smoke checks, disposable installer data preservation and dependency/provenance capture. ARM64 retains its native verification using the same PyInstaller pin. | Source tests alone do not prove frozen imports, PDFium architecture or installer preservation. Hosted native builds must pass before artifacts are called verified. |
 | Q15 | Main ruleset does not require PRs or successful checks; delivery policy risk | P1 governance | GitHub ruleset `20001324` | Live API inspection showed only deletion, non-fast-forward and linear-history rules. Required review/check policy still needs a targeted follow-up after stable CI names are verified. | Do not silently lock out a solo maintainer, require conditional jobs on unrelated PRs, bypass protections or publish an unapproved release. |
+| Q16 | Apple link uploads can arrive as downloaded HTML; reported interoperability defect | P1 usability | Apple Shortcut recipe and bilingual tutorial | User supplied Reddit HTML. Both host modes preserve URL text without fetching it; updated instructions explicitly extract URL strings and send a JSON text field, preserving file branches. | The installed Shortcut/action chain was not available for inspection. Do not infer the original URL from arbitrary HTML or mutate actual HTML documents. Signed exports unchanged; physical Apple validation remains required. |
+| Q17 | First x64 build provenance reports Inno Setup as `0.0.0.0`, and its installer sample uses the wrong local-history index name; demonstrated verification defects | P1 delivery evidence | Native x64 workflow | Downloaded artifact matches both EXE checksums and its source merge commit contains the expected PR head. Compiler output reports 6.7.1, but Windows executable metadata reports zero. Local-history fixture must use `local_history/local_history.json`. | Read the compiler's actual banner, identify PR head and tested merge separately, and verify real profile paths before trusting the preservation gate. |
 
 ## Storage Candidate Contract
 
@@ -77,8 +79,8 @@ to the work already done.
 | Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | PR #50 candidate verified locally and in CI; not released |
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
-| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #50 native ARM64 packaging and settings-preservation checks passed; no replacement installer published |
-| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10/Q11 tests, build and lint passed in CI. Q12 source-consistency checks pass locally; physical MediaStore/lifecycle acceptance remains pending |
+| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #55 native x64 and ARM64 checks passed. Real standard-user upgrade/desktop acceptance remains pending; no replacement installer published |
+| Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10/Q11/Q12 tests, build and lint passed in CI; physical MediaStore/lifecycle acceptance remains pending |
 | Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
 | Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
 | User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
@@ -185,4 +187,25 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   the Windows junction guard and three actual batch-stage regressions passed.
   All workflows passed actionlint 1.7.12; its official release archive was checked
   against GitHub's SHA-256 digest before use. Critical Python checks and version
-  metadata validation passed. Native x64/ARM64 hosted verification is still pending.
+  metadata validation passed.
+- PR #55 head `34ba058`: native x64 passed in
+  [run 39386200197](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200197),
+  native ARM64 in [run 39386200113](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200113),
+  and all three validation jobs in [run 39386200245](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39386200245).
+  The x64 log confirms **195 tests**, actual batch compilation, portable/installed
+  frozen smoke checks, pre-existing profile hash comparisons and a five-file artifact
+  containing packages, checksums, dependency versions and provenance. These disposable
+  runner tests do not establish a real standard-user upgrade or SmartScreen reputation.
+- Q16 candidate: **212 server/Windows tests passed**, including eight new synthetic
+  URL/HTML regressions. Link text retains query characters, fragments, Unicode and
+  line breaks; outbound socket connections are forbidden except the embedded test
+  client's own loopback connection. Actual `.html` files retain their name and bytes.
+  Both tutorial pages also passed eight selected site checks. No user HTML or
+  credentials were copied into the fixtures. No iPhone action chain was executed,
+  and signed Shortcut exports remain byte-for-byte unchanged.
+- The complete staged Q16 source snapshot passed **328 Python tests, two explicit
+  skips**, with disposable Docker enabled. The skips remain the external-host
+  opt-in and local directory-symlink permission, not the container integration tests.
+  Downloaded PR #55 x64 packages match both recorded SHA-256 checksums. Its tested
+  merge commit `fc440d8` has PR head `34ba058` as a parent. Inspecting the artifact
+  exposed Q17; a green build alone is not sufficient provenance/preservation evidence.

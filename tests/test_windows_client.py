@@ -46,6 +46,44 @@ def embedded(tmp_path, monkeypatch):
     thread.join(timeout=5)
 
 
+@pytest.mark.parametrize("text", [
+    "https://www.reddit.com/r/example/comments/demo/title/?x=1&y=%23value#section",
+    "https://example.com/?q=caff\u00e8\U0001f600&literal=%26%3D",
+    "Read this: https://example.com/one\nhttps://example.org/two",
+])
+def test_embedded_apple_json_link_is_text_without_fetching_the_page(embedded, monkeypatch, text):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    connect = socket.socket.connect
+
+    def loopback_only(connection, destination):
+        assert destination == address, "Storing clipboard text must not connect to a shared URL"
+        return connect(connection, destination)
+
+    monkeypatch.setattr(socket.socket, "connect", loopback_only)
+    response = requests.post(base + "/clipboard", json={"text": text}, timeout=5)
+    assert response.status_code == 200
+    assert response.json()["type"] == "text"
+    item = requests.get(base + "/clipboard/latest", timeout=5).json()
+    assert item["text"] == text and item["mime"] == "text/plain"
+    received = requests.get(base + "/clipboard/latest/raw", timeout=5)
+    assert received.content == text.encode("utf-8")
+    assert received.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+
+def test_embedded_shared_html_document_keeps_original_bytes(embedded):
+    client, address = embedded
+    base = f"http://{address[0]}:{address[1]}"
+    raw = b'<!DOCTYPE html><html><body><a href="https://example.com/">Link</a></body></html>'
+    response = requests.post(base + "/clipboard?filename=page.html", data=raw,
+                             headers={"Content-Type": "text/html; charset=utf-8"}, timeout=5)
+    assert response.status_code == 200
+    assert response.json()["type"] == "file"
+    received = requests.get(base + "/clipboard/latest/raw", timeout=5)
+    assert received.content == raw
+    assert "page.html" in received.headers["Content-Disposition"]
+
+
 def test_embedded_rejects_negative_bundle_member(embedded):
     client, address = embedded
     base = f"http://{address[0]}:{address[1]}"
