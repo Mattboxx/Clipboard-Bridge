@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 ARG VERSION=dev
 ARG VCS_REF=unknown
