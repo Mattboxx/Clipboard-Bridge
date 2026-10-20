@@ -4,9 +4,6 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
-- Keep Windows draft connection checks inside Settings without changing the saved
-  connection's tray state or cancelling an active background check. Ignore late
-  draft results after editing or closing the form; reject malformed history replies.
 - Raise the standalone server's supported Flask minimum to the reviewed patched
   release; publishing a new stable container remains a separate step.
 - Bind Android operations and every member of a file group to their initial server
@@ -38,6 +35,19 @@ All notable user-facing changes are documented here.
   history; unaffected standalone accounts remain available.
 - Flush a complete temporary index before atomic replacement and remove temporary
   files after failed commits. Keep previous indexed files on failed uploads.
+
+## Windows 2.0.17 - 2026-10-20
+
+- Discard obsolete receive results and notifications after a server, account,
+  password or token change, including switching away and back.
+- Avoid automatically re-sharing the previous connection's clipboard into a new
+  account. Keep queued file sends, history actions and file-group downloads bound
+  to their original connection without holding Settings locks during HTTP.
+- Keep draft connection checks inside Settings without changing active tray status;
+  discard replies after editing/closing and reject malformed history responses.
+- Do not publish changed connection settings before hotkeys validate successfully.
+- Update Windows x64/ARM64 installer, portable and website download references.
+- Android beta.11, signed Apple exports and stable Docker server 1.0.8 are unchanged.
 
 ## Windows 2.0.16 - 2026-10-20
 

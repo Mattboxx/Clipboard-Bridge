@@ -190,6 +190,9 @@ _notification_lock = threading.Lock()
 _sync_state_lock = threading.Lock()
 _remote_activity_lock = threading.RLock()
 _remote_request_context = threading.local()
+_settings_lock = threading.RLock()
+_connection_epoch = 0
+_connection_clipboard_sequence = None
 _local_history_lock = threading.RLock()
 _local_history_warning = False
 _pdf_preview_lock = threading.Lock()
@@ -224,6 +227,7 @@ STRINGS = {
         "status_auth": "Connection: SERVER FOUND, LOGIN REJECTED",
         "status_checking": "Connection: checking...",
         "connection_changed": "Settings changed. Check the connection again.",
+        "remote_changed": "Connection changed. Retry on the selected connection; an earlier upload may already have completed.",
         "tray_connected": "🟢 Connected",
         "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
@@ -351,6 +355,7 @@ STRINGS = {
         "status_auth": "Connessione: SERVER TROVATO, ACCESSO RIFIUTATO",
         "status_checking": "Connessione: verifica in corso...",
         "connection_changed": "Impostazioni modificate. Verifica di nuovo la connessione.",
+        "remote_changed": "Connessione cambiata. Riprova sulla connessione selezionata; un invio precedente potrebbe essere gia completato.",
         "tray_connected": "🟢 Connesso",
         "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
@@ -561,17 +566,61 @@ def _request_settings():
     return getattr(_remote_request_context, "settings", config)
 
 
+def _connection_identity(values):
+    identity = [values.get("mode", "client"), server_url(values),
+                values.get("username", "").strip(), values.get("password", ""), values.get("token", "")]
+    return hashlib.sha256(json.dumps(identity, ensure_ascii=True).encode("utf-8")).hexdigest()
+
+
+def _connection_ticket():
+    with _settings_lock:
+        return _connection_epoch, _connection_identity(config)
+
+
+def _apply_config(values):
+    """Publish a full Settings snapshot without waiting for network operations."""
+    global config, _connection_epoch, _connection_clipboard_sequence
+    values = dict(values)
+    with _settings_lock:
+        changed = _connection_identity(config) != _connection_identity(values)
+        config = values
+        if changed:
+            _connection_epoch += 1
+            _connection_clipboard_sequence = _clipboard_sequence()
+
+
+class _ConnectionChanged(RuntimeError):
+    def __init__(self):
+        super().__init__(t("remote_changed"))
+
+
 @contextmanager
-def _remote_operation():
+def _remote_commit(expected=None):
+    # Never hold this short commit lock during an HTTP request.
+    with _settings_lock:
+        ticket = expected or getattr(_remote_request_context, "ticket", None)
+        if ticket is not None and ticket != _connection_ticket():
+            raise _ConnectionChanged()
+        yield
+
+
+@contextmanager
+def _remote_operation(expected=None):
     with _remote_activity_lock:
         nested = hasattr(_remote_request_context, "settings")
         if not nested:
-            _remote_request_context.settings = dict(config)
+            with _settings_lock:
+                _remote_request_context.settings = dict(config)
+                _remote_request_context.ticket = _connection_ticket()
         try:
+            if expected is not None:
+                with _remote_commit(expected):
+                    pass
             yield
         finally:
             if not nested:
                 del _remote_request_context.settings
+                del _remote_request_context.ticket
 
 
 def _in_remote_operation(function):
@@ -662,6 +711,7 @@ def check_connection(settings=None, *, on_status=None):
     """Check a space; an explicit status callback keeps draft results private."""
     global _connection_check_generation
     values = dict(settings or config)
+    active_ticket = _connection_ticket()
     if values.get("mode") == "server":
         target = f"http://127.0.0.1:{values.get('host_port', 5088)}"
     else:
@@ -679,7 +729,11 @@ def check_connection(settings=None, *, on_status=None):
         if on_status is not None:
             on_status(state)
         else:
-            _set_connection_state(state, target, generation)
+            try:
+                with _remote_commit(active_ticket):
+                    _set_connection_state(state, target, generation)
+            except _ConnectionChanged:
+                pass
 
     report("checking")
     try:
@@ -697,7 +751,8 @@ def check_connection(settings=None, *, on_status=None):
         if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
             raise ValueError("unexpected server response")
         report("connected")
-        return True
+        return on_status is not None or (active_ticket == _connection_ticket()
+                                        and generation == _connection_check_generation)
     except Exception:
         report("offline")
         return False
@@ -969,8 +1024,9 @@ def _file_clipboard_key(paths):
 
 def _set_local_upload_marker(kind, value):
     global _local_upload_marker
+    ticket = getattr(_remote_request_context, "ticket", None) or _connection_ticket()
     with _local_upload_lock:
-        _local_upload_marker = (_sync_source_key(), kind, value)
+        _local_upload_marker = (ticket, kind, value)
 
 
 def _take_local_upload_marker():
@@ -978,7 +1034,7 @@ def _take_local_upload_marker():
     with _local_upload_lock:
         marker = _local_upload_marker
         _local_upload_marker = None
-        return marker[1:] if marker and marker[0] == _sync_source_key() else None
+    return marker[1:] if marker and marker[0] == _connection_ticket() else None
 
 
 def save_received(filename, raw):
@@ -1228,7 +1284,7 @@ def save_remote_files(item):
 def _sync_source_key():
     values = _request_settings()
     source = {
-        "url": server_url(),
+        "url": server_url(values),
         "account": values.get("username", "").strip() if values.get("mode") != "server" else "",
     }
     return hashlib.sha256(
@@ -1313,6 +1369,8 @@ def _consume_silent_item(item_id):
 @_in_remote_operation
 def _auto_receive_remote_files():
     items = fetch_history(200)
+    with _remote_commit():
+        pass
     remote_files = [
         item for item in items
         if item.get("type") in ("file", "bundle") and item.get("id")
@@ -1320,7 +1378,7 @@ def _auto_receive_remote_files():
     current_ids = [item["id"] for item in remote_files]
     key = _sync_source_key()
 
-    with _sync_state_lock:
+    with _remote_commit(), _sync_state_lock:
         state = _load_sync_state()
         sources = state.setdefault("sources", {})
         if key not in sources:
@@ -1335,26 +1393,22 @@ def _auto_receive_remote_files():
     latest = items[0] if items else {}
     clipboard_paths = []
     for item in new_items:
+        with _remote_commit():
+            pass
         paths = save_remote_files(item)
-        if not paths:
+        with _remote_commit():
+            if not paths:
+                _mark_remote_file_seen(item["id"])
+                continue
+            _try_local_history(record_local_files, paths)
             _mark_remote_file_seen(item["id"])
-            continue
-        _try_local_history(record_local_files, paths)
-        _mark_remote_file_seen(item["id"])
-        if item["id"] == latest.get("id"):
-            clipboard_paths = paths
-        message = (
-            t("files_arrived", n=len(paths)) if len(paths) > 1
-            else t("file_arrived", name=os.path.basename(paths[0]))
-        )
-        notify_received(
-            "file",
-            message,
-            action=(
-                (lambda: open_received_folder()) if len(paths) > 1
-                else (lambda path=paths[0]: reveal_received_file(path))
-            ),
-        )
+            if item["id"] == latest.get("id"):
+                clipboard_paths = paths
+            message = (t("files_arrived", n=len(paths)) if len(paths) > 1
+                       else t("file_arrived", name=os.path.basename(paths[0])))
+            notify_received("file", message,
+                            action=(lambda: open_received_folder()) if len(paths) > 1
+                            else (lambda path=paths[0]: reveal_received_file(path)))
     # Retry a busy clipboard using the saved files, without downloading/notifying twice.
     if latest.get("type") in ("file", "bundle") and latest.get("id") != _last_remembered_item():
         with _sync_state_lock:
@@ -1362,9 +1416,10 @@ def _auto_receive_remote_files():
         if saved and all(os.path.isfile(path) for path in saved):
             clipboard_paths = saved
     if clipboard_paths:
-        set_clipboard_files(clipboard_paths)
-        _set_local_upload_marker("files", _file_clipboard_key(clipboard_paths))
-        _remember_item(latest.get("id"))
+        with _remote_commit():
+            set_clipboard_files(clipboard_paths)
+            _set_local_upload_marker("files", _file_clipboard_key(clipboard_paths))
+            _remember_item(latest.get("id"))
     return clipboard_paths
 
 
@@ -2183,20 +2238,23 @@ def action_send_clipboard(icon=None, item=None):
         files = get_clipboard_files()
         if files:
             push_files(files)
-            _try_local_history(record_local_files, files)
-            notify(t("files_sent", n=len(files)) if len(files) > 1 else t("file_sent"))
+            with _remote_commit():
+                _try_local_history(record_local_files, files)
+                notify(t("files_sent", n=len(files)) if len(files) > 1 else t("file_sent"))
             return
         img = get_clipboard_image()
         if img is not None:
             push_image(img)
-            _try_local_history(record_local_image, img)
-            notify(t("image_sent"))
+            with _remote_commit():
+                _try_local_history(record_local_image, img)
+                notify(t("image_sent"))
             return
         text = get_clipboard_text()
         if text:
             push_text(text)
-            _try_local_history(record_local_text, text)
-            notify(t("text_sent"))
+            with _remote_commit():
+                _try_local_history(record_local_text, text)
+                notify(t("text_sent"))
         else:
             notify(t("clip_empty"))
     except Exception as e:
@@ -2206,11 +2264,11 @@ def action_send_clipboard(icon=None, item=None):
 @_in_remote_operation
 def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
     """Remember a receive only after Windows actually accepts the clipboard data."""
+    with _remote_commit():
+        pass
     kind = data.get("type")
     if kind == "text":
         value = plain_clipboard_text(data.get("text", ""))
-        set_clipboard_text(value)
-        _set_local_upload_marker("text", value)
     elif kind == "image":
         try:
             image = Image.open(io.BytesIO(base64.b64decode(data["data"])))
@@ -2220,20 +2278,23 @@ def _copy_remote_item(data, *, update_latest=True, suppress_notification=True):
             data = dict(data, type="file")
             kind = "file"
             paths = save_remote_files(data)
-            set_clipboard_files(paths)
-            _set_local_upload_marker("files", _file_clipboard_key(paths))
-        else:
+    elif kind in ("file", "bundle"):
+        paths = save_remote_files(data)
+    else:
+        return False
+    with _remote_commit():
+        if kind == "text":
+            set_clipboard_text(value)
+            _set_local_upload_marker("text", value)
+        elif kind == "image":
             set_clipboard_image(image)
             restored = get_clipboard_image()
             _set_local_upload_marker("image", _img_hash(restored if restored is not None else image))
-    elif kind in ("file", "bundle"):
-        paths = save_remote_files(data)
-        set_clipboard_files(paths)
-        _set_local_upload_marker("files", _file_clipboard_key(paths))
-    else:
-        return False
-    _remember_item(data.get("id"), file_seen=kind in ("file", "bundle"),
-                   suppress_notification=suppress_notification, update_latest=update_latest)
+        else:
+            set_clipboard_files(paths)
+            _set_local_upload_marker("files", _file_clipboard_key(paths))
+        _remember_item(data.get("id"), file_seen=kind in ("file", "bundle"),
+                       suppress_notification=suppress_notification, update_latest=update_latest)
     return kind
 
 
@@ -2246,28 +2307,20 @@ def action_get_latest(icon=None, item=None):
             kind = _copy_remote_item(data)
             if kind == "file" and data.get("type") == "image":
                 data = dict(data, type="file")
-        if kind == "text":
-            notify_received("text", t("text_recv"))
-        elif kind == "image":
-            notify_received("image", t("image_recv"))
-        elif kind == "file":
-            paths = save_remote_files(data)
-            _try_local_history(record_local_files, paths)
-            notify_received(
-                "file",
-                t("file_arrived", name=os.path.basename(paths[0])),
-                action=lambda path=paths[0]: reveal_received_file(path),
-            )
-        elif kind == "bundle":
-            paths = save_remote_files(data)
-            _try_local_history(record_local_files, paths)
-            notify_received(
-                "file",
-                t("files_arrived", n=len(paths)),
-                action=lambda: open_received_folder(),
-            )
-        else:
-            notify(t("no_items"))
+        paths = save_remote_files(data) if kind in ("file", "bundle") else []
+        with _remote_commit():
+            if kind == "text":
+                notify_received("text", t("text_recv"))
+            elif kind == "image":
+                notify_received("image", t("image_recv"))
+            elif kind in ("file", "bundle"):
+                _try_local_history(record_local_files, paths)
+                notify_received("file", t("files_arrived", n=len(paths)) if kind == "bundle"
+                                else t("file_arrived", name=os.path.basename(paths[0])),
+                                action=(lambda: open_received_folder()) if kind == "bundle"
+                                else (lambda path=paths[0]: reveal_received_file(path)))
+            else:
+                notify(t("no_items"))
     except Exception as e:
         notify(t("recv_err", e=e))
 
@@ -2276,12 +2329,15 @@ def action_send_file(icon=None, item=None):
     paths = filedialog.askopenfilenames(parent=_root, title=t("choose_files"))
     if not paths:
         return
+    source_key = _connection_ticket()
 
     def work():
         try:
-            push_files(paths)
-            _try_local_history(record_local_files, paths)
-            notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
+            with _remote_operation(expected=source_key):
+                push_files(paths)
+                with _remote_commit():
+                    _try_local_history(record_local_files, paths)
+                    notify(t("files_sent", n=len(paths)) if len(paths) > 1 else t("file_sent"))
         except Exception as e:
             notify(t("send_err", e=e))
     _run_bg(work)
@@ -2304,12 +2360,15 @@ def sync_loop():
     while not stop_event.is_set():
         try:
             upload_failed = False
-            source = _sync_source_key()
+            source = _connection_ticket()
+            source_changed = active_source is not None and source != active_source
+            suppress_outgoing = source_changed and (
+                _connection_clipboard_sequence is None or _clipboard_sequence() == _connection_clipboard_sequence)
             if source != active_source:
                 active_source = source
                 last_server = _last_remembered_item()
-                last_text = last_img = last_files = None
-                last_sequence = None
+                if suppress_outgoing:
+                    last_sequence = None  # Read a baseline without re-sharing old-account content.
 
             marker = _take_local_upload_marker()
             if marker:
@@ -2334,9 +2393,10 @@ def sync_loop():
                     key = _file_clipboard_key(files)
                     if key != last_files:
                         _try_local_history(record_local_files, files)
-                        if config.get("auto_sync"):
+                        if config.get("auto_sync") and not suppress_outgoing:
                             try:
-                                last_server = push_files(files) or last_server
+                                with _remote_operation(expected=source):
+                                    last_server = push_files(files) or last_server
                             except Exception:
                                 upload_failed = True
                         if not upload_failed:
@@ -2347,9 +2407,10 @@ def sync_loop():
                         h = _img_hash(img)
                         if h and h != last_img:
                             _try_local_history(record_local_image, img)
-                            if config.get("auto_sync"):
+                            if config.get("auto_sync") and not suppress_outgoing:
                                 try:
-                                    sent_id = push_image(img)
+                                    with _remote_operation(expected=source):
+                                        sent_id = push_image(img)
                                     if sent_id:
                                         last_server = sent_id
                                 except Exception:
@@ -2362,9 +2423,10 @@ def sync_loop():
                             last_text = last_img = last_files = None
                         if text and text != last_text:
                             _try_local_history(record_local_text, text)
-                            if config.get("auto_sync"):
+                            if config.get("auto_sync") and not suppress_outgoing:
                                 try:
-                                    sent_id = push_text(text)
+                                    with _remote_operation(expected=source):
+                                        sent_id = push_text(text)
                                     if sent_id:
                                         last_server = sent_id
                                 except Exception:
@@ -2390,29 +2452,35 @@ def sync_loop():
                         data = poll_latest(last_server)
                         sid = data.get("id")
                         if sid and sid != last_server:
-                            suppress = _consume_silent_item(sid)
+                            with _remote_commit():
+                                suppress = _consume_silent_item(sid)
                             if not suppress and data.get("type") == "text":
                                 txt = data.get("text", "")
                                 _copy_remote_item(data, suppress_notification=False)
-                                last_text, last_img, last_files = txt, None, None
-                                notify_received("text", t("text_arrived"))
+                                with _remote_commit():
+                                    last_text, last_img, last_files = txt, None, None
+                                    notify_received("text", t("text_arrived"))
                             elif not suppress and data.get("type") == "image":
                                 copied_kind = _copy_remote_item(data, suppress_notification=False)
-                                marker = _take_local_upload_marker()
-                                if copied_kind == "image":
-                                    last_img, last_text, last_files = marker[1], None, None
-                                    notify_received("image", t("image_arrived"))
-                                else:
-                                    last_files, last_text, last_img = marker[1], None, None
-                                    notify_received("file", t("file_arrived", name=data.get("filename", "image")),
-                                                    action=lambda: open_received_folder())
+                                with _remote_commit():
+                                    marker = _take_local_upload_marker()
+                                    if copied_kind == "image":
+                                        last_img, last_text, last_files = marker[1], None, None
+                                        notify_received("image", t("image_arrived"))
+                                    else:
+                                        last_files, last_text, last_img = marker[1], None, None
+                                        notify_received("file", t("file_arrived", name=data.get("filename", "image")),
+                                                        action=lambda: open_received_folder())
                             elif not suppress and data.get("type") in ("file", "bundle"):
                                 if config.get("auto_receive_files", True):
                                     _copy_remote_item(data)
-                                    last_files = _file_clipboard_key(save_remote_files(data))
-                                    last_text = last_img = None
-                            last_server = sid
-                            _remember_item(sid)
+                                    saved = save_remote_files(data)
+                                    with _remote_commit():
+                                        last_files = _file_clipboard_key(saved)
+                                        last_text = last_img = None
+                            with _remote_commit():
+                                last_server = sid
+                                _remember_item(sid)
                 except Exception:
                     pass
         except Exception:
@@ -3021,7 +3089,7 @@ def open_history_window(icon=None, item=None):
             nonlocal preview_running
             preview_running = False
             if generation == preview_generation and preview_visible.get():
-                if is_server and space != _sync_source_key():
+                if is_server and space != _connection_ticket():
                     refresh(reset=True)
                 elif image is None:
                     preview_image.configure(text=t("preview_unavailable"))
@@ -3037,7 +3105,7 @@ def open_history_window(icon=None, item=None):
                     preview_heading.configure(text=t("preview_pdf_page", n=count) if count else t("preview"))
             start_preview()
 
-        if is_server and space != _sync_source_key():
+        if is_server and space != _connection_ticket():
             refresh(reset=True)
             return
         if key in preview_cache:
@@ -3104,7 +3172,7 @@ def open_history_window(icon=None, item=None):
             else:
                 fill(page)
             return
-        source_key, requested_offset = _sync_source_key(), offset
+        source_key, requested_offset = _connection_ticket(), offset
         items.clear()
         listing.delete(*listing.get_children())
         empty.place_forget()
@@ -3115,7 +3183,7 @@ def open_history_window(icon=None, item=None):
             nonlocal loaded_source
             if generation != request_generation or not root.winfo_exists():
                 return
-            if source_key != _sync_source_key():
+            if source_key != _connection_ticket():
                 refresh(reset=True)
             elif page is None:
                 status.set(t("history_error"))
@@ -3125,7 +3193,7 @@ def open_history_window(icon=None, item=None):
 
         def work():
             try:
-                with _remote_activity_lock:
+                with _remote_operation(expected=source_key):
                     if generation != request_generation:
                         return
                     page = fetch_history_page(page_size, search, kind, requested_offset)
@@ -3139,6 +3207,9 @@ def open_history_window(icon=None, item=None):
         if entry is None:
             return
         is_server, source_key = source.get() == "server", loaded_source
+        if is_server and source_key is None:
+            refresh()
+            return
 
         def work():
             try:
@@ -3146,22 +3217,21 @@ def open_history_window(icon=None, item=None):
                     _copy_local_item(entry)
                     notify(t("copied"))
                     return
-                with _remote_operation():
-                    if source_key != _sync_source_key():
-                        ui_q.put(lambda: refresh(reset=True))
-                        return
+                with _remote_operation(expected=source_key):
                     full = fetch_item(entry["id"])
                     kind = _copy_remote_item(full, update_latest=False)
                     if kind in ("file", "bundle"):
                         full = dict(full, type=kind)
                         paths = save_remote_files(full)
-                        _try_local_history(record_local_files, paths)
-                        notify_received("file", t("files_arrived", n=len(paths)) if len(paths) > 1
-                                        else t("file_arrived", name=os.path.basename(paths[0])),
-                                        action=(lambda: open_received_folder()) if len(paths) > 1
-                                        else (lambda path=paths[0]: reveal_received_file(path)))
+                        with _remote_commit():
+                            _try_local_history(record_local_files, paths)
+                            notify_received("file", t("files_arrived", n=len(paths)) if len(paths) > 1
+                                            else t("file_arrived", name=os.path.basename(paths[0])),
+                                            action=(lambda: open_received_folder()) if len(paths) > 1
+                                            else (lambda path=paths[0]: reveal_received_file(path)))
                     elif kind:
-                        notify(t("copied"))
+                        with _remote_commit():
+                            notify(t("copied"))
             except Exception as error:
                 notify(t("recv_err", e=error))
         _run_bg(work)
@@ -3171,20 +3241,23 @@ def open_history_window(icon=None, item=None):
         entry = selected()
         if entry is None or source.get() != "local":
             return
+        source_key = _connection_ticket()
 
         def work():
             try:
-                if entry["type"] == "text":
-                    push_text(entry.get("text", ""))
-                elif entry["type"] == "image" and entry.get("file"):
-                    with Image.open(os.path.join(LOCAL_DIR, entry["file"])) as image:
-                        push_image(image)
-                elif entry["type"] in ("file", "bundle"):
-                    paths = entry.get("paths", []) if entry["type"] == "bundle" else [entry.get("path")]
-                    push_files(paths)
-                else:
-                    raise ValueError(t("unavailable"))
-                notify(t("sent_server"))
+                with _remote_operation(expected=source_key):
+                    if entry["type"] == "text":
+                        push_text(entry.get("text", ""))
+                    elif entry["type"] == "image" and entry.get("file"):
+                        with Image.open(os.path.join(LOCAL_DIR, entry["file"])) as image:
+                            push_image(image)
+                    elif entry["type"] in ("file", "bundle"):
+                        paths = entry.get("paths", []) if entry["type"] == "bundle" else [entry.get("path")]
+                        push_files(paths)
+                    else:
+                        raise ValueError(t("unavailable"))
+                    with _remote_commit():
+                        notify(t("sent_server"))
             except Exception as error:
                 notify(t("send_err", e=error))
         _run_bg(work)
@@ -3193,16 +3266,16 @@ def open_history_window(icon=None, item=None):
         entry = selected()
         if entry is None or source.get() != "server":
             return
+        source_key = loaded_source
+        if source_key is None:
+            refresh()
+            return
         if not messagebox.askyesno(t("delete"), t("confirm_delete"), parent=root):
             return
-        source_key = loaded_source
 
         def work():
             try:
-                with _remote_operation():
-                    if source_key != _sync_source_key():
-                        ui_q.put(lambda: refresh(reset=True))
-                        return
+                with _remote_operation(expected=source_key):
                     response = requests.delete(f"{server_url()}/clipboard/item/{entry['id']}",
                                                headers=auth_headers(), params=auth_params(), timeout=5)
                     response.raise_for_status()
@@ -3799,27 +3872,20 @@ def open_settings(icon=None, item=None):
         host_port = values["host_port"]
         old_mode = config.get("mode", "client")
         old_host_port = config.get("host_port", 5088)
-        previous_config = dict(config)
-        config.update(values)
-        config["auto_sync"] = auto.get()
-        config["auto_receive_files"] = auto_files.get()
-        config["monitor_clipboard"] = mon.get()
-        config["notifications_enabled"] = notifications.get()
-        config["notify_text"] = notify_text.get()
-        config["notify_images"] = notify_images.get()
-        config["notify_files"] = notify_files.get()
-        config["hotkeys_enabled"] = hk.get()
-        if config["hotkeys_enabled"]:
-            errors = register_hotkeys()
+        values.update(auto_sync=auto.get(), auto_receive_files=auto_files.get(),
+                      monitor_clipboard=mon.get(), notifications_enabled=notifications.get(),
+                      notify_text=notify_text.get(), notify_images=notify_images.get(),
+                      notify_files=notify_files.get(), hotkeys_enabled=hk.get())
+        if values["hotkeys_enabled"]:
+            errors = register_hotkeys(values)
             if errors:
-                config.clear()
-                config.update(previous_config)
                 register_hotkeys()
                 msg.config(text=t("hotkey_unavailable", e="; ".join(errors)))
                 notebook.select(shortcuts_page)
                 return
         else:
             unregister_hotkeys()
+        _apply_config(values)
         _root._appearance_override = None
         _update_appearance(config["appearance"])
         save_config(config)
@@ -4044,18 +4110,19 @@ def _hotkey_signature(hotkey):
     return _native_hotkey_parts(hotkey)
 
 
-def register_hotkeys():
+def register_hotkeys(settings=None):
     global _hotkey_worker, _hotkey_errors
     unregister_hotkeys()
     _hotkey_errors = []
-    if not config.get("hotkeys_enabled", True):
+    values = config if settings is None else settings
+    if not values.get("hotkeys_enabled", True):
         return []
     bindings = (
         ("hotkey_send", lambda: _run_bg(action_send_clipboard)),
         ("hotkey_receive", lambda: _run_bg(action_get_latest)),
         ("hotkey_history", lambda: _cmd_q.put(toggle_history_window)),
     )
-    _hotkey_worker = _NativeHotkeys([(key, config.get(key, DEFAULT_CONFIG[key]), action)
+    _hotkey_worker = _NativeHotkeys([(key, values.get(key, DEFAULT_CONFIG[key]), action)
                                     for key, action in bindings])
     _hotkey_errors = _hotkey_worker.start()
     for error in _hotkey_errors:

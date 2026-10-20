@@ -48,6 +48,20 @@ def embedded(tmp_path, monkeypatch):
     thread.join(timeout=5)
 
 
+def test_queued_file_send_cannot_move_to_a_different_account(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    queued, uploads, notices = [], [], []
+    monkeypatch.setattr(client.filedialog, "askopenfilenames", lambda **_: ("example.pdf",))
+    monkeypatch.setattr(client, "_run_bg", queued.append)
+    monkeypatch.setattr(client, "push_files", uploads.append)
+    monkeypatch.setattr(client, "notify", notices.append)
+    client.action_send_file()
+    client._apply_config(dict(client.config, username="different-account"))
+    queued.pop()()
+    assert uploads == []
+    assert len(notices) == 1 and client.t("remote_changed") in notices[0]
+
+
 @pytest.mark.parametrize("text", [
     "https://www.reddit.com/r/example/comments/demo/title/?x=1&y=%23value#section",
     "https://example.com/?q=caff\u00e8\U0001f600&literal=%26%3D",
@@ -709,6 +723,218 @@ def test_private_probe_cannot_cancel_a_running_saved_connection_check(tmp_path, 
     assert client._connection_state == "connected" and reports == ["checking", "auth"]
 
 
+@pytest.mark.parametrize("change", [
+    {"username": "public-other"}, {"server_ip": "other.example"},
+    {"password": "public-new-password"}, {"token": "public-new-token"},
+    {"mode": "server"},
+])
+@pytest.mark.parametrize("kind", ["text", "image", "bundle"])
+@pytest.mark.parametrize("return_to_original", [False, True])
+def test_received_clipboard_cannot_commit_after_its_connection_changes(
+        tmp_path, monkeypatch, change, kind, return_to_original):
+    client = load_client(tmp_path, monkeypatch)
+    copied, notices = [], []
+    sample = tmp_path / "public.txt"
+    sample.write_bytes(b"public example")
+    data = {"id": "public-old-item", "type": kind, "text": "Public old-account text",
+            "data": base64.b64encode(client.image_to_png(client.Image.new("RGB", (2, 2)))).decode("ascii"),
+            "files": [{"index": 0, "filename": sample.name}]}
+
+    def get(*args, **kwargs):
+        original = dict(client.config)
+        values = dict(client.config, **change)
+        client._apply_config(values)
+        if return_to_original:
+            client._apply_config(original)
+        return data
+
+    monkeypatch.setattr(client, "pull_latest", get)
+    monkeypatch.setattr(client, "save_remote_files", lambda value: [str(sample)])
+    monkeypatch.setattr(client, "set_clipboard_text", lambda value: copied.append(value))
+    monkeypatch.setattr(client, "set_clipboard_image", lambda value: copied.append(value))
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "set_clipboard_files", lambda value: copied.append(value))
+    monkeypatch.setattr(client, "notify", lambda value, **kw: notices.append(value))
+    client.action_get_latest()
+    assert copied == [], "A previous connection must not replace the current clipboard"
+    assert not client._load_sync_state().get("latest_items")
+    assert client._take_local_upload_marker() is None
+    assert len(notices) == 1 and client.t("remote_changed") in notices[0]
+
+
+def test_nonconnection_settings_preserve_ticket_and_pending_marker(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    ticket = client._connection_ticket()
+    client._set_local_upload_marker("text", "public sample")
+    client._apply_config(dict(client.config, appearance="light", auto_sync=True, notify_text=False))
+    assert client._connection_ticket() == ticket
+    assert client._take_local_upload_marker() == ("text", "public sample")
+    original = dict(client.config)
+    client._apply_config(client.config)
+    assert client.config == original
+
+
+def test_away_and_back_drops_an_old_upload_marker(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    original = dict(client.config)
+    client._set_local_upload_marker("text", "public sample")
+    client._apply_config(dict(original, username="public-other"))
+    client._apply_config(original)
+    assert client._take_local_upload_marker() is None
+
+
+def test_settings_change_does_not_wait_for_group_http_and_old_group_cannot_commit(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="public-first", password="public-first-password")
+    source = client._sync_source_key()
+    waiting, release = threading.Event(), threading.Event()
+    accounts, copied, errors = [], [], []
+
+    def get(url, **kwargs):
+        accounts.append(kwargs["params"]["user"])
+        waiting.set()
+        assert release.wait(5)
+        return SimpleNamespace(raise_for_status=lambda: None, headers={}, content=b"public example")
+
+    def receive():
+        try:
+            client._copy_remote_item({"id": "public-group", "type": "bundle", "files": [
+                {"index": 0, "filename": "first.txt"}, {"index": 1, "filename": "second.txt"}]})
+        except Exception as error:
+            errors.append(error)
+
+    monkeypatch.setattr(client.requests, "get", get)
+    monkeypatch.setattr(client, "set_clipboard_files", copied.append)
+    worker = threading.Thread(target=receive)
+    worker.start()
+    try:
+        assert waiting.wait(5)
+        changer = threading.Thread(target=lambda: client._apply_config(dict(client.config, username="public-second")))
+        changer.start()
+        changer.join(1)
+        assert not changer.is_alive(), "Settings must not wait for the network lock"
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive()
+    assert accounts == ["public-first", "public-first"] and copied == []
+    assert len(errors) == 1 and isinstance(errors[0], client._ConnectionChanged)
+    state = client._load_sync_state()
+    assert len(state["downloads"][source]["public-group"]) == 2
+    assert not state.get("latest_items")
+    assert client._sync_source_key() not in state["downloads"]
+
+
+@pytest.mark.parametrize("stage", ["history", "download"])
+def test_auto_file_receipt_rejects_changed_source_before_local_effects(tmp_path, monkeypatch, stage):
+    client = load_client(tmp_path, monkeypatch)
+    items, notices, copied, cached = [], [], [], []
+    path = tmp_path / "public-file.txt"
+    path.write_bytes(b"public example")
+
+    def history(limit):
+        if items and stage == "history":
+            client._apply_config(dict(client.config, username="public-other"))
+        return list(items)
+
+    def download(item):
+        if stage == "download":
+            client._apply_config(dict(client.config, username="public-other"))
+        return [str(path)]
+
+    monkeypatch.setattr(client, "fetch_history", history)
+    monkeypatch.setattr(client, "save_remote_files", download)
+    monkeypatch.setattr(client, "record_local_files", lambda value: cached.append(value))
+    monkeypatch.setattr(client, "set_clipboard_files", copied.append)
+    monkeypatch.setattr(client, "notify", lambda value, **kw: notices.append(value))
+    client._auto_receive_remote_files()
+    items.append({"id": "public-file", "type": "file", "filename": path.name})
+    with pytest.raises(client._ConnectionChanged):
+        client._auto_receive_remote_files()
+    assert copied == cached == notices == []
+    assert client._last_remembered_item() is None
+
+
+def test_late_active_connection_check_is_ignored_after_away_and_back(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    original = dict(client.config)
+    def get(*args, **kwargs):
+        client._apply_config(dict(original, username="public-other"))
+        client._apply_config(original)
+        client._set_connection_state("offline")
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: {"items": []})
+    monkeypatch.setattr(client.requests, "get", get)
+    assert not client.check_connection()
+    assert client._connection_state == "offline"
+
+
+def test_sync_discards_stale_text_then_receives_the_current_connection(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(auto_sync=True, auto_receive_files=False, monitor_clipboard=False)
+    original = dict(client.config)
+    copied, notices, calls = [], [], []
+    class Iterations:
+        step = 0
+        def is_set(self): return self.step >= 2
+        def wait(self, timeout): self.step += 1
+    iterations = Iterations()
+    def poll(known):
+        calls.append(known)
+        if len(calls) == 1:
+            client._apply_config(dict(original, username="public-other"))
+            client._apply_config(original)
+            return {"id": "obsolete", "type": "text", "text": "public obsolete"}
+        return {"id": "current", "type": "text", "text": "public current"}
+    monkeypatch.setattr(client, "stop_event", iterations)
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: 10)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "")
+    monkeypatch.setattr(client, "poll_latest", poll)
+    monkeypatch.setattr(client, "set_clipboard_text", copied.append)
+    monkeypatch.setattr(client, "notify", lambda value, **kw: notices.append(value))
+    client.sync_loop()
+    assert copied == ["public current"] and notices == [client.t("text_arrived")]
+    assert client._last_remembered_item() == "current"
+
+
+@pytest.mark.parametrize("sequence_available", [False, True])
+@pytest.mark.parametrize("change_during_read", [False, True])
+def test_switching_connections_does_not_reshare_old_clipboard_but_new_copies_work(
+        tmp_path, monkeypatch, sequence_available, change_during_read):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="public-first", auto_sync=True, auto_receive_files=False, monitor_clipboard=False)
+    uploads = []
+    class Iterations:
+        step = 0
+        def is_set(self): return self.step >= 3
+        def wait(self, timeout):
+            self.step += 1
+            if self.step == 1 and not change_during_read:
+                client._apply_config(dict(client.config, username="public-second"))
+    iterations = Iterations()
+    def text():
+        if iterations.step == 0 and change_during_read:
+            client._apply_config(dict(client.config, username="public-second"))
+        return "public fresh copy" if iterations.step == 2 else "public old clipboard"
+    def post(*args, **kwargs):
+        uploads.append((kwargs["params"]["user"], kwargs["json"]["text"]))
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"id": str(len(uploads))})
+    monkeypatch.setattr(client, "stop_event", iterations)
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: (6 if iterations.step == 2 else 5)
+                        if sequence_available else None)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "get_clipboard_text", text)
+    monkeypatch.setattr(client.requests, "post", post)
+    monkeypatch.setattr(client, "poll_latest", lambda known: {})
+    client.sync_loop()
+    expected = [] if change_during_read else [("public-first", "public old clipboard")]
+    assert uploads == expected + [("public-second", "public fresh copy")]
+
+
 @pytest.mark.parametrize("after_start", ["edit", "close"])
 def test_late_draft_probe_does_not_apply_to_changed_or_closed_settings(
         tmp_path, monkeypatch, tk_test_root, after_start):
@@ -1135,7 +1361,7 @@ def test_settings_validate_and_persist_history_hotkey(tmp_path, monkeypatch, lan
     client.config.update(lang=lang, username="alice", password="example-password")
     monkeypatch.setattr(client, "_root", tk_test_root)
     monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
-    monkeypatch.setattr(client, "register_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "register_hotkeys", lambda *args: None)
     monkeypatch.setattr(client, "notify", lambda *_args: None)
 
     def descendants(parent):
@@ -1183,6 +1409,7 @@ def test_unavailable_native_hotkey_does_not_save_settings(tmp_path, monkeypatch,
     client = load_client(tmp_path, monkeypatch)
     client.config.update(username="alice", password="example-password")
     before = dict(client.config)
+    original_ticket = client._connection_ticket()
     saved_before = Path(client.CONFIG_FILE).read_bytes()
     workers = fake_native_hotkey_api(client, monkeypatch, rejected_key=ord("Y"))
     monkeypatch.setattr(client, "_root", tk_test_root)
@@ -1200,6 +1427,10 @@ def test_unavailable_native_hotkey_does_not_save_settings(tmp_path, monkeypatch,
         window = next(child for child in tk_test_root.winfo_children()
                       if getattr(child, "_view_name", None) == "settings")
         controls = list(descendants(window))
+        username = next(child for child in controls if isinstance(child, client.ttk.Entry)
+                        and child.get() == "alice")
+        username.delete(0, "end")
+        username.insert(0, "bob")
         buttons = [child for child in controls if isinstance(child, client.ttk.Button)
                    and child.cget("text") == client.t("set_hotkey")]
         assert len(buttons) == 3
@@ -1211,6 +1442,7 @@ def test_unavailable_native_hotkey_does_not_save_settings(tmp_path, monkeypatch,
              and child.cget("text") == client.t("save")).invoke()
         tk_test_root.update()
         assert client.config == before
+        assert client._connection_ticket() == original_ticket
         assert window.winfo_exists()
         assert Path(client.CONFIG_FILE).read_bytes() == saved_before
         assert workers[0].removed == [1, 2]
@@ -1233,7 +1465,7 @@ def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, t
     monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [], "total": 0})
     monkeypatch.setattr(client, "check_connection", lambda *args, **kwargs: True)
     monkeypatch.setattr(client, "_run_bg", lambda action: action())
-    monkeypatch.setattr(client, "register_hotkeys", lambda: None)
+    monkeypatch.setattr(client, "register_hotkeys", lambda *args: None)
     monkeypatch.setattr(client, "notify", lambda *_args, **_kw: None)
     opened = []
     monkeypatch.setattr(client.webbrowser, "open", lambda url: opened.append(url))
@@ -1759,7 +1991,7 @@ def test_real_clipboard_round_trip_uses_a_private_window_station():
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.16"
+    assert client.APP_VERSION == "2.0.17"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

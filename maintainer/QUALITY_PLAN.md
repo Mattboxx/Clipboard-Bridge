@@ -32,7 +32,7 @@ The original pre-audit baseline was `118c282` with 231 passing Python tests. Ent
 below retain their historical candidate results; Windows 2.0.16 is now published,
 while the standalone and Android stable/beta binary channels have not changed.
 
-## Open Windows Connection Findings
+## Windows Connection Corrections For 2.0.17
 
 - **Q21, P1 connection-status correctness:** four real-Tk tests first reproduced
   draft credentials changing the tray to Connected or Login Rejected even though
@@ -40,15 +40,18 @@ while the standalone and Android stable/beta binary channels have not changed.
   their owning Settings window, without incrementing the active check generation.
   It ignores results after editing/closing and rejects a non-array history response;
   the latter failed a separate new regression before the validation change.
-- **Q22, P1 receive consistency, still open:** a synthetic isolated probe against
+- **Q22, P1 receive consistency, corrected candidate:** a synthetic isolated probe against
   2.0.16 changes the configured account while a text HTTP response is in flight.
   The immutable request context keeps the request on its original host, but manual
   Receive still applies that obsolete text and emits a receipt notification after
   the active account changes. The probe replaces clipboard/notification functions
   and uses a disposable profile; it never accesses the interactive clipboard or a
-  personal server. A final source/generation commit gate is still required for
-  receive/UI/background operations, including away-and-back changes. Q21's draft
-  status fix does not fix or claim to fix Q22.
+  personal server. The candidate now checks a connection identity and generation
+  before native clipboard writes, notifications and receive cursors. It also pins
+  queued History/file actions, rejects away-and-back replies, and avoids re-sharing
+  the old clipboard into a new account. HTTP never holds the Settings commit lock.
+  Completed uploads cannot be recalled and downloaded files can remain under their
+  original source. Physical multi-device acceptance remains separate.
 
 ## Findings And Evidence
 
@@ -329,3 +332,11 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   six response-validation cases, a concurrent active-check case, and edited/closed
   Settings delivery checks. Existing active-check ordering tests still pass.
   No real system clipboard or personal configuration was used.
+- Windows 2.0.17 candidate: **433 Python tests passed, three explicit skips**, with
+  disposable Docker enabled; critical Ruff checks and release metadata validation
+  passed. The original late-response probe now reports no obsolete clipboard write
+  or receipt notification. New tests cover thirty type/connection/away-and-back
+  combinations, a blocked two-file HTTP transfer concurrent with Settings, automatic
+  receipt and fresh-copy synchronization, queued sends, and failed hotkey registration.
+  Native x64/ARM64 packaging and public-download verification are release gates,
+  not implied by this local result. No real user clipboard or profile was modified.

@@ -67,6 +67,20 @@ The receive helper's unit tests use an in-memory destination, not a real MediaSt
 Pending rows and clipboard writes are not an atomic OS transaction; a killed process
 or a provider refusing deletion can leave new files behind despite attempted rollback.
 
+## Windows Connection Changes
+
+- [ ] Start receiving a large file group, then change account/server. No late clipboard
+      application, new-account receive cursor or obsolete success notification.
+- [ ] Switch account A to B and back to A before the old response arrives; discard it.
+- [ ] With automatic sharing enabled, changing account must not upload the existing
+      clipboard into the new space. A fresh copy must still synchronize normally.
+- [ ] Change credentials while a History delete confirmation or queued send is pending;
+      never reroute the action into the newly selected account.
+- [ ] Test draft credentials and then edit/close Settings; active tray status stays intact.
+- [ ] Reject a conflicting hotkey while changing account; saved connection stays unchanged.
+
+Already accepted uploads cannot be undone; completed downloads may remain on disk.
+
 ## Apple: iPhone, iPad and Mac Shortcuts
 
 - [ ] Import both unmodified signed exports on a supported OS version.
