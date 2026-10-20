@@ -2,6 +2,8 @@ import base64
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import threading
 import zipfile
 import io
@@ -1307,6 +1309,207 @@ def load_client(tmp_path, monkeypatch):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture()
+def clipboard_api(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    state = SimpleNamespace(failure=None, events=[], payload=None)
+    handle, pointer, owner = 0x100000042, 0x100000084, 0x100000126
+
+    def function(name, result):
+        def call(*args):
+            state.events.append((name, args))
+            return 0 if state.failure == name else result
+        return call
+
+    user32 = SimpleNamespace(
+        CreateWindowExW=function("window", owner),
+        DestroyWindow=function("destroy", True),
+        OpenClipboard=function("open", True),
+        CloseClipboard=function("close", True),
+        EmptyClipboard=function("empty", True),
+        SetClipboardData=function("set", handle),
+    )
+    kernel32 = SimpleNamespace(
+        GlobalAlloc=function("allocate", handle),
+        GlobalLock=function("lock", pointer),
+        GlobalUnlock=function("unlock", True),
+        GlobalFree=function("free", 0),
+    )
+
+    def copy(destination, data, size):
+        state.events.append(("copy", (destination, size)))
+        if state.failure == "copy":
+            raise OSError("synthetic memory copy failure")
+        state.payload = bytes(data[:size])
+
+    monkeypatch.setattr(client.ctypes, "windll", SimpleNamespace(user32=user32, kernel32=kernel32))
+    monkeypatch.setattr(client.ctypes, "memmove", copy)
+    monkeypatch.setattr(client.time, "sleep", lambda value: None)
+    return client, state, handle, pointer, owner
+
+
+def write_sample_clipboard(client, kind, tmp_path):
+    if kind == "image":
+        client.set_clipboard_image(client.Image.new("RGB", (2, 2), "red"))
+    else:
+        path = tmp_path / "public-example.pdf"
+        path.write_bytes(b"public sample")
+        client.set_clipboard_files([str(path)])
+
+
+@pytest.mark.parametrize("kind", ["image", "files"])
+@pytest.mark.parametrize("failure", ["window", "allocate", "lock", "copy", "open", "empty", "set"])
+def test_native_clipboard_failure_does_not_claim_success_or_leak_owned_memory(clipboard_api, tmp_path, kind, failure):
+    client, state, handle, pointer, owner = clipboard_api
+    state.failure = failure
+    error = MemoryError if failure == "allocate" else OSError
+    with pytest.raises(error):
+        write_sample_clipboard(client, kind, tmp_path)
+    names = [name for name, _ in state.events]
+    if failure in ("window", "allocate", "lock", "copy", "open"):
+        assert "empty" not in names, "Do not clear the previous clipboard before preparation succeeds"
+    if "allocate" in names and failure != "allocate":
+        assert [args for name, args in state.events if name == "free"] == [(handle,)]
+    else:
+        assert "free" not in names
+    assert names.count("unlock") == (1 if "lock" in names and failure != "lock" else 0)
+    assert names.count("close") == (1 if "open" in names and failure != "open" else 0)
+    assert names.count("destroy") == (0 if failure == "window" else 1)
+    assert names.count("open") <= 10
+
+
+@pytest.mark.parametrize("kind,format_id", [("image", 8), ("files", 15)])
+def test_native_clipboard_success_transfers_memory_to_windows_once(clipboard_api, tmp_path, kind, format_id):
+    client, state, handle, pointer, owner = clipboard_api
+    write_sample_clipboard(client, kind, tmp_path)
+    names = [name for name, _ in state.events]
+    assert names == ["window", "allocate", "lock", "copy", "unlock", "open", "empty", "set", "close", "destroy"]
+    assert [args for name, args in state.events if name == "open"] == [(owner,)]
+    creation = next(args for name, args in state.events if name == "window")
+    assert creation[8] == -3 and creation[3] & 0x10000000 == 0  # HWND_MESSAGE, no WS_VISIBLE.
+    assert [args for name, args in state.events if name == "set"] == [(format_id, handle)]
+    assert [args[0] for name, args in state.events if name == "copy"] == [pointer]
+    assert "free" not in names, "Transferred memory is owned by Windows"
+    assert client.ctypes.windll.kernel32.GlobalAlloc.restype is client.ctypes.c_void_p
+    assert client.ctypes.windll.user32.SetClipboardData.restype is client.ctypes.c_void_p
+    if kind == "image":
+        assert int.from_bytes(state.payload[:4], "little") == 40  # DIB header, not BMP file header.
+    else:
+        assert state.payload == client._build_hdrop([str(tmp_path / "public-example.pdf")])
+
+
+@pytest.mark.parametrize("kind", ["image", "files"])
+def test_native_clipboard_retries_temporary_contention_with_the_same_owner(clipboard_api, tmp_path, monkeypatch, kind):
+    client, state, handle, pointer, owner = clipboard_api
+    attempts, delays = [], []
+    original = client.ctypes.windll.user32.OpenClipboard
+
+    def open_clipboard(window):
+        attempts.append(window)
+        original(window)
+        return len(attempts) >= 3
+
+    monkeypatch.setattr(client.ctypes.windll.user32, "OpenClipboard", open_clipboard)
+    monkeypatch.setattr(client.time, "sleep", delays.append)
+    write_sample_clipboard(client, kind, tmp_path)
+    assert attempts == [owner, owner, owner]
+    assert delays == [0.05, 0.05]
+    assert [name for name, _ in state.events].count("close") == 1
+    assert not any(name == "free" for name, _ in state.events)
+
+
+@pytest.mark.parametrize("failure", ["window", "allocate", "lock", "copy", "open", "empty", "set"])
+def test_failed_native_image_receive_keeps_cursor_and_does_not_notify_success(clipboard_api, monkeypatch, failure):
+    client, state, *_ = clipboard_api
+    state.failure = failure
+    image = client.Image.new("RGB", (2, 2), "red")
+    data = {"id": "public-image", "type": "image",
+            "data": base64.b64encode(client.image_to_png(image)).decode("ascii")}
+    remembered, markers, notices = [], [], []
+    monkeypatch.setattr(client, "pull_latest", lambda: data)
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: None)
+    monkeypatch.setattr(client, "_remember_item", lambda *a, **kw: remembered.append(a))
+    monkeypatch.setattr(client, "_set_local_upload_marker", lambda *a: markers.append(a))
+    monkeypatch.setattr(client, "notify", lambda message, **kw: notices.append(message))
+    client.action_get_latest()
+    assert remembered == [] and markers == []
+    assert len(notices) == 1 and notices[0] != client.t("image_recv")
+
+
+def load_clipboard_worker():
+    path = Path(__file__).with_name("windows_clipboard_worker.py")
+    spec = importlib.util.spec_from_file_location("clipboard_worker_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("station_name", ["WinSta0", "other-station", ""])
+def test_native_worker_rejects_wrong_station_before_clipboard_access(monkeypatch, station_name):
+    worker = load_clipboard_worker()
+
+    def information(handle, kind, buffer, size, needed):
+        buffer.value = station_name
+        return True
+
+    user32 = SimpleNamespace(
+        CreateWindowStationW=lambda *args: 123,
+        SetProcessWindowStation=lambda handle: True,
+        GetProcessWindowStation=lambda: 123,
+        GetUserObjectInformationW=information,
+    )
+    monkeypatch.setattr(worker.ctypes, "WinDLL", lambda *args, **kw: user32)
+    with pytest.raises(RuntimeError, match="isolation was not established"):
+        worker.isolate_clipboard()
+
+
+def test_native_worker_never_attaches_to_an_existing_fallback_station(monkeypatch):
+    worker = load_clipboard_worker()
+    attempts = []
+
+    def create(name, flags, access, security):
+        attempts.append((name, flags))
+        return 0
+
+    user32 = SimpleNamespace(
+        CreateWindowStationW=create,
+        SetProcessWindowStation=lambda handle: pytest.fail("No private station was created"),
+        GetProcessWindowStation=lambda: pytest.fail("No private station was created"),
+        GetUserObjectInformationW=lambda *args: pytest.fail("No private station was created"),
+    )
+    monkeypatch.setattr(worker.ctypes, "WinDLL", lambda *args, **kw: user32)
+    monkeypatch.setattr(worker.ctypes, "get_last_error", lambda: 5 if len(attempts) == 1 else 183)
+    with pytest.raises(OSError) as error:
+        worker.isolate_clipboard()
+    assert error.value.errno == 183
+    assert len(attempts) == 2 and all(flags == 1 for _, flags in attempts)
+    assert attempts[1][0] is None  # CREATE_ONLY, not an existing unnamed station.
+
+
+def test_native_worker_does_not_run_checks_when_isolation_is_unavailable(monkeypatch, capsys):
+    worker = load_clipboard_worker()
+    monkeypatch.setattr(worker.sys, "argv", ["windows_clipboard_worker.py"])
+    monkeypatch.setattr(worker, "isolate_clipboard",
+                        lambda: (_ for _ in ()).throw(OSError(5, "synthetic permission denial")))
+    monkeypatch.setattr(worker, "run_checks", lambda *args: pytest.fail("Do not touch an unisolated clipboard"))
+    assert worker.main() == 77
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "unavailable", "reason": "private_clipboard_unavailable", "error_code": 5,
+    }
+
+
+def test_real_clipboard_round_trip_uses_a_private_window_station():
+    worker = Path(__file__).with_name("windows_clipboard_worker.py")
+    result = subprocess.run([sys.executable, str(worker)], capture_output=True, text=True, timeout=30)
+    if result.returncode == 77 and os.environ.get("GITHUB_ACTIONS") != "true":
+        pytest.skip("Windows refused a fresh private clipboard; interactive clipboard was not used")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {
+        "status": "passed", "private_station": True, "image_pixels": True,
+        "unicode_file_group": True, "background_threads": True,
+    }
 
 
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):

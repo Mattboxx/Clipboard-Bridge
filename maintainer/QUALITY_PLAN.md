@@ -51,6 +51,7 @@ not a current claim that its candidate releases remain unpublished.
 | Q16 | Apple link uploads can arrive as downloaded HTML; reported interoperability defect | P1 usability | Apple Shortcut recipe and bilingual tutorial | User supplied Reddit HTML. Both host modes preserve URL text without fetching it; updated instructions explicitly extract URL strings and send a JSON text field, preserving file branches. | The installed Shortcut/action chain was not available for inspection. Do not infer the original URL from arbitrary HTML or mutate actual HTML documents. Signed exports unchanged; physical Apple validation remains required. |
 | Q17 | First x64 build provenance reports Inno Setup as `0.0.0.0`, and its installer sample uses the wrong local-history index name; demonstrated verification defects | P1 delivery evidence | Native x64 workflow | PR #57 passes both native jobs and all validation jobs. Downloaded artifact verifies compiler 6.7.1, compiler digest, expected PR head, tested merge commit and both EXE checksums. Fixture now uses the actual local-history index name. | Two source-contract tests first failed. Hosted execution now validates the corrected fixture; real standard-user upgrades still require physical acceptance. |
 | Q18 | Declared dependency floors permit upstream versions with known advisories; demonstrated maintenance defect, not proof of an exploitable installation | P1 dependency hygiene | Client/server requirements and security policy | Direct-minimum audit returned 41 rows representing 21 distinct advisory IDs in Flask 3.1, Requests 2.32 and Pillow 11. Candidate raises floors to 3.1.3, 2.33.0 and 12.3.0. Current local runtime already uses patched releases. | Direct-floor audit excludes transitives and does not prove an installable complete minimum stack. Verify the selected patched-floor runtime, fresh full resolution, native builds and container. Preserve existing upper bounds and do not blindly merge Gunicorn's major update. |
+| Q19 | Native Windows image writes ignore allocation/locking/clear/set failures and can mark a failed receipt as seen; demonstrated correctness/memory-safety defects | P1 reliability | Windows binary clipboard setters and tests | Seventeen initial simulated API checks failed, including a false successful image receipt after SetClipboardData failed. Candidate shares checked buffer transfer for DIB/HDROP, uses a message-only owner, balances locks, prepares before clearing, bounds contention retries and frees only untransferred memory. | Simulations never dereference null/native pointers or touch the user's clipboard. Actual API round trips require a child process with a fresh private window station; local isolation was denied and must not silently fall back to the interactive clipboard. Physical standard-user/app paste remains a separate gate. |
 
 ## Storage Candidate Contract
 
@@ -245,3 +246,21 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   pins** and a separate **twenty-package fresh resolution**, with zero findings and
   zero skipped packages in each. All temporary test containers and volumes were
   removed. Native hosted checks for the changed dependency manifests remain required.
+- PR #58 head `5d0a366`: all five hosted checks passed, including
+  [native x64 39389190066](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190066),
+  [native ARM64 39389190039](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190039)
+  and [validation 39389190064](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39389190064).
+  No public binary, production container, store manifest or installed app changed.
+- Q19 working candidate: **30 targeted tests passed**, covering both binary formats,
+  seven failure stages, repeated clipboard contention, pointer-size signatures,
+  invisible owner creation and receive cursor/notification behavior. Five checks
+  guard the native worker's isolation boundary. The native round-trip test skipped
+  locally because Windows denied a new named station and the CREATE_ONLY unnamed
+  attempt found an existing station; neither attempt accessed clipboard contents.
+  CI must run this check successfully rather than treating unavailability as a pass.
+- The full staged Q19 snapshot passed **363 Python tests, three explicit skips**
+  with disposable Docker enabled and the selected patched-floor runtime. The new
+  skip is private-window-station creation denied locally; the two previous skips
+  remain external-host opt-in and directory-symlink permission. No interactive
+  clipboard data was read or written. Critical Python checks, compilation and all
+  actionlint checks passed; native hosted clipboard execution is still required.

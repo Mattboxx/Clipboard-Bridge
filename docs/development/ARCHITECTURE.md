@@ -36,6 +36,11 @@ See the [API reference](../../README.md#api-reference) for payloads and endpoint
 
 - Windows uses a single Tk event loop; network work must not block it. Tray actions
   schedule UI work rather than creating competing Tk roots or event loops.
+- Binary Windows clipboard writes share one checked buffer transfer. A message-only
+  window belongs to the calling worker thread, not the Tk thread. Prepare and unlock
+  memory before clearing the clipboard; transfer ownership only on API success.
+  Clearing and setting are not atomic: a later set failure cannot restore old OS
+  contents, but it must not advance the receive cursor or report success.
 - Windows Server mode exposes the lightweight API and history, not a browser UI
   or multiple accounts. The standalone host supplies those additional features.
 - Android incoming monitoring uses a user-enabled foreground service. Do not

@@ -836,46 +836,76 @@ def set_clipboard_files(paths):
     files = [os.path.abspath(path) for path in paths if os.path.isfile(path)]
     if not files:
         raise ValueError("no existing files to copy")
-    data = _build_hdrop(files)
+    _set_clipboard_payload(15, _build_hdrop(files))  # CF_HDROP
 
+
+def _set_clipboard_payload(format_id, data):
+    """Transfer one prepared buffer; Windows owns it only after SetClipboardData succeeds."""
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
+    user32.CreateWindowExW.argtypes = [
+        wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, ctypes.c_void_p,
+    ]
+    user32.CreateWindowExW.restype = wintypes.HWND
+    user32.DestroyWindow.argtypes = [wintypes.HWND]
+    user32.DestroyWindow.restype = wintypes.BOOL
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = wintypes.BOOL
+    user32.EmptyClipboard.argtypes = []
+    user32.EmptyClipboard.restype = wintypes.BOOL
     kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
     kernel32.GlobalAlloc.restype = ctypes.c_void_p
     kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
     kernel32.GlobalLock.restype = ctypes.c_void_p
     kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
     kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalFree.restype = ctypes.c_void_p
     user32.SetClipboardData.argtypes = [wintypes.UINT, ctypes.c_void_p]
     user32.SetClipboardData.restype = ctypes.c_void_p
 
-    for _ in range(10):
-        if user32.OpenClipboard(0):
-            break
-        time.sleep(0.05)
-    else:
-        raise OSError("cannot open the clipboard")
-
-    handle = kernel32.GlobalAlloc(0x0002, len(data))
-    if not handle:
-        user32.CloseClipboard()
-        raise MemoryError("cannot allocate clipboard memory")
+    # A message-only window gives this worker thread a valid, non-visible owner.
+    owner = user32.CreateWindowExW(0, "STATIC", "Clipboard Bridge", 0,
+                                  0, 0, 0, 0, -3, None, None, None)
+    if not owner:
+        raise OSError("cannot create clipboard owner")
+    handle = None
+    opened = False
     transferred = False
     try:
+        handle = kernel32.GlobalAlloc(0x0002, len(data))  # GMEM_MOVEABLE
+        if not handle:
+            raise MemoryError("cannot allocate clipboard memory")
         pointer = kernel32.GlobalLock(handle)
         if not pointer:
             raise OSError("cannot lock clipboard memory")
-        ctypes.memmove(pointer, data, len(data))
-        kernel32.GlobalUnlock(handle)
+        try:
+            ctypes.memmove(pointer, data, len(data))
+        finally:
+            kernel32.GlobalUnlock(handle)
+        for attempt in range(10):
+            if user32.OpenClipboard(owner):
+                opened = True
+                break
+            if attempt < 9:
+                time.sleep(0.05)
+        else:
+            raise OSError("cannot open the clipboard")
         if not user32.EmptyClipboard():
             raise OSError("cannot clear the clipboard")
-        if not user32.SetClipboardData(15, handle):  # 15 = CF_HDROP
-            raise OSError("cannot set file clipboard data")
+        if not user32.SetClipboardData(format_id, handle):
+            raise OSError("cannot set clipboard data")
         transferred = True
     finally:
-        user32.CloseClipboard()
-        if not transferred:
+        if opened:
+            user32.CloseClipboard()
+        if handle and not transferred:
             kernel32.GlobalFree(handle)
+        user32.DestroyWindow(owner)
 
 
 def get_clipboard_image():
@@ -894,27 +924,7 @@ def set_clipboard_image(img):
     data = out.getvalue()[14:]  # skip the BMP file header
     out.close()
 
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-    kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
-    kernel32.GlobalAlloc.restype = ctypes.c_void_p
-    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
-    kernel32.GlobalLock.restype = ctypes.c_void_p
-    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
-    user32.SetClipboardData.argtypes = [wintypes.UINT, ctypes.c_void_p]
-    user32.SetClipboardData.restype = ctypes.c_void_p
-
-    if not user32.OpenClipboard(0):
-        raise OSError("cannot open the clipboard")
-    try:
-        user32.EmptyClipboard()
-        h = kernel32.GlobalAlloc(0x0002, len(data))
-        lp = kernel32.GlobalLock(h)
-        ctypes.memmove(lp, data, len(data))
-        kernel32.GlobalUnlock(h)
-        user32.SetClipboardData(8, h)  # 8 = CF_DIB
-    finally:
-        user32.CloseClipboard()
+    _set_clipboard_payload(8, data)  # CF_DIB
 
 
 def image_to_png(img):

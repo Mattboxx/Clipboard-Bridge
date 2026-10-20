@@ -12,6 +12,15 @@ Main requires a pull request and passing Python/Windows/Android checks. Read the
 [repository protection policy](maintainer/REPOSITORY_POLICY.md) before changing CI
 job names or preparing a release; successful CI does not replace maintainer approval.
 
+The Windows suite simulates native clipboard allocation/locking/transfer failures
+without reading the interactive clipboard. A separate child process also attempts
+real image and grouped Unicode-file round trips in a freshly created noninteractive
+window station, which has its own clipboard. A different desktop alone would not
+isolate the clipboard. If Windows refuses isolation locally, this one check skips
+without touching the user's clipboard; it must succeed on the native CI runners.
+The child never switches back to the interactive station, and its objects end with
+the process. See [Microsoft's window station documentation](https://learn.microsoft.com/en-us/windows/win32/winstation/window-stations).
+
 ## Development setup
 
 Use Python 3.12 on Windows for the client and any Python 3.12 environment for the

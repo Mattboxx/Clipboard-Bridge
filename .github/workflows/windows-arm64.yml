@@ -16,6 +16,7 @@ on:
       - "requirements-build.txt"
       - "scripts/verify_windows_build.py"
       - "tests/test_windows_client.py"
+      - "tests/windows_clipboard_worker.py"
       - "VERSION"
 
 permissions:

@@ -4,6 +4,9 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Check native Windows image/file clipboard failures before claiming receipt.
+  Prepare memory before clearing the clipboard, use a valid invisible owner,
+  retry brief contention and release only buffers still owned by the application.
 - Raise supported Flask, Requests and Pillow minimum versions to the reviewed
   patched releases. Existing installations and frozen downloads are not upgraded
   by editing requirements; publication and compatibility checks remain separate.

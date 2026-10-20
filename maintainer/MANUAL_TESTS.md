@@ -13,6 +13,11 @@ Use disposable example content, never personal clipboard data in screenshots.
 - [ ] Text from Word/browser with accents, emoji, flags and joined emoji arrives without styling.
 - [ ] Image and PDF previews render; rapid selection/close does not freeze the window.
 - [ ] One file and three files restore to Explorer clipboard; group remains one history row.
+- [ ] Receive an image on a standard-user desktop and paste into Paint and another app;
+      verify colours/orientation and no extra visible window or tray icon.
+- [ ] On a disposable profile, temporarily hold the clipboard open from a separate test
+      process: receipt fails clearly after bounded retries, does not advance its cursor,
+      and succeeds on retry after the clipboard becomes available.
 - [ ] Sending one's own item does not generate an incoming notification or a sync loop.
 - [ ] Text/file notification preferences work independently; file notification opens Downloads.
 - [ ] Test Client mode and Windows Server mode, including a private-network firewall rule.

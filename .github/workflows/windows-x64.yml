@@ -16,6 +16,7 @@ on:
       - "requirements-client.txt"
       - "requirements-build.txt"
       - "tests/test_windows_client.py"
+      - "tests/windows_clipboard_worker.py"
       - "tests/test_clipboard_text.py"
       - "tests/test_clipboard_storage.py"
       - "tests/test_release_assets.py"
