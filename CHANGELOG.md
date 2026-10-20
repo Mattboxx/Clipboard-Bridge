@@ -4,6 +4,9 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+- Reject incomplete Windows file selections before replacing the clipboard. If a
+  file has disappeared, report an error instead of copying only the remaining
+  members and incorrectly marking the whole group as received.
 - Check native Windows image/file clipboard failures before claiming receipt.
   Prepare memory before clearing the clipboard, use a valid invisible owner,
   retry brief contention and release only buffers still owned by the application.

@@ -53,6 +53,17 @@ not a current claim that its candidate releases remain unpublished.
 | Q18 | Declared dependency floors permit upstream versions with known advisories; demonstrated maintenance defect, not proof of an exploitable installation | P1 dependency hygiene | Client/server requirements and security policy | Direct-minimum audit returned 41 rows representing 21 distinct advisory IDs in Flask 3.1, Requests 2.32 and Pillow 11. Candidate raises floors to 3.1.3, 2.33.0 and 12.3.0. Current local runtime already uses patched releases. | Direct-floor audit excludes transitives and does not prove an installable complete minimum stack. Verify the selected patched-floor runtime, fresh full resolution, native builds and container. Preserve existing upper bounds and do not blindly merge Gunicorn's major update. |
 | Q19 | Native Windows image writes ignore allocation/locking/clear/set failures and can mark a failed receipt as seen; demonstrated correctness/memory-safety defects | P1 reliability | Windows binary clipboard setters and tests | Seventeen initial simulated API checks failed, including a false successful image receipt after SetClipboardData failed. Candidate shares checked buffer transfer for DIB/HDROP, uses a message-only owner, balances locks, prepares before clearing, bounds contention retries and frees only untransferred memory. | Simulations never dereference null/native pointers or touch the user's clipboard. Actual API round trips require a child process with a fresh private window station; local isolation was denied and must not silently fall back to the interactive clipboard. Physical standard-user/app paste remains a separate gate. |
 
+## Windows File-Group Finding
+
+Q20 (P1 correctness): the native file clipboard setter silently filtered missing
+or invalid members. A partially unavailable selection could replace the clipboard
+with a smaller group while manual Receive marked the full item as received.
+Nine new regressions failed before the fix. The candidate validates the complete
+selection before invoking any native clipboard API, preserves generator order and
+zero-byte Unicode-named files, and reports the existing localized unavailable-item
+error. Paths are not added to that error. A file can still disappear after this
+preflight; CF_HDROP references paths rather than taking an atomic filesystem snapshot.
+
 ## Storage Candidate Contract
 
 `clipboard_storage.py` is shared by the standalone server, embedded Windows host
@@ -264,3 +275,25 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   remain external-host opt-in and directory-symlink permission. No interactive
   clipboard data was read or written. Critical Python checks, compilation and all
   actionlint checks passed; native hosted clipboard execution is still required.
+- PR #59 head `ec8ead7`: all five hosted checks passed. Native
+  [x64 run 39391218560](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39391218560)
+  reports **235 passing tests, no skips**; native
+  [ARM64 run 39391218547](https://github.com/Mattboxx/Clipboard-Bridge/actions/runs/39391218547)
+  reports **205 passing tests, no skips**. Both test selections include the private
+  window-station round trip, which fails rather than skips when GitHub Actions
+  cannot establish isolation. This verifies real DIB pixels and Unicode file-group
+  payloads on disposable native runners, not physical paste into a user's apps.
+- PR #61 head `4b195aa` replaces the pointer-bearing Windows screenshot and adds
+  two actual Docker 1.0.8 UI captures. Local site checks: **39 passed**. Browser
+  screenshots at 1440 and 390 pixels confirm loaded assets and no horizontal
+  overflow or page errors. Capture provenance is in [SCREENSHOTS.md](SCREENSHOTS.md).
+  Only public samples and isolated profiles/containers were used; unrelated local
+  website edits were left uncommitted. Main/site deployment has not changed.
+- Q20 candidate: **12 targeted tests passed**, including localized invalid-member
+  errors, empty selections, Unicode/zero-byte generator order and a manual Receive
+  retry after restoring the missing member. Nine initial tests failed before the
+  fix. Native API calls are simulated for these error cases; none touches the
+  interactive clipboard. The first clean staged snapshot, with disposable Docker
+  enabled, passed **378 tests, three explicit skips**. A direct dirty-tree run has
+  the known unrelated network-guidance test failure from uncommitted website edits;
+  those edits were preserved, not hidden or reverted.

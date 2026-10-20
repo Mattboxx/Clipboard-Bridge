@@ -832,10 +832,12 @@ def _build_hdrop(paths):
 
 
 def set_clipboard_files(paths):
-    """Put existing files on the Windows clipboard as a File Explorer copy."""
-    files = [os.path.abspath(path) for path in paths if os.path.isfile(path)]
+    """Copy the complete file selection, never a silently reduced group."""
+    files = list(paths)
     if not files:
-        raise ValueError("no existing files to copy")
+        raise ValueError(t("unavailable"))
+    if not all(path and os.path.isfile(path) for path in files):
+        raise FileNotFoundError(t("unavailable"))
     _set_clipboard_payload(15, _build_hdrop(files))  # CF_HDROP
 
 

@@ -1359,6 +1359,68 @@ def write_sample_clipboard(client, kind, tmp_path):
         client.set_clipboard_files([str(path)])
 
 
+@pytest.mark.parametrize("invalid_member", ["missing", "directory", "empty", "none"])
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_native_file_group_rejects_every_unavailable_member_before_clipboard_access(
+        clipboard_api, tmp_path, invalid_member, lang):
+    client, state, *_ = clipboard_api
+    client.config["lang"] = lang
+    present = tmp_path / "public-note.txt"
+    present.write_bytes(b"public example")
+    invalid = {
+        "missing": str(tmp_path / "missing.pdf"), "directory": str(tmp_path),
+        "empty": "", "none": None,
+    }[invalid_member]
+    with pytest.raises(FileNotFoundError) as error:
+        client.set_clipboard_files([str(present), invalid])
+    assert str(error.value) == client.t("unavailable")
+    assert state.events == [], "Do not replace the clipboard with only part of a group"
+    assert present.read_bytes() == b"public example"
+
+
+def test_native_file_group_keeps_generator_order_unicode_and_empty_files(clipboard_api, tmp_path):
+    client, state, *_ = clipboard_api
+    paths = [tmp_path / "public-\u03b1.txt", tmp_path / "public-\u00e9.shortcut"]
+    for path in paths:
+        path.write_bytes(b"")
+    client.set_clipboard_files(path for path in reversed(paths))
+    assert state.payload == client._build_hdrop([str(path) for path in reversed(paths)])
+    assert [name for name, _ in state.events].count("set") == 1
+
+
+@pytest.mark.parametrize("as_generator", [False, True])
+def test_native_empty_file_selection_keeps_previous_clipboard(clipboard_api, as_generator):
+    client, state, *_ = clipboard_api
+    with pytest.raises(ValueError) as error:
+        client.set_clipboard_files(iter(()) if as_generator else [])
+    assert str(error.value) == client.t("unavailable")
+    assert state.events == []
+
+
+def test_incomplete_received_group_is_not_remembered_or_announced_as_copied(
+        clipboard_api, tmp_path, monkeypatch):
+    client, state, *_ = clipboard_api
+    present = tmp_path / "public-note.txt"
+    present.write_bytes(b"public example")
+    paths = [str(present), str(tmp_path / "removed-before-copy.pdf")]
+    remembered, markers, notices = [], [], []
+    monkeypatch.setattr(client, "pull_latest", lambda: {"id": "public-group", "type": "bundle"})
+    monkeypatch.setattr(client, "save_remote_files", lambda item: paths)
+    monkeypatch.setattr(client, "_remember_item", lambda *a, **kw: remembered.append(a))
+    monkeypatch.setattr(client, "_set_local_upload_marker", lambda *a: markers.append(a))
+    monkeypatch.setattr(client, "notify", lambda message, **kw: notices.append(message))
+    client.action_get_latest()
+    assert state.events == []
+    assert remembered == [] and markers == []
+    assert notices == [client.t("recv_err", e=client.t("unavailable"))]
+    Path(paths[1]).write_bytes(b"restored public sample")
+    client.action_get_latest()
+    assert state.payload == client._build_hdrop(paths)
+    assert remembered == [("public-group",)]
+    assert len(markers) == 1 and markers[0][0] == "files"
+    assert notices[-1] == client.t("files_arrived", n=2)
+
+
 @pytest.mark.parametrize("kind", ["image", "files"])
 @pytest.mark.parametrize("failure", ["window", "allocate", "lock", "copy", "open", "empty", "set"])
 def test_native_clipboard_failure_does_not_claim_success_or_leak_owned_memory(clipboard_api, tmp_path, kind, failure):
