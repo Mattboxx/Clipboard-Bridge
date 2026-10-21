@@ -4,8 +4,12 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
+No pending release changes.
+
+## Server 1.0.9 / Android 1.0.0-beta.12 - 2026-10-21
+
 - Raise the standalone server's supported Flask minimum to the reviewed patched
-  release; publishing a new stable container remains a separate step.
+  release. Publish the stable amd64/arm64 image before updating store catalogs.
 - Bind Android operations and every member of a file group to their initial server
   and account. Discard obsolete results after a connection change instead of mixing
   sources or advancing the new account's receive cursor.

@@ -27,6 +27,10 @@ must incorporate the new base and pass tests again.
 
 ## Evidence And Releases
 
+- A maintainer-approved release covers every changed distribution channel. Follow
+  [the coordinated release checklist](RELEASING.md): repository, packages, image,
+  custom stores, website and documentation. Verify unchanged channels too; never
+  silently call a Windows-only delivery a complete cross-platform release.
 - Draft PRs and CI artifacts are candidates, not production releases.
 - Keep public releases, the AppStore image and the installed desktop application
   unchanged until the maintainer approves publication/replacement.

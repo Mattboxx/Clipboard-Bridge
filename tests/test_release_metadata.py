@@ -19,6 +19,24 @@ def load_release_metadata():
     return module
 
 
+def test_current_component_versions_match_docs_and_catalog_mirror():
+    server_source = (ROOT / "clipboard_bridge-Server.py").read_text(encoding="utf-8")
+    server = re.search(r'^SERVER_VERSION = "([0-9.]+)"', server_source, re.M).group(1)
+    android_source = (ROOT / "android/app/build.gradle.kts").read_text(encoding="utf-8")
+    android = re.search(r'versionName = "([^"]+)"', android_source).group(1)
+    for filename in ("README.md", "README.it.md", "docs/index.html"):
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert f"clipboard-bridge-server:{server}" in text
+        assert f"Clipboard.Bridge.Android.universal.V{android}.apk" in text
+        assert f"/releases/download/android-v{android}/" in text
+    catalog = ROOT / "distribution/clipboard-bridge-store"
+    for filename in ("compose.yaml", "Apps/ClipboardBridge/docker-compose.yml",
+                     "clipboard-bridge/docker-compose.yml",
+                     "adapters/umbrel/clipboard-bridge/docker-compose.yml",
+                     "adapters/runtipi/apps/clipboard-bridge/docker-compose.yml"):
+        assert f"clipboard-bridge-server:{server}" in (catalog / filename).read_text(encoding="utf-8")
+
+
 def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
@@ -206,7 +224,7 @@ def test_website_local_images_and_device_downloads_exist():
         assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
         assert f"Clipboard.Bridge_windows_client_and_server_setup_{architecture}_V{version}.exe" in assets.downloads
     assert {"iPhone.Load.Clipboard.shortcut", "iPhone.Download.Clipboard.shortcut"} <= assets.downloads
-    assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk" in assets.downloads
+    assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk" in assets.downloads
     assert (ROOT / "docs/assets/icons/LICENSE").is_file()
 
 
