@@ -362,6 +362,18 @@ def _wait(handle, milliseconds):
 
 
 def _shell_open(path, arguments=(), *, wait=False, startup=False):
+    if getattr(sys, "frozen", False):
+        # This runs only in the helper, never in the UI. External installers must
+        # not inherit PyInstaller's bundled-DLL search path or temporary runtime.
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.SetDllDirectoryW.argtypes, kernel.SetDllDirectoryW.restype = (wintypes.LPCWSTR,), wintypes.BOOL
+        if not kernel.SetDllDirectoryW(None):
+            raise UpdateError("launch_denied")
+        os.environ["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+        bundled = Path(sys._MEIPASS).resolve()
+        entries = os.environ.get("PATH", "").split(os.pathsep)
+        os.environ["PATH"] = os.pathsep.join(entry for entry in entries
+            if entry and not Path(entry).resolve().is_relative_to(bundled))
     class ExecuteInfo(ctypes.Structure):
         _fields_ = [("cbSize", wintypes.DWORD), ("fMask", wintypes.ULONG), ("hwnd", wintypes.HWND),
                     ("lpVerb", wintypes.LPCWSTR), ("lpFile", wintypes.LPCWSTR), ("lpParameters", wintypes.LPCWSTR),
