@@ -77,13 +77,13 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.17 | Android 1.0.0-beta.11 | Server 1.0.8
+**Current releases:** Windows 2.0.17 | Android 1.0.0-beta.12 | Server 1.0.9
 
 | Your device | Ready-to-use downloads |
 |---|---|
 | **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.17.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.x64.V2.0.17.exe) |
 | **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.17.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.arm64.V2.0.17.exe) |
-| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk), currently a public beta |
+| **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), currently a public beta |
 | **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
@@ -135,7 +135,7 @@ documents, archives, audio, video and custom extensions such as `.shortcut`.
 **Copied text arrives as plain Unicode text**, even if the source app uses RTF.
 Emoji, accents, tabs and line breaks are retained; fonts, colours and bold styling
 are not transferred. Actual `.rtf` documents sent as files remain unchanged.
-This works with server 1.0.8 or Windows Server mode 2.0.17, for every connected client.
+This works with server 1.0.9 or Windows Server mode 2.0.17, for every connected client.
 
 **The latest upload always wins.** Text, images and files have equal priority.
 Several files sent together stay in **one history item**; restoring or deleting it
@@ -306,7 +306,7 @@ actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
 ## Standalone server
 
-**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`
+**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`
 
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file
@@ -346,7 +346,7 @@ docker compose up -d
 
 On PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Edit `.env` first
 to choose credentials, data storage and the image tag. For a pinned deployment,
-set `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`; otherwise the example
+set `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`; otherwise the example
 uses the latest stable image. Compose uses the published image, not a source build.
 
 Open `http://SERVER_IP:5088/` from another device, or `http://localhost:5088/` on
@@ -359,7 +359,7 @@ docker compose ps
 ```
 
 Back up the data directory with the service stopped. Do not remove its volume when
-updating. Image tags: `latest` is stable, `1.0.8` pins a release, `edge` tracks tested
+updating. Image tags: `latest` is stable, `1.0.9` pins a release, `edge` tracks tested
 main-branch builds. See [DOCKER.md](DOCKER.md) for deployment and backup details.
 
 </details>

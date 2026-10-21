@@ -59,6 +59,18 @@ def read_page(filename):
     return Page((DOCS / filename).read_text(encoding="utf-8"))
 
 
+def test_tutorial_modified_dates_match_sitemap():
+    namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    sitemap = ET.parse(DOCS / "sitemap.xml")
+    dates = {entry.findtext("s:loc", namespaces=namespace):
+             entry.findtext("s:lastmod", namespaces=namespace)
+             for entry in sitemap.findall("s:url", namespace)}
+    for filename in ("tutorial.html", "tutorial.it.html"):
+        articles = [item for item in read_page(filename).json_ld if item.get("@type") == "TechArticle"]
+        assert len(articles) == 1
+        assert articles[0]["dateModified"] == dates[BASE + filename]
+
+
 def test_every_public_page_has_distinct_search_metadata():
     titles, descriptions = [], []
     for filename in PAGES:

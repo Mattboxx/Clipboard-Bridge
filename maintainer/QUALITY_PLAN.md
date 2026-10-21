@@ -15,22 +15,31 @@ This is the working plan for improving the product, not just its appearance.
   without the maintainer's approval. A tested development PR is not a published product release.
 - Trusted Windows signing is deferred by the maintainer, not silently claimed as complete.
 
-## Verified Public Baseline
+## Verified Public Baseline Before Coordinated Update
 
 | Component | Verified baseline |
 | --- | --- |
-| Main repository | `30d90494c5cc5181664e2178fe7127f1bb949ee5`; approved Windows maintenance release and consolidated review stack, PR #63 |
-| Public downloads | Windows 2.0.16, unchanged Android 1.0.0-beta.11; four Windows EXEs, one APK and two unchanged signed Apple exports |
+| Main repository | `de88df493d16076df8c993780cd11f8ab5594a8b`; Windows maintenance release, PR #65 |
+| Public downloads | Windows 2.0.17, Android 1.0.0-beta.11; four Windows EXEs, one APK and two unchanged signed Apple exports |
 | Standalone server | Public release 1.0.8 |
 | Custom AppStore repository | `c902e2a58c5993ac7d02bc5bdcf58329290eb7ae`; server 1.0.8 catalogs |
-| Windows signatures | All four public 2.0.16 EXEs are unsigned; hashes match GitHub's current asset digests |
-| Source-tree release checks | 378 Python tests passed, three explicit skips, including disposable Docker; native release x64/ARM64 checks also passed |
+| Windows signatures | All four public 2.0.17 EXEs are unsigned; hashes match GitHub's asset digests |
+| Source-tree release checks | 441 Python tests passed, three explicit skips, including disposable Docker; all five release PR checks and Pages passed |
 
 The earlier [release audit](RELEASE_AUDIT.md) is historical evidence from 14 October,
 not a current claim that its candidate releases remain unpublished.
 The original pre-audit baseline was `118c282` with 231 passing Python tests. Entries
-below retain their historical candidate results; Windows 2.0.16 is now published,
+below retain their historical candidate results; Windows 2.0.17 is now published,
 while the standalone and Android stable/beta binary channels have not changed.
+
+## Coordinated Follow-Up Approved On 21 October
+
+The maintainer requires all distribution channels to be checked on every release.
+Server 1.0.9 and Android beta.12 deliver the previously unreleased source corrections.
+Windows 2.0.17 and signed Apple exports remain unchanged. Publish the versioned
+amd64/arm64 image before catalog updates, then verify generated public ZimaOS JSON,
+all supported adapters, APK signature continuity and live download references.
+See [RELEASING.md](RELEASING.md); do not confuse prepared catalogs with deployment.
 
 ## Windows Connection Corrections For 2.0.17
 

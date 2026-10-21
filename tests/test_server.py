@@ -764,7 +764,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.8"
+    assert response.get_json()["version"] == "1.0.9"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):

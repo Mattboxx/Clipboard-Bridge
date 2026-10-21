@@ -35,7 +35,7 @@ do not disable protection or treat a checksum as a trusted signature.
 
 ## Android 10+ on a real device
 
-- [ ] Install the beta.11 APK over beta.10 with the same signing certificate; settings survive.
+- [ ] Install the beta.12 APK over beta.11 with the same signing certificate; settings survive.
 - [ ] Shared space with no token; shared space with token; two isolated accounts.
 - [ ] Test different draft credentials, then go Back without Save: the active account,
       monitoring and existing receive cursor remain unchanged. Save explicitly to switch.

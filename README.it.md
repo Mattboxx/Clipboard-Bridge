@@ -79,13 +79,13 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.17 | Android 1.0.0-beta.11 | Server 1.0.8
+**Versioni attuali:** Windows 2.0.17 | Android 1.0.0-beta.12 | Server 1.0.9
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
 | **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.17.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.x64.V2.0.17.exe) |
 | **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.17.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.arm64.V2.0.17.exe) |
-| **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk), attualmente una beta pubblica |
+| **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
 | **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
@@ -138,7 +138,7 @@ Office, archivi, audio, video ed estensioni personalizzate come `.shortcut`.
 **Il testo copiato arriva come testo Unicode normale**, anche se l'app di origine
 usa RTF. Emoji, accenti, tabulazioni e righe vengono conservati; font, colori e
 grassetto non vengono trasferiti. I documenti `.rtf` inviati come file restano intatti.
-Funziona con il server 1.0.8 o Windows in modalità server 2.0.17, per tutti i client connessi.
+Funziona con il server 1.0.9 o Windows in modalità server 2.0.17, per tutti i client connessi.
 
 **Conta sempre l'ultimo invio.** Testo, immagini e file hanno la stessa priorità.
 Più file inviati insieme rimangono **un'unica voce di cronologia**: ripristinarla
@@ -313,7 +313,7 @@ ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`
 
 Supporta Linux `amd64` e `arm64`. Il servizio ascolta sulla porta `5088`, conserva
 i dati persistenti in `/data` e non richiede un database separato. La pagina web offre
@@ -353,7 +353,7 @@ docker compose up -d
 
 Su PowerShell usa `Copy-Item .env.example .env` al posto di `cp`. Prima modifica `.env`
 per scegliere credenziali, cartella dati e tag immagine. Per fissare una versione usa
-`APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`; l'esempio usa altrimenti
+`APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`; l'esempio usa altrimenti
 l'ultima immagine stabile. Compose utilizza l'immagine pubblicata, non una compilazione dei sorgenti.
 
 Apri `http://IP_SERVER:5088/` da un altro dispositivo, oppure `http://localhost:5088/`
@@ -366,7 +366,7 @@ docker compose ps
 ```
 
 Per il backup copia la cartella dati a servizio fermo. Non rimuovere il volume durante
-l'aggiornamento. Tag: `latest` è stabile, `1.0.8` fissa una release, `edge` segue le build
+l'aggiornamento. Tag: `latest` è stabile, `1.0.9` fissa una release, `edge` segue le build
 collaudate di main. Vedi [DOCKER.md](DOCKER.md) per distribuzione e backup.
 
 </details>

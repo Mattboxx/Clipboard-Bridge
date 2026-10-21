@@ -1,0 +1,51 @@
+name: Publish ZimaOS v2 store
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Apps/**"
+      - "store-config.json"
+      - "supported-languages.json"
+      - "scripts/validate_zimaos_v2.py"
+      - ".github/workflows/publish-zimaos-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-zimaos-v2
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build ZimaOS v2 catalog
+        uses: IceWhaleTech/build-appstore-action@407bf02f7ca1d3d610c88c895dc28b016bdace48 # v1.1.2
+        with:
+          source: .
+          output: dist
+          base-url: https://mattboxx.github.io/Clipboard-Bridge-AppStore
+          report-json: out/build-v2-report.json
+          report-title: Clipboard Bridge ZimaOS v2 Store
+
+      - name: Validate generated JSON catalog
+        run: python scripts/validate_zimaos_v2.py dist
+
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - name: Publish generated catalog
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist
+          force_orphan: true
+          commit_message: Publish ZimaOS v2 store from ${{ github.sha }}

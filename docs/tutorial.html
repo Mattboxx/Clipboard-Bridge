@@ -20,7 +20,7 @@
   <meta property="og:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png">
   <meta name="twitter:card" content="summary_large_image">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-10-15","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"}
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-10-21","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/windows-history.png"}
   </script>
 </head>
 <body>
@@ -37,7 +37,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 20 October 2026 &middot; Windows 2.0.17 &middot; Android beta.11 &middot; server 1.0.8</div>
+    <div class="tutorial-meta">Updated 21 October 2026 &middot; Windows 2.0.17 &middot; Android beta.12 &middot; server 1.0.9</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -96,7 +96,7 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
       <section id="android">
         <h2>4. Connect Android</h2>
         <ol>
-          <li>Install the <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk">signed Android APK</a>. It requires Android 10 or newer and is currently a public beta.</li>
+          <li>Install the <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk">signed Android APK</a>. It requires Android 10 or newer and is currently a public beta.</li>
           <li>Open Settings in the app and enter the same host address as Windows or your Docker server. Save. Leave optional credentials empty unless your administrator configured them.</li>
           <li>Copy a sample message on Android. Open the app and tap <strong>Send clipboard</strong>. Use Receive on Windows to get it.</li>
           <li>Send another message from Windows, then tap <strong>Receive latest</strong> on Android. Paste the result into a note.</li>
@@ -124,7 +124,7 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
         <p>With Docker and Compose already installed, save this as <code>compose.yaml</code> in an empty project folder:</p>
         <pre><code>services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.8
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
     restart: unless-stopped
     ports:
       - "5088:5088"

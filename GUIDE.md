@@ -279,7 +279,7 @@ Apple documents the same procedure in its
 
 ### 5.1 Send (clipboard to server)
 
-Copied text is stored and received as **plain Unicode text**. Server 1.0.8 and
+Copied text is stored and received as **plain Unicode text**. Server 1.0.9 and
 Windows Server mode 2.0.17 remove RTF formatting without removing emoji or accents.
 Documents sent as files, including `.rtf`, keep their original bytes.
 

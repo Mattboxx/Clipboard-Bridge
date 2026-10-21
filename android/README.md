@@ -3,10 +3,10 @@
 The native Android client connects Android phones and tablets to the same Clipboard
 Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
-**Current public beta:** `1.0.0-beta.11`<br>
+**Current public beta:** `1.0.0-beta.12`<br>
 **Minimum Android version:** Android 10 (API 29)
 
-[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk)
+[Download the signed universal APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk)
 
 ## Features
 
@@ -29,7 +29,7 @@ Bridge server used by Windows, iPhone Shortcuts and the web interface.
 
 ## Install
 
-1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk`.
+1. Download `Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk`.
 2. Open the APK from Android's browser or file manager.
 3. If Android asks, allow that application to install unknown apps.
 4. Select **Install**.
@@ -112,7 +112,7 @@ The latest item is determined only by arrival order. Text, images and files have
 priority.
 
 Copied text is placed in Android's clipboard with `ClipData.newPlainText`. With
-standalone server 1.0.8 or Windows Server mode 2.0.15, incoming RTF clipboard text is
+standalone server 1.0.9 or Windows Server mode 2.0.17, incoming RTF clipboard text is
 converted to Unicode text while preserving emoji and accents. Actual `.rtf` documents
 shared as files are not converted.
 

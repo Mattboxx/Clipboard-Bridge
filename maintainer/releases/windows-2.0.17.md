@@ -8,9 +8,16 @@ Clipboard Bridge before updating or switching between x64 and ARM64.
 
 - **Most Windows PCs:** choose the x64 installer or the portable EXE.
 - **Windows 11 on ARM/Snapdragon:** choose the native ARM64 installer or portable EXE.
-- The Android APK remains the **unchanged public beta.11**.
+- The Android APK is **public beta.12**, delivered as a separate maintenance update.
 - Both signed **iPhone Shortcuts are unchanged** and included for convenience.
-- The stable standalone Docker server remains **1.0.8**; Windows Server mode is included.
+- The standalone Docker server is **1.0.9**; Windows Server mode is included.
+
+## Companion Updates (21 October 2026)
+
+The initial Windows publication included Android beta.11 and server 1.0.8. The
+coordinated follow-up updates the companion APK to beta.12 and the standalone image
+and store catalogs to 1.0.9. The four Windows binaries and signed Apple exports
+are unchanged; their existing hashes remain valid.
 
 ## What Changed
 
