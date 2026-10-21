@@ -275,3 +275,16 @@ def test_cache_cleanup_only_removes_old_finished_owned_folders(tmp_path):
     assert not old.exists()
     assert (active / "runner.exe").read_bytes() == b"active"
     assert (unknown / "user-file.txt").read_text() == "preserve"
+
+
+def test_retry_never_recycles_a_previous_helpers_ticket_or_cancel_marker(tmp_path, monkeypatch):
+    cache, ticket, target, candidate = helper_fixture(tmp_path, monkeypatch)
+    original = ticket.read_bytes()
+    cancelled = ticket.parent / "cancel.json"
+    cancelled.write_text('{"cancelled":true}')
+    (ticket.parent / "ready.json").write_text('{"state":"ready"}')
+    fresh = updates.prepare_handoff(candidate, ticket.parent / candidate.name, target, cache, parent_pid=1234)
+    assert fresh.parent != ticket.parent
+    assert ticket.read_bytes() == original and cancelled.read_text() == '{"cancelled":true}'
+    assert not (fresh.parent / "cancel.json").exists() and not (fresh.parent / "ready.json").exists()
+    assert json.loads(fresh.read_text())["original_sha256"] == updates.file_digest(target)

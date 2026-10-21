@@ -309,6 +309,16 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
             probe.unlink(missing_ok=True)
         except OSError:
             pass
+    if any((payload.parent / name).exists() for name in ("request.json", "ready.json", "cancel.json", "result.json")):
+        # A timed-out helper may still be waiting for its original parent. Never
+        # recycle its ticket or remove its cancellation marker during a retry.
+        folder = cache / uuid.uuid4().hex
+        folder.mkdir(exist_ok=False)
+        fresh = folder / update.name
+        shutil.copy2(payload, fresh)
+        verify_executable(fresh, update.sha256, update.version, update.architecture
+                          if update.kind == "portable" else None)
+        payload = fresh
     runner = payload.parent / "runner.exe"
     shutil.copy2(executable, runner)
     ticket = payload.parent / "request.json"
@@ -512,6 +522,8 @@ def apply_ticket(ticket, cache):
                     _replace(backup, target)
                 elif installer_started and (not target.is_file() or file_digest(target) != value["original_sha256"]):
                     recovery = target.parent / (".clipboard-recovery-" + ticket.parent.name + ".exe")
+                    if file_digest(ticket.parent / "runner.exe") != value["original_sha256"]:
+                        raise UpdateError("recovery_failed")
                     shutil.copy2(ticket.parent / "runner.exe", recovery)
                     _replace(recovery, target)
                 _shell_open(target, startup=True)
