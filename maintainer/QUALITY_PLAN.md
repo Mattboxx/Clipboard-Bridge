@@ -1,6 +1,6 @@
 # Product Quality Audit And Acceptance Gates
 
-Updated: **20 October 2026**. Status: **in progress**, not a completed certification
+Updated: **21 October 2026**. Status: **in progress**, not a completed certification
 or an assertion that every platform/device scenario has been physically tested.
 This is the working plan for improving the product, not just its appearance.
 
@@ -19,15 +19,39 @@ This is the working plan for improving the product, not just its appearance.
 
 | Component | Verified baseline |
 | --- | --- |
-| Main repository | `118c28260afa92510cd55eea2977f5922ecbd1b1`; repository organization and desktop showcase, PR #49 |
-| Public downloads | Windows 2.0.15, Android 1.0.0-beta.11; four Windows EXEs, one APK and two signed Apple exports |
+| Main repository | `30d90494c5cc5181664e2178fe7127f1bb949ee5`; approved Windows maintenance release and consolidated review stack, PR #63 |
+| Public downloads | Windows 2.0.16, unchanged Android 1.0.0-beta.11; four Windows EXEs, one APK and two unchanged signed Apple exports |
 | Standalone server | Public release 1.0.8 |
 | Custom AppStore repository | `c902e2a58c5993ac7d02bc5bdcf58329290eb7ae`; server 1.0.8 catalogs |
-| Windows signatures | All four public 2.0.15 EXEs are unsigned; hashes match GitHub's current asset digests |
-| Source-tree baseline checks | 231 Python tests passed, one optional external-server test skipped before this audit |
+| Windows signatures | All four public 2.0.16 EXEs are unsigned; hashes match GitHub's current asset digests |
+| Source-tree release checks | 378 Python tests passed, three explicit skips, including disposable Docker; native release x64/ARM64 checks also passed |
 
 The earlier [release audit](RELEASE_AUDIT.md) is historical evidence from 14 October,
 not a current claim that its candidate releases remain unpublished.
+The original pre-audit baseline was `118c282` with 231 passing Python tests. Entries
+below retain their historical candidate results; Windows 2.0.16 is now published,
+while the standalone and Android stable/beta binary channels have not changed.
+
+## Windows Connection Corrections For 2.0.17
+
+- **Q21, P1 connection-status correctness:** four real-Tk tests first reproduced
+  draft credentials changing the tray to Connected or Login Rejected even though
+  the saved account was unchanged. The candidate routes draft status callbacks to
+  their owning Settings window, without incrementing the active check generation.
+  It ignores results after editing/closing and rejects a non-array history response;
+  the latter failed a separate new regression before the validation change.
+- **Q22, P1 receive consistency, corrected candidate:** a synthetic isolated probe against
+  2.0.16 changes the configured account while a text HTTP response is in flight.
+  The immutable request context keeps the request on its original host, but manual
+  Receive still applies that obsolete text and emits a receipt notification after
+  the active account changes. The probe replaces clipboard/notification functions
+  and uses a disposable profile; it never accesses the interactive clipboard or a
+  personal server. The candidate now checks a connection identity and generation
+  before native clipboard writes, notifications and receive cursors. It also pins
+  queued History/file actions, rejects away-and-back replies, and avoids re-sharing
+  the old clipboard into a new account. HTTP never holds the Settings commit lock.
+  Completed uploads cannot be recalled and downloaded files can remain under their
+  original source. Physical multi-device acceptance remains separate.
 
 ## Findings And Evidence
 
@@ -89,16 +113,16 @@ to the work already done.
 
 | Gate | Required evidence | Current status |
 | --- | --- | --- |
-| Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | PR #50 candidate verified locally and in CI; not released |
+| Data integrity | Failed writes/reads/corrupt indices preserve existing data; recovery and cleanup work | Windows fixes published in 2.0.16 through #63; standalone candidate is on main/edge but stable Docker remains 1.0.8 |
 | Transfer compatibility | Text/Unicode/RTF, images, unusual files and groups on both host modes, with unchanged Apple auth URLs | Existing regression suite plus new disposable-container checks; physical clients still require acceptance |
 | Offline and failure UX | Actionable errors, recovery after disconnect, no false send/receive success or silent data loss | Targeted local-cache fix; broader diagnostic review pending |
-| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | PR #55 native x64 and ARM64 checks passed. Real standard-user upgrade/desktop acceptance remains pending; no replacement installer published |
+| Windows packaging | x64/ARM64 native payloads, installer settings preservation, single instance and no Program Files writes | 2.0.16 native packages verified and published through #63. Physical standard-user upgrade/desktop acceptance remains pending |
 | Android | Build/tests, account consistency, sharing, notifications, sleep/background disclosures | Q10/Q11/Q12 tests, build and lint passed in CI; physical MediaStore/lifecycle acceptance remains pending |
 | Docker and stores | Fresh deployment, restart/update, consistent manifests/digests and persistence | New disposable runtime tests passed locally; NAS GUI and real VPN tests still pending |
 | Dependency and CI hygiene | Reviewed updates/advisories; explicit test and release gates | Critical Python static checks pass locally; dependency review pending |
-| User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Baseline showcase/layout published; candidate storage/recovery docs prepared |
+| User/developer documentation | Clear first-transfer paths, visible real desktop media, accurate limits, recovery and build instructions | Cursor-free desktop and real Docker web media, storage/recovery and build docs published through #63; user pilot remains open |
 | Privacy and security | No private material in public assets/logs, account isolation, optional auth kept simple | Existing safeguards and new redacted storage errors tested; continued review required |
-| Release quality | Candidate artifacts verified, changelog/checksums, approval before publication | Public versions unchanged; no candidate release authorized or published |
+| Release quality | Candidate artifacts verified, changelog/checksums, approval before publication | Windows 2.0.16 explicitly approved and published; seven public downloads and Pages bytes verified. No new stable Android/server release or local installation authorized |
 | External usability | Beginner pilot and genuine cross-device demonstration | Not proven by a tray-menu GIF; voluntary pilot and real-device recordings remain open |
 
 ## Reproducible Verification
@@ -297,3 +321,28 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   enabled, passed **378 tests, three explicit skips**. A direct dirty-tree run has
   the known unrelated network-guidance test failure from uncommitted website edits;
   those edits were preserved, not hidden or reverted.
+- Approved release #63 is now merged as `30d9049`. Its tree matches the tested
+  release head and native build merge tree. Native x64 reported **247 tests passed**,
+  ARM64 **217 passed**; all five checks passed. Published 2.0.16 has four unsigned
+  Windows EXEs plus the unchanged APK and Apple exports. GitHub asset digests match,
+  all seven downloads return HTTP 200, and Pages screenshots match local byte hashes.
+  Main validation, Pages deployment and edge-container publication subsequently passed.
+- Q21 candidate: **391 Python tests passed, three explicit skips**, with disposable
+  Docker enabled. The thirteen new cases include four real-Tk draft-status tests,
+  six response-validation cases, a concurrent active-check case, and edited/closed
+  Settings delivery checks. Existing active-check ordering tests still pass.
+  No real system clipboard or personal configuration was used.
+- Windows 2.0.17 candidate: **433 Python tests passed, three explicit skips**, with
+  disposable Docker enabled; critical Ruff checks and release metadata validation
+  passed. The original late-response probe now reports no obsolete clipboard write
+  or receipt notification. New tests cover thirty type/connection/away-and-back
+  combinations, a blocked two-file HTTP transfer concurrent with Settings, automatic
+  receipt and fresh-copy synchronization, queued sends, and failed hotkey registration.
+  Native x64/ARM64 packaging and public-download verification are release gates,
+  not implied by this local result. No real user clipboard or profile was modified.
+- Review follow-up for 2.0.17: six new text/image/file regressions first failed
+  when an identical copy was made after switching, before or after the suppressed
+  baseline. All six now pass, plus two tests preventing received text/images from
+  echoing as user copies. Full local suite: **441 passed, three explicit skips**,
+  with disposable Docker; critical Ruff checks pass. Native packages must be
+  rebuilt from this corrected head, not reused from the earlier candidate.

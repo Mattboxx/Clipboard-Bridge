@@ -1,7 +1,7 @@
 ; Windows installer. Source and output paths are relative to the repository root.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.16"
+  #define MyAppVersion "2.0.17"
 #endif
 
 #ifndef MyAppArchitecture

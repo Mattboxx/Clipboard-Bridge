@@ -6,17 +6,17 @@ repository.
 
 ## Verified status
 
-On 20 October 2026, the four Windows artifacts from public release **2.0.15**
+On 20 October 2026, the four Windows artifacts from public release **2.0.16**
 (x64/ARM64 portable executables and installers) all returned `NotSigned` from
 `Get-AuthenticodeSignature`. Their SHA-256 hashes matched GitHub's asset digests
 queried again for that release. A checksum verifies integrity, not publisher identity or trust.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| x64 portable | `203c09257bcd2a49953519e506bbcdb4b04faa728591fe039ef461fb71be3b52` |
-| x64 installer | `0d190aabce5ad1f3402fe14c42df91bd6f075523e8c8b8793fa2a11c0c540b43` |
-| ARM64 portable | `328e06636f601220ba4d711b7be2a5e6506b57f3b51faf35c4c3595cbac5d8a3` |
-| ARM64 installer | `21a98b9debf0f71bd41d4af8f12a51cadcfea1202202851703822a6937dbff55` |
+| x64 portable | `9a5f012924c9d24965a8b7a3dd49176aa4e5701f04944b2380c76c4f95350b1a` |
+| x64 installer | `77bb8c34ddd00df0cdc568122086d695936bb189a6d6a3882eba6f2dc62c2d22` |
+| ARM64 portable | `efc0f4a424bb50a86d8bc626d611478d9dd8295b0aa3ec936a52aed12d4a1bfd` |
+| ARM64 installer | `5e79ca07476b57163587b45770761c881460b329afde4fb891aad64fdc6c6942` |
 
 No certificate was present. This is not an independent verification of signatures
 on files extracted from the installers; the public installers themselves are unsigned.
