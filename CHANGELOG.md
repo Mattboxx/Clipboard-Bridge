@@ -36,13 +36,15 @@ All notable user-facing changes are documented here.
 - Flush a complete temporary index before atomic replacement and remove temporary
   files after failed commits. Keep previous indexed files on failed uploads.
 
-## Windows 2.0.17 - 2026-10-20
+## Windows 2.0.17 - 2026-10-21
 
 - Discard obsolete receive results and notifications after a server, account,
   password or token change, including switching away and back.
 - Avoid automatically re-sharing the previous connection's clipboard into a new
   account. Keep queued file sends, history actions and file-group downloads bound
   to their original connection without holding Settings locks during HTTP.
+- Recognize a fresh copy after switching connections even when its contents match
+  the previous clipboard; do not mistake a remote receipt for a new user copy.
 - Keep draft connection checks inside Settings without changing active tray status;
   discard replies after editing/closing and reject malformed history responses.
 - Do not publish changed connection settings before hotkeys validate successfully.

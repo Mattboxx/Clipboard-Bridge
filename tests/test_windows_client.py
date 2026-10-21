@@ -935,6 +935,84 @@ def test_switching_connections_does_not_reshare_old_clipboard_but_new_copies_wor
     assert uploads == expected + [("public-second", "public fresh copy")]
 
 
+@pytest.mark.parametrize("kind", ["text", "image", "files"])
+@pytest.mark.parametrize("fresh_at", [1, 2])
+def test_identical_fresh_copy_is_shared_after_switch_before_or_after_baseline(
+        tmp_path, monkeypatch, kind, fresh_at):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="public-first", auto_sync=True, auto_receive_files=False)
+    sample = tmp_path / "public.pdf"
+    sample.write_bytes(b"public file")
+    image = client.Image.new("RGB", (2, 2))
+    uploads = []
+
+    class Iterations:
+        step = 0
+        sequence = 5
+        def is_set(self): return self.step >= 4
+        def wait(self, timeout):
+            self.step += 1
+            if self.step == 1:
+                client._apply_config(dict(client.config, username="public-second"))
+            if self.step == fresh_at:
+                self.sequence += 1
+    iterations = Iterations()
+    def pushed(*args):
+        uploads.append(client._request_settings()["username"])
+        return str(len(uploads))
+    monkeypatch.setattr(client, "stop_event", iterations)
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: iterations.sequence)
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [str(sample)] if kind == "files" else [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: image if kind == "image" else None)
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: "public unchanged text")
+    for name in ("push_text", "push_image", "push_files"):
+        monkeypatch.setattr(client, name, pushed)
+    monkeypatch.setattr(client, "poll_latest", lambda known: {})
+    client.sync_loop()
+    assert uploads == ["public-first", "public-second"]
+
+
+@pytest.mark.parametrize("kind", ["text", "image"])
+def test_first_receipt_after_connection_change_does_not_echo_as_a_fresh_copy(
+        tmp_path, monkeypatch, kind):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(username="public-first", auto_sync=True, auto_receive_files=False)
+    uploads, notices = [], []
+    clipboard = {"text": "public old text", "image": None, "sequence": 5}
+
+    class Iterations:
+        step = 0
+        def is_set(self): return self.step >= 4
+        def wait(self, timeout):
+            self.step += 1
+            if self.step == 1:
+                client._apply_config(dict(client.config, username="public-second"))
+    iterations = Iterations()
+    def received(value):
+        clipboard[kind] = value
+        clipboard["sequence"] += 1
+    def pushed(*args):
+        uploads.append(client._request_settings()["username"])
+        return str(len(uploads))
+    item = {"id": "public-remote", "type": kind, "text": "public received text",
+            "data": base64.b64encode(client.image_to_png(client.Image.new("RGB", (2, 2)))).decode("ascii")}
+    monkeypatch.setattr(client, "stop_event", iterations)
+    monkeypatch.setattr(client, "check_connection", lambda: True)
+    monkeypatch.setattr(client, "_clipboard_sequence", lambda: clipboard["sequence"])
+    monkeypatch.setattr(client, "get_clipboard_files", lambda: [])
+    monkeypatch.setattr(client, "get_clipboard_image", lambda: clipboard["image"])
+    monkeypatch.setattr(client, "get_clipboard_text", lambda: clipboard["text"])
+    monkeypatch.setattr(client, "set_clipboard_" + kind, received)
+    monkeypatch.setattr(client, "notify", lambda value, **kw: notices.append(value))
+    for name in ("push_text", "push_image", "push_files"):
+        monkeypatch.setattr(client, name, pushed)
+    monkeypatch.setattr(client, "poll_latest", lambda known: item if iterations.step == 1 else {})
+    client.sync_loop()
+    assert uploads == ["public-first"]
+    assert notices == [client.t("text_arrived" if kind == "text" else "image_arrived")]
+
+
 @pytest.mark.parametrize("after_start", ["edit", "close"])
 def test_late_draft_probe_does_not_apply_to_changed_or_closed_settings(
         tmp_path, monkeypatch, tk_test_root, after_start):

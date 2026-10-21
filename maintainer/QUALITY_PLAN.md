@@ -1,6 +1,6 @@
 # Product Quality Audit And Acceptance Gates
 
-Updated: **20 October 2026**. Status: **in progress**, not a completed certification
+Updated: **21 October 2026**. Status: **in progress**, not a completed certification
 or an assertion that every platform/device scenario has been physically tested.
 This is the working plan for improving the product, not just its appearance.
 
@@ -340,3 +340,9 @@ manual gates passed from source inspection, mocked APIs or successful HTTP alone
   receipt and fresh-copy synchronization, queued sends, and failed hotkey registration.
   Native x64/ARM64 packaging and public-download verification are release gates,
   not implied by this local result. No real user clipboard or profile was modified.
+- Review follow-up for 2.0.17: six new text/image/file regressions first failed
+  when an identical copy was made after switching, before or after the suppressed
+  baseline. All six now pass, plus two tests preventing received text/images from
+  echoing as user copies. Full local suite: **441 passed, three explicit skips**,
+  with disposable Docker; critical Ruff checks pass. Native packages must be
+  rebuilt from this corrected head, not reused from the earlier candidate.

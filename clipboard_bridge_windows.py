@@ -2357,6 +2357,7 @@ def sync_loop():
     active_source = None
     next_connection_check = 0
     last_sequence = None
+    awaiting_new_copy = False
     while not stop_event.is_set():
         try:
             upload_failed = False
@@ -2367,11 +2368,15 @@ def sync_loop():
             if source != active_source:
                 active_source = source
                 last_server = _last_remembered_item()
+                awaiting_new_copy = suppress_outgoing
                 if suppress_outgoing:
                     last_sequence = None  # Read a baseline without re-sharing old-account content.
+                else:
+                    last_text = last_img = last_files = None
 
             marker = _take_local_upload_marker()
             if marker:
+                awaiting_new_copy = False
                 kind, value = marker
                 if kind == "text":
                     last_text, last_img, last_files = value, None, None
@@ -2385,6 +2390,11 @@ def sync_loop():
                 next_connection_check = time.monotonic() + 15
 
             sequence = _clipboard_sequence()
+            if (awaiting_new_copy and not suppress_outgoing and sequence is not None
+                    and sequence != _connection_clipboard_sequence):
+                # A real new copy may have identical bytes to the suppressed baseline.
+                last_text = last_img = last_files = None
+                awaiting_new_copy = False
             files_changed = last_files and _file_clipboard_key([entry[0] for entry in last_files]) != last_files
             if ((config.get("monitor_clipboard") or config.get("auto_sync"))
                     and (sequence is None or sequence != last_sequence or files_changed)):
@@ -2440,6 +2450,7 @@ def sync_loop():
                 try:
                     received = _auto_receive_remote_files()
                     if received:
+                        awaiting_new_copy = False
                         last_files = _file_clipboard_key(received)
                         last_text = last_img = None
                         last_server = _last_remembered_item()
@@ -2458,11 +2469,13 @@ def sync_loop():
                                 txt = data.get("text", "")
                                 _copy_remote_item(data, suppress_notification=False)
                                 with _remote_commit():
+                                    awaiting_new_copy = False
                                     last_text, last_img, last_files = txt, None, None
                                     notify_received("text", t("text_arrived"))
                             elif not suppress and data.get("type") == "image":
                                 copied_kind = _copy_remote_item(data, suppress_notification=False)
                                 with _remote_commit():
+                                    awaiting_new_copy = False
                                     marker = _take_local_upload_marker()
                                     if copied_kind == "image":
                                         last_img, last_text, last_files = marker[1], None, None
@@ -2476,6 +2489,7 @@ def sync_loop():
                                     _copy_remote_item(data)
                                     saved = save_remote_files(data)
                                     with _remote_commit():
+                                        awaiting_new_copy = False
                                         last_files = _file_clipboard_key(saved)
                                         last_text = last_img = None
                             with _remote_commit():

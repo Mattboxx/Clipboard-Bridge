@@ -18,7 +18,8 @@ Clipboard Bridge before updating or switching between x64 and ARM64.
   update the current history cursor, or announce an obsolete receipt. Switching
   away and back is detected too, including changes to passwords and API tokens.
 - Changing connections does not automatically re-share the previous clipboard
-  into the newly selected account. A fresh copy can still be synchronized.
+  into the newly selected account. A fresh copy can still be synchronized, even
+  when it contains the same text, image or files as before.
 - File groups and queued History actions retain their original connection.
   Network downloads do not hold the Settings update lock.
 - Testing unsaved credentials updates only that Settings window, not the saved
