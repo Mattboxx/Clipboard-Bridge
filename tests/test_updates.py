@@ -288,3 +288,13 @@ def test_retry_never_recycles_a_previous_helpers_ticket_or_cancel_marker(tmp_pat
     assert ticket.read_bytes() == original and cancelled.read_text() == '{"cancelled":true}'
     assert not (fresh.parent / "cancel.json").exists() and not (fresh.parent / "ready.json").exists()
     assert json.loads(fresh.read_text())["original_sha256"] == updates.file_digest(target)
+
+
+def test_portable_replacement_preserves_internet_zone(tmp_path, monkeypatch):
+    cache, ticket, target, candidate = helper_fixture(tmp_path, monkeypatch)
+    Path(str(ticket.parent / candidate.name) + ":Zone.Identifier").write_text("[ZoneTransfer]\nZoneId=3")
+    marked = []
+    monkeypatch.setattr(updates, "mark_download", lambda path, url: marked.append((path, url)))
+    monkeypatch.setattr(updates, "_shell_open", lambda *args, **kwargs: 123)
+    assert updates.apply_ticket(ticket, cache) == 0
+    assert len(marked) == 1 and marked[0][1] == candidate.url

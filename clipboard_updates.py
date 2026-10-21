@@ -170,6 +170,14 @@ def mark_download(path, url):
             output.write("[ZoneTransfer]\nZoneId=3\nHostUrl=" + _https(url, {"github.com"}) + "\n")
 
 
+def preserve_download_zone(source, destination, url):
+    # copy2 does not guarantee NTFS alternate-stream preservation. Real GitHub
+    # downloads are marked in download_update; local compiler artifacts are not
+    # Internet downloads and must not be artificially reclassified as such.
+    if Path(str(source) + ":Zone.Identifier").is_file():
+        mark_download(destination, url)
+
+
 def download_update(update, cache, *, progress=None, cancelled=None, open_url=None):
     folder = Path(cache) / uuid.uuid4().hex
     folder.mkdir(parents=True, exist_ok=False)
@@ -243,7 +251,7 @@ def prune_finished_updates(cache, *, now=None):
             if not result.is_file() or result.stat().st_mtime >= cutoff:
                 continue
             files = list(folder.iterdir())
-            names = {"request.json", "ready.json", "cancel.json", "result.json", "runner.exe"}
+            names = {"request.json", "ready.json", "cancel.json", "result.json", "progress.json", "runner.exe"}
             if any(path.is_symlink() or not path.is_file() or (path.name not in names and not re.fullmatch(
                     r"Clipboard\.Bridge(?:\.Portable\.Windows\.(?:x64|arm64)\.V|_windows_client_and_server_setup_(?:x64|arm64)_V)[0-9.]+\.exe",
                     path.name)) for path in files):
@@ -330,6 +338,7 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
         folder.mkdir(exist_ok=False)
         fresh = folder / update.name
         shutil.copy2(payload, fresh)
+        preserve_download_zone(payload, fresh, update.url)
         verify_executable(fresh, update.sha256, update.version, update.architecture
                           if update.kind == "portable" else None)
         payload = fresh
@@ -511,6 +520,7 @@ def apply_ticket(ticket, cache):
                           if update.kind == "portable" else None)
         if update.kind == "installer":
             installer_started = True
+            _write_json(ticket.parent / "progress.json", {"phase": "installer"})
             _shell_open(payload, ("/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCLOSEAPPLICATIONS",
                                   "/NORESTARTAPPLICATIONS", "/RESTARTEXITCODE=3010",
                                   "/DIR=" + str(target.parent),
@@ -523,10 +533,11 @@ def apply_ticket(ticket, cache):
                 raise UpdateError("invalid_ticket")
             shutil.copy2(payload, stage)
             verify_executable(stage, update.sha256, update.version, update.architecture)
-            mark_download(stage, update.url)
+            preserve_download_zone(payload, stage, update.url)
             _replace(target, backup)
             _replace(stage, target)
         phase = "restart"
+        _write_json(ticket.parent / "progress.json", {"phase": phase})
         pid = _shell_open(target, startup=True)
         _write_json(ticket.parent / "result.json", {"state": "installed", "version": update.version, "pid": pid})
         if backup:

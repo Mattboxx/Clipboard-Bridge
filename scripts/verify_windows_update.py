@@ -30,6 +30,9 @@ def wait_for_file(path, process, timeout=120):
         if process.poll() is not None or time.monotonic() >= deadline:
             result = path.parent / "result.json"
             detail = json.loads(result.read_text()) if result.exists() else {"exit_code": process.poll()}
+            progress = path.parent / "progress.json"
+            if progress.exists():
+                detail["progress"] = json.loads(progress.read_text())
             raise AssertionError("Updater exited or timed out before writing " + path.name + ": " + json.dumps(detail))
         time.sleep(.2)
     return json.loads(path.read_text(encoding="utf-8"))
