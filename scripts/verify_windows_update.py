@@ -28,7 +28,9 @@ def wait_for_file(path, process, timeout=120):
     deadline = time.monotonic() + timeout
     while not path.exists():
         if process.poll() is not None or time.monotonic() >= deadline:
-            raise AssertionError("Updater exited or timed out before writing " + path.name)
+            result = path.parent / "result.json"
+            detail = json.loads(result.read_text()) if result.exists() else {"exit_code": process.poll()}
+            raise AssertionError("Updater exited or timed out before writing " + path.name + ": " + json.dumps(detail))
         time.sleep(.2)
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -125,7 +127,7 @@ def main():
     args = parser.parse_args()
     if os.name != "nt" or os.environ.get("GITHUB_ACTIONS") != "true":
         raise SystemExit("This test installs only inside a disposable GitHub Actions Windows runner.")
-    with tempfile.TemporaryDirectory(prefix="clipboard-update-check-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="clipboard-update-check-", ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
         old = root / "previous.exe"
         url = (f"https://github.com/{updates.REPOSITORY}/releases/download/2.0.17/"
