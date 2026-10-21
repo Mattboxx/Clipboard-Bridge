@@ -31,6 +31,7 @@ def test_current_component_versions_match_docs_and_catalog_mirror():
         assert f"/releases/download/android-v{android}/" in text
     catalog = ROOT / "distribution/clipboard-bridge-store"
     for filename in ("compose.yaml", "Apps/ClipboardBridge/docker-compose.yml",
+                     ".github/workflows/validate.yml",
                      "clipboard-bridge/docker-compose.yml",
                      "adapters/umbrel/clipboard-bridge/docker-compose.yml",
                      "adapters/runtipi/apps/clipboard-bridge/docker-compose.yml"):

@@ -42,4 +42,14 @@ jobs:
           print("ZimaOS metadata: OK")
           PY
       - name: Verify public multi-architecture image
-        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.6 >/dev/null
+        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.9 >/dev/null
+      - name: Build ZimaOS v2 catalog
+        uses: IceWhaleTech/build-appstore-action@407bf02f7ca1d3d610c88c895dc28b016bdace48 # v1.1.2
+        with:
+          source: .
+          output: dist
+          base-url: https://mattboxx.github.io/Clipboard-Bridge-AppStore
+          report-json: out/build-v2-report.json
+          report-title: Clipboard Bridge ZimaOS v2 Validation
+      - name: Validate generated JSON catalog
+        run: python scripts/validate_zimaos_v2.py dist
