@@ -77,19 +77,26 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.17 | Android 1.0.0-beta.12 | Server 1.0.9
+**Current releases:** Windows 2.0.18 | Android 1.0.0-beta.12 | Server 1.0.9
 
 | Your device | Ready-to-use downloads |
 |---|---|
-| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.17.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.x64.V2.0.17.exe) |
-| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.17.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.arm64.V2.0.17.exe) |
+| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.18.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.x64.V2.0.18.exe) |
+| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.18.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.arm64.V2.0.18.exe) |
 | **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), currently a public beta |
-| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut) |
+| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
 
 The installer is the easiest Windows option. The portable EXE needs no installation.
 Both save settings and history in your user folder and preserve them across updates.
+**From Windows 2.0.18, open Settings > Updates** to check GitHub and install a new
+stable version. Automatic checks are on; automatic download/install is **off until
+you enable it and Save**. It keeps your current x64/ARM64 and installed/portable
+type, waits for active client transfers and restarts the app. Downloads are checked
+against GitHub's SHA-256, not a publisher certificate. Windows may still ask for
+approval. Older clients need one manual installation of 2.0.18 first.
+
 To check your processor, open **Settings > System > About > System type**. Quit the
 app before switching between x64 and ARM64; both architectures share your settings.
 
@@ -97,7 +104,7 @@ app before switching between x64 and ARM64; both architectures share your settin
 > Defender or Smart App Control may block them. Read [CODE_SIGNING.md](CODE_SIGNING.md);
 > do not disable Windows protection to bypass a warning.
 
-All assets, checksums and release notes are in the [2.0.17 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.17).
+All assets, checksums and release notes are in the [2.0.18 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.18).
 Image/PDF previews and native ARM64 packages are included. See [CHANGELOG.md](CHANGELOG.md)
 for the full changes; Android and the standalone server have independent version numbers.
 
@@ -135,7 +142,7 @@ documents, archives, audio, video and custom extensions such as `.shortcut`.
 **Copied text arrives as plain Unicode text**, even if the source app uses RTF.
 Emoji, accents, tabs and line breaks are retained; fonts, colours and bold styling
 are not transferred. Actual `.rtf` documents sent as files remain unchanged.
-This works with server 1.0.9 or Windows Server mode 2.0.17, for every connected client.
+This works with server 1.0.9 or Windows Server mode 2.0.18, for every connected client.
 
 **The latest upload always wins.** Text, images and files have equal priority.
 Several files sent together stay in **one history item**; restoring or deleting it
@@ -511,7 +518,7 @@ space; latest raw content is an empty response. Retention limits remove old entr
 | Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
 | Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
-| Windows x64 packaging | **Build Windows x64** Actions workflow, or `scripts\windows\build_release.bat 2.0.17`; requires x64 Python and Inno Setup |
+| Windows x64 packaging | **Build Windows x64** Actions workflow, or `scripts\windows\build_release.bat 2.0.18`; requires x64 Python and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
 | Android build | Java 17, Android SDK 35; [Gradle and private signing instructions](android/README.md#build-from-source) |
 | Docker source build | `docker build -t clipboard-bridge-server:dev .` |

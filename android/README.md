@@ -112,7 +112,7 @@ The latest item is determined only by arrival order. Text, images and files have
 priority.
 
 Copied text is placed in Android's clipboard with `ClipData.newPlainText`. With
-standalone server 1.0.9 or Windows Server mode 2.0.17, incoming RTF clipboard text is
+standalone server 1.0.9 or Windows Server mode 2.0.18, incoming RTF clipboard text is
 converted to Unicode text while preserving emoji and accents. Actual `.rtf` documents
 shared as files are not converted.
 

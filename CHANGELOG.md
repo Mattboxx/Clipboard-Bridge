@@ -6,6 +6,23 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Windows 2.0.18 - 2026-10-21
+
+- Add Settings > Updates in English and Italian: manual checks, download progress,
+  cancellation and optional automatic download/installation from official GitHub
+  stable releases. Automatic checks are enabled; installation is opt-in.
+- Select native x64/ARM64 and installed/portable assets, reject downgrades,
+  prereleases, unexpected URLs, missing hashes and damaged downloads. Verify the
+  GitHub SHA-256, embedded version and executable architecture before replacement.
+- Run replacement outside the UI process, wait for the app to exit, preserve user
+  data and restart. Attempt to restore the old EXE on installation/start failure.
+  Defer automatic restart while Settings are open and avoid failed-update loops.
+- Preserve Windows Internet-zone checks. Packages remain unsigned and may require
+  Windows approval; the updater does not disable or bypass security protections.
+- Exercise actual frozen portable/installer upgrades on disposable native runners.
+- Android beta.12, standalone server 1.0.9, store catalogs and signed Apple exports
+  are unchanged. Older Windows versions need one manual upgrade to get the updater.
+
 ## Server 1.0.9 / Android 1.0.0-beta.12 - 2026-10-21
 
 - Raise the standalone server's supported Flask minimum to the reviewed patched

@@ -79,20 +79,29 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.17 | Android 1.0.0-beta.12 | Server 1.0.9
+**Versioni attuali:** Windows 2.0.18 | Android 1.0.0-beta.12 | Server 1.0.9
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
-| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.17.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.x64.V2.0.17.exe) |
-| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.17.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.arm64.V2.0.17.exe) |
+| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.18.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.x64.V2.0.18.exe) |
+| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.18.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.arm64.V2.0.18.exe) |
 | **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut) |
+| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
 L'installer è l'opzione Windows più semplice. L'EXE portable non richiede installazione.
 Entrambi salvano impostazioni e cronologia nella cartella dell'utente e le mantengono
-negli aggiornamenti. Per identificare il processore apri **Impostazioni > Sistema >
+negli aggiornamenti.
+**Da Windows 2.0.18, apri Impostazioni > Aggiornamenti** per controllare GitHub e
+installare una nuova versione stabile. Il controllo automatico è attivo;
+download/installazione automatici sono **disattivati finché non li abiliti e salvi**.
+Mantiene x64/ARM64 e il formato installato/portable, attende i trasferimenti del
+client e riavvia l'app. Verifica lo SHA-256 pubblicato da GitHub, non un certificato
+del produttore. Windows può ancora chiedere un'autorizzazione. Per i client
+precedenti serve prima un'installazione manuale della 2.0.18.
+
+Per identificare il processore apri **Impostazioni > Sistema >
 Informazioni > Tipo sistema**. Chiudi l'app prima di passare da x64 ad ARM64:
 le due architetture condividono le impostazioni.
 
@@ -100,7 +109,7 @@ le due architetture condividono le impostazioni.
 > Defender o Smart App Control potrebbero bloccarli. Leggi [CODE_SIGNING.md](CODE_SIGNING.md);
 > non disattivare la protezione Windows per aggirare un avviso.
 
-File, checksum e note sono nella [release 2.0.17](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.17).
+File, checksum e note sono nella [release 2.0.18](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.18).
 Sono incluse anteprime immagini/PDF e versioni ARM64 native. Le modifiche complete
 sono nel [CHANGELOG.md](CHANGELOG.md); Android e server hanno versioni indipendenti.
 
@@ -138,7 +147,7 @@ Office, archivi, audio, video ed estensioni personalizzate come `.shortcut`.
 **Il testo copiato arriva come testo Unicode normale**, anche se l'app di origine
 usa RTF. Emoji, accenti, tabulazioni e righe vengono conservati; font, colori e
 grassetto non vengono trasferiti. I documenti `.rtf` inviati come file restano intatti.
-Funziona con il server 1.0.9 o Windows in modalità server 2.0.17, per tutti i client connessi.
+Funziona con il server 1.0.9 o Windows in modalità server 2.0.18, per tutti i client connessi.
 
 **Conta sempre l'ultimo invio.** Testo, immagini e file hanno la stessa priorità.
 Più file inviati insieme rimangono **un'unica voce di cronologia**: ripristinarla
@@ -520,7 +529,7 @@ rimuovono le voci vecchie.
 | Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
 | Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
-| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.17`; richiede Python x64 e Inno Setup |
+| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.18`; richiede Python x64 e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
 | Build Android | Java 17, Android SDK 35; [istruzioni Gradle e firma privata](android/README.md#build-from-source) |
 | Build Docker dai sorgenti | `docker build -t clipboard-bridge-server:dev .` |

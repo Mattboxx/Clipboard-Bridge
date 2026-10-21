@@ -36,6 +36,14 @@ from email.parser import BytesParser
 from email.policy import default as email_policy
 from urllib.parse import parse_qs, quote, unquote
 
+import clipboard_updates as updates
+
+if __name__ == "__main__" and sys.argv[1:2] == [updates.HELPER_FLAG]:
+    if len(sys.argv) != 3:
+        raise SystemExit(2)
+    raise SystemExit(updates.apply_ticket(sys.argv[2], os.path.join(
+        os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "Clipboard Bridge", "updates")))
+
 import requests
 import pypdfium2 as pdfium
 import pyperclip
@@ -76,6 +84,8 @@ HOST_ITEMS = os.path.join(HOST_DIR, "items")
 HOST_INDEX = os.path.join(HOST_DIR, "index.json")
 SYNC_STATE_FILE = os.path.join(DATA_DIR, "sync_state.json")
 ERROR_LOG = os.path.join(DATA_DIR, "error.log")
+UPDATE_STATE_FILE = os.path.join(DATA_DIR, "update_state.json")
+UPDATE_CACHE = os.path.join(DATA_DIR, "updates")
 ICON_PATH = os.path.join(RES_DIR, "icon.ico")
 VERSION_PATH = os.path.join(RES_DIR, "VERSION")
 
@@ -179,6 +189,8 @@ DEFAULT_CONFIG = {
     "hotkey_send": "ctrl+alt+c",
     "hotkey_receive": "ctrl+alt+v",
     "hotkey_history": "ctrl+alt+h",
+    "check_updates": True,
+    "auto_install_updates": False,
 }
 
 stop_event = threading.Event()
@@ -203,6 +215,14 @@ _connection_state = "checking"
 _connection_checked_server = None
 _connection_check_generation = 0
 _instance_mutex = None
+_update_busy = threading.Lock()
+_update_status_lock = threading.Lock()
+_update_status = ("idle", "", 0)
+_available_update = None
+_available_payload = None
+_update_cancel = threading.Event()
+_update_maintenance = threading.Event()
+_settings_open = threading.Event()
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -228,6 +248,27 @@ STRINGS = {
         "status_checking": "Connection: checking...",
         "connection_changed": "Settings changed. Check the connection again.",
         "remote_changed": "Connection changed. Retry on the selected connection; an earlier upload may already have completed.",
+        "tab_updates": "Updates",
+        "chk_updates": "Check GitHub for updates automatically",
+        "chk_auto_install": "Download and install updates automatically",
+        "update_check_now": "Check now",
+        "update_download": "Download and install",
+        "update_cancel_download": "Cancel download",
+        "update_release": "GitHub releases",
+        "update_idle": "Current version: {version}",
+        "update_checking": "Checking GitHub...",
+        "update_current": "You are up to date ({version}).",
+        "update_available": "Version {version} is available.",
+        "update_downloading": "Downloading {version}: {percent}%",
+        "update_waiting": "Waiting for active transfers to finish...",
+        "update_installing": "Installing the update. Clipboard Bridge will restart.",
+        "update_cancelled": "Download cancelled. The current app is unchanged.",
+        "update_failed": "Update could not be completed. Retry or open GitHub releases.",
+        "update_integrity": "The download could not be verified. Nothing was installed.",
+        "update_readonly": "The app folder is read-only. Use the installer from GitHub.",
+        "update_unsupported": "Automatic installation requires the packaged Windows app.",
+        "update_confirm": "Restart to install version {version}? Unsaved Settings changes will not be saved. Windows may ask you to approve the unsigned download.",
+        "update_security": "Downloads are verified against GitHub's SHA-256. Windows files are currently unsigned; Windows may require approval. No security protections are disabled.",
         "tray_connected": "🟢 Connected",
         "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
@@ -356,6 +397,27 @@ STRINGS = {
         "status_checking": "Connessione: verifica in corso...",
         "connection_changed": "Impostazioni modificate. Verifica di nuovo la connessione.",
         "remote_changed": "Connessione cambiata. Riprova sulla connessione selezionata; un invio precedente potrebbe essere gia completato.",
+        "tab_updates": "Aggiornamenti",
+        "chk_updates": "Controlla automaticamente gli aggiornamenti su GitHub",
+        "chk_auto_install": "Scarica e installa automaticamente gli aggiornamenti",
+        "update_check_now": "Controlla ora",
+        "update_download": "Scarica e installa",
+        "update_cancel_download": "Annulla download",
+        "update_release": "Release GitHub",
+        "update_idle": "Versione attuale: {version}",
+        "update_checking": "Controllo su GitHub...",
+        "update_current": "Il programma è aggiornato ({version}).",
+        "update_available": "È disponibile la versione {version}.",
+        "update_downloading": "Download della {version}: {percent}%",
+        "update_waiting": "Attendo la fine dei trasferimenti in corso...",
+        "update_installing": "Installazione in corso. Clipboard Bridge si riavvierà.",
+        "update_cancelled": "Download annullato. Il programma attuale non è stato modificato.",
+        "update_failed": "Aggiornamento non completato. Riprova o apri le release GitHub.",
+        "update_integrity": "Non è stato possibile verificare il download. Nessuna installazione eseguita.",
+        "update_readonly": "La cartella del programma è in sola lettura. Usa l'installer da GitHub.",
+        "update_unsupported": "L'installazione automatica richiede l'eseguibile Windows.",
+        "update_confirm": "Riavviare per installare la versione {version}? Le modifiche non salvate nelle Impostazioni andranno perse. Windows potrebbe chiedere di autorizzare il download non firmato.",
+        "update_security": "I download vengono verificati con lo SHA-256 di GitHub. I file Windows non sono ancora firmati: potrebbe essere richiesta un'autorizzazione. Nessuna protezione viene disattivata.",
         "tray_connected": "🟢 Connesso",
         "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
@@ -607,6 +669,8 @@ def _remote_commit(expected=None):
 @contextmanager
 def _remote_operation(expected=None):
     with _remote_activity_lock:
+        if _update_maintenance.is_set():
+            raise RuntimeError(t("update_installing"))
         nested = hasattr(_remote_request_context, "settings")
         if not nested:
             with _settings_lock:
@@ -2352,6 +2416,187 @@ def open_received_folder(icon=None, item=None):
 
 
 # ---------------------------------------------------------------- monitor / sync
+def _set_update_status(state, version="", percent=0):
+    global _update_status
+    with _update_status_lock:
+        _update_status = (state, version, percent)
+
+
+def _load_update_state():
+    try:
+        with open(UPDATE_STATE_FILE, encoding="utf-8") as source:
+            value = json.loads(source.read(65537))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _update_timestamp(state, key):
+    value = state.get(key)
+    # Ignore corrupt, non-finite and future timestamps rather than disabling checks.
+    return value if type(value) in (int, float) and 0 <= value <= time.time() else 0
+
+
+def _save_update_state(value):
+    try:
+        updates._write_json(UPDATE_STATE_FILE, value)
+    except OSError:
+        raise updates.UpdateError("state_unavailable") from None
+
+
+def _update_distribution():
+    installed = (os.path.basename(sys.executable).lower() == "clipboard bridge.exe"
+                 and os.path.isfile(os.path.join(APP_DIR, "unins000.exe")))
+    return "installer" if installed else "portable"
+
+
+def _update_error(error):
+    code = error.code if isinstance(error, updates.UpdateError) else "failed"
+    _set_update_status({"cancelled": "cancelled", "integrity_failed": "integrity",
+                        "folder_readonly": "readonly", "unsupported_build": "unsupported"}.get(code, "failed"))
+
+
+def _confirm_update_restart(version):
+    answer, finished = [], threading.Event()
+    def prompt():
+        try:
+            if stop_event.is_set() or _update_cancel.is_set():
+                return
+            parent = next((window for window in _root.winfo_children()
+                           if getattr(window, "_view_name", None) == "settings"), _root)
+            answer.append(messagebox.askyesno(t("tab_updates"), t("update_confirm", version=version), parent=parent))
+        finally:
+            finished.set()
+    _cmd_q.put(prompt)
+    while not finished.wait(.2):
+        if stop_event.is_set() or _update_cancel.is_set():
+            return False
+    return bool(answer and answer[0] and not stop_event.is_set() and not _update_cancel.is_set())
+
+
+def _download_and_apply_update(candidate, *, automatic=False):
+    global _available_payload
+    if not getattr(sys, "frozen", False):
+        raise updates.UpdateError("unsupported_build")
+    payload = _available_payload
+    if payload is None or not os.path.isfile(payload) or updates.file_digest(payload) != candidate.sha256:
+        _set_update_status("downloading", candidate.version)
+        payload = updates.download_update(candidate, UPDATE_CACHE, cancelled=_update_cancel,
+                    progress=lambda done, total: _set_update_status("downloading", candidate.version, done * 100 // total))
+        _available_payload = payload
+    if automatic:
+        if (_settings_open.is_set() or not config.get("check_updates", True)
+                or not config.get("auto_install_updates", False)):
+            _set_update_status("available", candidate.version)
+            return
+    elif not _confirm_update_restart(candidate.version):
+        _set_update_status("available", candidate.version)
+        return
+    _set_update_status("waiting", candidate.version)
+    while not _remote_activity_lock.acquire(timeout=.2):
+        if _update_cancel.is_set() or stop_event.is_set():
+            raise updates.UpdateError("cancelled")
+    try:
+        if _update_cancel.is_set() or stop_event.is_set():
+            raise updates.UpdateError("cancelled")
+        # A Settings window may have opened while a transfer was finishing.
+        if automatic and (_settings_open.is_set() or not config.get("check_updates", True)
+                          or not config.get("auto_install_updates", False)):
+            _set_update_status("available", candidate.version)
+            return
+        _update_maintenance.set()
+        ticket = updates.prepare_handoff(candidate, payload, sys.executable, UPDATE_CACHE,
+                                         language=config.get("lang", "en"))
+        state = _load_update_state()
+        state.update(last_apply_version=candidate.version, last_apply_at=time.time(), last_ticket=ticket.parent.name)
+        _save_update_state(state)
+        updates.launch_handoff(ticket)
+        _set_update_status("installing", candidate.version)
+        _cmd_q.put(lambda: do_exit(_icon, None))
+    except Exception:
+        _update_maintenance.clear()
+        raise
+    finally:
+        _remote_activity_lock.release()
+
+
+def check_for_updates(*, manual=False):
+    global _available_update, _available_payload
+    if not _update_busy.acquire(blocking=False):
+        return
+    try:
+        _update_cancel.clear()
+        _set_update_status("checking")
+        architecture = updates.executable_architecture(sys.executable)
+        candidate = updates.check_update(APP_VERSION, architecture, _update_distribution())
+        state = _load_update_state()
+        state["last_checked"] = time.time()
+        _save_update_state(state)
+        if candidate is None:
+            _available_update = _available_payload = None
+            _set_update_status("current", APP_VERSION)
+            return
+        if _available_update != candidate:
+            _available_payload = None
+        _available_update = candidate
+        _set_update_status("available", candidate.version)
+        previous_attempt = (state.get("last_apply_version") == candidate.version
+                            and time.time() - _update_timestamp(state, "last_apply_at") < 86400)
+        if (not manual and config.get("check_updates", True) and config.get("auto_install_updates", False) and not previous_attempt
+                and not _settings_open.is_set()):
+            _download_and_apply_update(candidate, automatic=True)
+        elif not manual and state.get("notified_version") != candidate.version:
+            notify(t("update_available", version=candidate.version), action=lambda: _cmd_q.put(open_updates_settings))
+            state["notified_version"] = candidate.version
+            _save_update_state(state)
+    except Exception as error:
+        _update_error(error)
+    finally:
+        _update_busy.release()
+
+
+def install_available_update():
+    if _available_update is None or not _update_busy.acquire(blocking=False):
+        return
+    try:
+        _update_cancel.clear()
+        _download_and_apply_update(_available_update)
+    except Exception as error:
+        _update_error(error)
+    finally:
+        _update_busy.release()
+
+
+def update_loop():
+    # Surface helper failures after restart; never include local paths in messages.
+    state = _load_update_state()
+    folder = state.get("last_ticket", "")
+    if isinstance(folder, str) and re.fullmatch(r"[0-9a-f]{32}", folder):
+        try:
+            with open(os.path.join(UPDATE_CACHE, folder, "result.json"), encoding="utf-8") as source:
+                result = json.loads(source.read(65537))
+            if result.get("state") == "failed":
+                _set_update_status("failed")
+        except (OSError, ValueError, AttributeError):
+            pass
+    updates.prune_finished_updates(UPDATE_CACHE)
+    if stop_event.wait(30):
+        return
+    while not stop_event.is_set():
+        checked = _update_timestamp(_load_update_state(), "last_checked")
+        if config.get("check_updates", True) and time.time() - checked >= 86400:
+            check_for_updates()
+        if stop_event.wait(3600):
+            return
+
+
+def open_updates_settings():
+    open_settings()
+    window = _existing_view("settings")
+    if window is not None:
+        window._settings_navigation.select(window._updates_page)
+
+
 def sync_loop():
     last_text = last_img = last_files = last_server = None
     active_source = None
@@ -3498,6 +3743,7 @@ def open_settings(icon=None, item=None):
         return
     root = tk.Toplevel(_root)
     root._view_name = "settings"
+    _settings_open.set()
     root.title(t("win_settings"))
     root.geometry("760x620")
     root.minsize(700, 520)
@@ -3526,10 +3772,64 @@ def open_settings(icon=None, item=None):
     connection_page, connection_tab = _settings_page(notebook)
     automation_page, automation_tab = _settings_page(notebook)
     shortcuts_page, shortcuts_tab = _settings_page(notebook)
+    updates_page, updates_tab = _settings_page(notebook)
     notebook.add(general_page, text=t("tab_general"))
     notebook.add(connection_page, text=t("tab_connection"))
     notebook.add(automation_page, text=t("tab_automation"))
     notebook.add(shortcuts_page, text=t("tab_shortcuts"))
+    notebook.add(updates_page, text=t("tab_updates"))
+    root._settings_navigation, root._updates_page = notebook, updates_page
+
+    update_checks = tk.BooleanVar(master=root, value=config.get("check_updates", True))
+    auto_updates = tk.BooleanVar(master=root, value=config.get("auto_install_updates", False))
+    update_box = ttk.LabelFrame(updates_tab, text=t("tab_updates"), style="Settings.Section.TLabelframe")
+    update_box.pack(fill="x")
+
+    def update_preferences():
+        if not update_checks.get():
+            auto_updates.set(False)
+        automatic_control.config(state="normal" if update_checks.get() else "disabled")
+
+    ttk.Checkbutton(update_box, text=t("chk_updates"), name="check_updates", variable=update_checks,
+                    command=update_preferences, style="Settings.TCheckbutton").pack(anchor="w")
+    automatic_control = ttk.Checkbutton(update_box, text=t("chk_auto_install"), name="auto_install_updates",
+                                       variable=auto_updates, style="Settings.TCheckbutton")
+    automatic_control.pack(anchor="w")
+    update_preferences()
+    update_text = tk.StringVar(master=root)
+    ttk.Label(update_box, textvariable=update_text, wraplength=430, name="update_status").pack(
+        fill="x", pady=(14, 8))
+    progress = ttk.Progressbar(update_box, mode="determinate", maximum=100, name="update_progress")
+    progress.pack(fill="x", pady=(0, 10))
+    update_actions = ttk.Frame(update_box)
+    update_actions.pack(fill="x")
+    check_update_button = ttk.Button(update_actions, text=t("update_check_now"), name="update_check",
+                                    command=lambda: _run_bg(lambda: check_for_updates(manual=True)))
+    check_update_button.pack(side="left")
+    install_update_button = ttk.Button(update_actions, text=t("update_download"), name="update_install",
+                                      command=lambda: _run_bg(install_available_update))
+    install_update_button.pack(side="left", padx=(8, 0))
+    cancel_update_button = ttk.Button(update_actions, text=t("update_cancel_download"), name="update_cancel",
+                                     command=_update_cancel.set)
+    cancel_update_button.pack(side="left", padx=(8, 0))
+    ttk.Label(updates_tab, text=t("update_security"), wraplength=430, style="Muted.TLabel").pack(
+        fill="x", pady=(12, 8))
+    ttk.Button(updates_tab, text=t("update_release"),
+               command=lambda: webbrowser.open(updates.RELEASE_PAGE)).pack(anchor="w")
+    update_job = None
+
+    def render_updates():
+        nonlocal update_job
+        with _update_status_lock:
+            state, version, percent = _update_status
+        update_text.set(t("update_" + state, version=version or APP_VERSION, percent=percent))
+        progress["value"] = percent
+        busy = state in ("checking", "downloading", "waiting", "installing")
+        check_update_button.config(state="disabled" if busy else "normal")
+        install_update_button.config(state="normal" if not busy and _available_update else "disabled")
+        cancel_update_button.config(state="normal" if state in ("downloading", "waiting") else "disabled")
+        update_job = root.after(200, render_updates)
+    render_updates()
 
     entries = {}
 
@@ -3889,7 +4189,9 @@ def open_settings(icon=None, item=None):
         values.update(auto_sync=auto.get(), auto_receive_files=auto_files.get(),
                       monitor_clipboard=mon.get(), notifications_enabled=notifications.get(),
                       notify_text=notify_text.get(), notify_images=notify_images.get(),
-                      notify_files=notify_files.get(), hotkeys_enabled=hk.get())
+                      notify_files=notify_files.get(), hotkeys_enabled=hk.get(),
+                      check_updates=update_checks.get(),
+                      auto_install_updates=auto_updates.get() and update_checks.get())
         if values["hotkeys_enabled"]:
             errors = register_hotkeys(values)
             if errors:
@@ -3928,8 +4230,9 @@ def open_settings(icon=None, item=None):
         nonlocal probe_generation
         probe_generation += 1
         recorder.finish()
-        for job in (release_job, connection_job):
+        for job in (release_job, connection_job, update_job):
             root.after_cancel(job)
+        _settings_open.clear()
         _root._appearance_override = None
         _update_appearance(config.get("appearance", "dark"))
         root.destroy()
@@ -4169,7 +4472,8 @@ def do_exit(icon, item):
     stop_host_server()
     unregister_hotkeys()
     stop_event.set()
-    icon.stop()
+    if icon is not None:
+        icon.stop()
     try:
         _cmd_q.put(_root.quit)
     except Exception:
@@ -4298,6 +4602,7 @@ def main():
         if config.get("mode") == "server":
             start_host_server()
         threading.Thread(target=sync_loop, daemon=True).start()
+        threading.Thread(target=update_loop, daemon=True).start()
         register_hotkeys()
         _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
         _install_notification_click_handler(_icon)

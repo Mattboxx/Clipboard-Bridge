@@ -13,6 +13,9 @@ on:
       - "clipboard_bridge_windows.py"
       - "clipboard_text.py"
       - "clipboard_storage.py"
+      - "clipboard_updates.py"
+      - "tests/test_updates.py"
+      - "scripts/verify_windows_update.py"
       - "requirements-client.txt"
       - "requirements-build.txt"
       - "tests/test_windows_client.py"
@@ -54,7 +57,7 @@ jobs:
 
       - name: Test Windows client and release preparation
         run: |
-          python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_assets.py tests/test_release_metadata.py
+          python -m pytest -q tests/test_windows_client.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_assets.py tests/test_release_metadata.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows x64 tests failed' }
 
       - name: Install Inno Setup compiler
@@ -110,6 +113,12 @@ jobs:
           if ((Get-FileHash -LiteralPath $installed).Hash -ne (Get-FileHash -LiteralPath 'dist/Clipboard Bridge.exe').Hash) { throw 'Installer payload mismatch' }
           python scripts/verify_windows_build.py "$installed" --architecture x64 --smoke
           if ($LASTEXITCODE -ne 0) { throw 'Installed x64 client verification failed' }
+
+      - name: Verify frozen portable and installer update from previous public release
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          python scripts/verify_windows_update.py "dist/Clipboard Bridge.exe" "Output/Clipboard.Bridge_windows_client_and_server_setup_x64_V$version.exe" --architecture x64
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen x64 updater verification failed' }
 
       - name: Record verified artifacts and dependency versions
         env:

@@ -59,6 +59,7 @@ def smoke_test(executable):
             "mode": "server", "host_port": port, "monitor_clipboard": False,
             "auto_sync": False, "auto_receive_files": False,
             "hotkeys_enabled": False, "notifications_enabled": False,
+            "check_updates": False, "auto_install_updates": False,
         }), encoding="utf-8")
         process = subprocess.Popen([str(executable)], cwd=root, env=environment)
         base = f"http://127.0.0.1:{port}"

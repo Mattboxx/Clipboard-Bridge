@@ -1786,6 +1786,75 @@ def test_image_preview_async_selection_and_local_history(tmp_path, monkeypatch, 
             tk_test_root.tk.call(command) if command else child.destroy()
 
 
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_update_settings_are_clear_optional_and_persist(tmp_path, monkeypatch, tk_test_root, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, hotkeys_enabled=False)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "_run_bg", lambda action: None)
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
+    assert client.config["check_updates"] is True
+    assert client.config["auto_install_updates"] is False
+    client.open_updates_settings()
+    tk_test_root.update()
+    window = client._existing_view("settings")
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+    widgets = {child.winfo_name(): child for child in descendants(window)}
+    try:
+        assert client._settings_open.is_set()
+        assert widgets["update_cancel"].cget("text") != client.t("cancel")
+        assert str(widgets["update_install"].cget("state")) == "disabled"
+        widgets["auto_install_updates"].invoke()
+        widgets["check_updates"].invoke()
+        assert str(widgets["auto_install_updates"].cget("state")) == "disabled"
+        widgets["check_updates"].invoke()
+        assert not tk_test_root.getvar(widgets["auto_install_updates"].cget("variable"))
+        widgets["auto_install_updates"].invoke()
+        next(child for child in widgets.values() if isinstance(child, client.ttk.Button)
+             and child.cget("text") == client.t("save")).invoke()
+        assert client.config["check_updates"] and client.config["auto_install_updates"]
+        assert not client._settings_open.is_set()
+        saved = json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))
+        assert saved["check_updates"] and saved["auto_install_updates"]
+    finally:
+        if window.winfo_exists():
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+
+
+@pytest.mark.parametrize("value", [None, "bad", True, float("nan"), float("inf"), -1, 10**20])
+def test_invalid_update_timestamps_cannot_disable_checks(tmp_path, monkeypatch, value):
+    client = load_client(tmp_path, monkeypatch)
+    assert client._update_timestamp({"time": value}, "time") == 0
+
+
+def test_update_checks_do_not_install_without_explicit_opt_in(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    candidate = SimpleNamespace(version="99.0.0")
+    monkeypatch.setattr(client.updates, "executable_architecture", lambda path: "x64")
+    monkeypatch.setattr(client.updates, "check_update", lambda *args: candidate)
+    notices, installs = [], []
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: notices.append(args))
+    monkeypatch.setattr(client, "_download_and_apply_update", lambda *args, **kwargs: installs.append(args))
+    for _ in range(2):
+        client.check_for_updates()
+    assert len(notices) == 1 and not installs
+    client.config["auto_install_updates"] = True
+    client.check_for_updates(manual=True)
+    assert not installs, "A manual check must not close the app"
+    client._settings_open.set()
+    client.check_for_updates()
+    assert not installs, "Unsaved Settings must defer automatic installation"
+    client._settings_open.clear()
+    client.check_for_updates()
+    assert len(installs) == 1
+    client._save_update_state({"last_apply_version": candidate.version, "last_apply_at": time.time()})
+    client.check_for_updates()
+    assert len(installs) == 1, "Failed/restarted updates must not loop automatically"
+
+
 def load_client(tmp_path, monkeypatch):
     local_app_data = tmp_path / "LocalAppData"
     user_profile = tmp_path / "User"
@@ -2069,7 +2138,7 @@ def test_real_clipboard_round_trip_uses_a_private_window_station():
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.17"
+    assert client.APP_VERSION == "2.0.18"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
