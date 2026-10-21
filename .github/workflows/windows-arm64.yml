@@ -11,6 +11,7 @@ on:
       - "clipboard_text.py"
       - "clipboard_storage.py"
       - "clipboard_updates.py"
+      - "clipboard_design.py"
       - "tests/test_updates.py"
       - "scripts/verify_windows_update.py"
       - "tests/test_clipboard_text.py"
@@ -19,6 +20,7 @@ on:
       - "requirements-build.txt"
       - "scripts/verify_windows_build.py"
       - "tests/test_windows_client.py"
+      - "tests/test_windows_design.py"
       - "tests/windows_clipboard_worker.py"
       - "VERSION"
 
@@ -52,7 +54,7 @@ jobs:
 
       - name: Test Windows client on ARM64
         run: |
-          python -m pytest -q tests/test_windows_client.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py
+          python -m pytest -q tests/test_windows_client.py tests/test_windows_design.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows ARM64 tests failed' }
 
       - name: Build native portable client

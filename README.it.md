@@ -37,7 +37,7 @@ e [clipboard tra dispositivi Apple e Android](https://mattboxx.github.io/Clipboa
 **Ritrova un elemento, visualizza l'anteprima di un'immagine o PDF e copialo di nuovo.**
 L'app Windows riunisce ricerca, gruppi di file e comandi Invia/Ricevi in una finestra.
 
-![App desktop Windows: cronologia ricercabile, gruppi di file e anteprima immagine](docs/assets/windows-history.png)
+![App desktop Windows: cronologia condivisa compatta e comandi di trasferimento](docs/assets/windows-history-wide.png)
 
 *Schermata reale con dati di esempio pubblici, non contenuti privati della clipboard.*
 
@@ -169,7 +169,7 @@ completo dei documenti.
 ### Windows
 
 L'app nell'area di notifica offre invio manuale, hotkey configurabili, sincronizzazione
-opzionale, anteprime immagini/PDF, cronologia locale e ricezione automatica. Il clic
+opzionale, anteprime immagini/PDF, cronologia condivisa e ricezione automatica. Il clic
 sinistro sull'icona apre la cronologia: l'invio è un'azione separata. Non si avviano istanze multiple.
 
 **Comandi rapidi accanto all'orologio:** clic destro sull'icona per inviare la
@@ -190,7 +190,7 @@ Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
 - **Generale:** modalità Client/Server, aspetto chiaro/scuro e lingua.
 - **Connessione:** indirizzo server, token/account opzionali e pulsante
   **Verifica connessione** per controllare il collegamento.
-- **Automazione:** sincronizzazione, registrazione locale, download automatico
+- **Automazione:** sincronizzazione, download automatico
   dei file in arrivo e notifiche separate per testo, immagini e file.
 - **Scorciatoie:** configura le hotkey globali di Invio, Ricezione e apertura Cronologia.
   La cronologia usa inizialmente **Ctrl+Alt+H**: puoi cambiarla in
@@ -206,18 +206,21 @@ Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
 - I file ricevuti sono salvati in `Downloads/Clipboard Bridge` e inseriti nella
   clipboard Windows. Cliccando una notifica file si apre la cartella dei file ricevuti.
 - Attiva **Anteprima** nella cronologia per l'immagine selezionata o la prima pagina
-  del PDF, anche per elementi locali e il primo membro visualizzabile di un gruppo.
+  del PDF, anche per il primo membro visualizzabile di un gruppo.
   Le miniature si caricano in background senza modificare la clipboard o salvare download.
-- **Questo PC** contiene la cronologia privata del PC. **Server** contiene gli elementi
-  inviati e visibili agli altri dispositivi. Usa Invia o auto-sync per pubblicare i contenuti locali.
+- La cronologia segue automaticamente il server scelto nelle impostazioni: quello
+  esterno in modalità Client o quello integrato nel PC in modalità Server. Non serve
+  più scegliere Locale/Server. I filtri per tipo e la ricerca trovano gli elementi condivisi.
+- L'interfaccia leggera offre superfici opache chiare o grafite, accenti blu, icone
+  separate dai nomi e un'anteprima immagini/PDF adattabile alla finestra. Non acquisisce
+  lo sfondo del desktop e non richiede un motore grafico più pesante.
 - Gli appunti copiati da un programma con privilegi amministrativi possono non essere
   rilevati da un processo Windows normale. Vale per **tutti i pacchetti Windows**:
   in quel caso potrebbe servire avviare anche Clipboard Bridge come amministratore.
 - L'interfaccia è italiana e inglese. Impostazioni e dati risiedono nelle cartelle
   scrivibili dell'utente, non in Program Files.
 
-![Impostazioni di connessione e account opzionale](docs/assets/windows-connection.png)
-![Impostazioni di sincronizzazione e notifiche](docs/assets/windows-automation.png)
+![Cronologia condivisa con PDF selezionato nel pannello anteprima](docs/assets/windows-history.png)
 
 </details>
 

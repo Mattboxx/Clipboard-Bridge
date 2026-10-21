@@ -8,6 +8,16 @@ No pending release changes.
 
 ## Windows 2.0.18 - 2026-10-21
 
+- Recompose History around a full-width compact list, a single transfer band and
+  inline type filters. Follow the configured host automatically instead of showing
+  competing Local/Server source selectors. Preserve existing cached data.
+- Add lightweight flat light/graphite surfaces, restrained blue accents, consistent
+  native glyph spacing, slim loading indicators and a responsive image/PDF inspector.
+  Give history icons their own bounded column and refresh their colors on theme changes.
+- Override light hover/readonly defaults in dark selectors. Cache symbol fonts,
+  avoid resetting an unchanged Tk theme and redraw update status only when it changes.
+- Refresh the public site with matching surfaces, reduced-motion-aware transitions
+  and actual desktop captures using public sample data only.
 - Add Settings > Updates in English and Italian: manual checks, download progress,
   cancellation and optional automatic download/installation from official GitHub
   stable releases. Automatic checks are enabled; installation is opt-in.

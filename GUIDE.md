@@ -199,7 +199,7 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   notification, or choose independently whether received text, images and files should
   produce an alert. Automatically received text and images are copied to the clipboard
   before their notification appears.
-- **History…**: browse the server and local history; re-use or delete items.
+- **History…**: browse the selected host's shared history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
 In Windows 2.0.18, History also offers a search field, type filter
@@ -207,12 +207,16 @@ and previous/next server pages. Search matches previews and filenames, including
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
 still clears the entire selected account's history, not just the search results.
-History uses one compact list: choose **Server** or **This PC**, then double-click an
-item or press **Copy**. Local items can also be sent with **Send to server**.
+History uses one compact list. Its source is automatic: the external server in Client
+mode, or the embedded Windows host in Server mode. Changing the host/account in Settings
+refreshes the list; there is no separate Local/Server selector. Double-click an item
+or press **Copy**. Send, Receive and Add files are together above the list; type filters
+and search narrow the results without changing the clipboard.
 The **Preview** checkbox opens or closes the optional preview pane. Selected images
 are shown as thumbnails, with proportions and camera orientation preserved. PDFs
 show their first page and page count, without requiring an installed PDF reader.
-This also works for local files and the first supported member in a file group. Loading runs
+This also works for the first supported member in a file group. The preview moves
+beside the list in a wide window and below it in a narrow one. Loading runs
 in the background and does not copy anything or save extra files. Missing, unsupported
 or unusually large files, and password-protected PDFs, show a preview-unavailable
 message; transfers are unchanged.

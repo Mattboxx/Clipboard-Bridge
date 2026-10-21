@@ -187,8 +187,12 @@ def test_website_support_opens_donation_directly_and_stylesheet_exists():
     assert link["href"] == "https://ko-fi.com/mattboxx"
     assert link["target"] == "_blank"
     assert {"noopener", "noreferrer"} <= set(link["rel"].split())
-    assert links.stylesheets == ["site.css", "apple-shortcuts.css"]
+    assert links.stylesheets == ["site.css", "apple-shortcuts.css", "bridge-ui.css"]
     assert all((ROOT / "docs" / source).is_file() for source in links.stylesheets)
+    design = (ROOT / "docs/bridge-ui.css").read_text(encoding="utf-8")
+    assert "prefers-reduced-motion" in design
+    assert 'url("assets/windows-history-wide.png")' in design
+    assert (ROOT / "docs/assets/windows-history-wide.png").is_file()
 
 
 def test_website_local_images_and_device_downloads_exist():

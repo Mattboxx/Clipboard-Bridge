@@ -113,7 +113,7 @@ def run_checks(source_root, user):
             os.environ[name] = folder
         app = root / "app"
         app.mkdir()
-        for name in ("clipboard_bridge_windows.py", "clipboard_text.py", "clipboard_storage.py", "clipboard_updates.py", "VERSION"):
+        for name in ("clipboard_bridge_windows.py", "clipboard_text.py", "clipboard_storage.py", "clipboard_updates.py", "clipboard_design.py", "VERSION"):
             shutil.copy2(source_root / name, app / name)
         sys.path.insert(0, str(app))
         spec = importlib.util.spec_from_file_location("clipboard_native_test", app / "clipboard_bridge_windows.py")

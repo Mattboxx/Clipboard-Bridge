@@ -1,19 +1,23 @@
 # Public interface screenshots
 
-Captured on 2026-10-20. All visible clipboard contents are synthetic public samples.
+Windows captures refreshed on 2026-10-21. All visible clipboard contents are synthetic public samples.
 No personal profile, clipboard, server address or credentials were used.
 
 ## Windows
 
 `docs/assets/windows-history.png` is a fresh capture of the real Windows History
-window in English, with dark appearance and image preview enabled. The app used a
+window in English, with dark appearance and the real first-page PDF preview enabled. The app used a
 temporary profile and a disposable loopback host; clipboard monitoring and system
 hotkeys were not started. The pointer was placed on a separate capture-helper
 window before capturing History. Only the History window is included.
+`windows-history-wide.png` shows the same 2.0.18 candidate in its compact layout.
+The screenshots verify UI rendering, not the frozen EXE or a physical phone transfer.
 
 The native capture was returned as JPEG and converted to PNG without changing
 the interface, removing elements or painting over the cursor. This replaces the
 earlier screenshot that visibly included a pointer on its title bar.
+The older connection/automation captures are retained as historical assets, not
+embedded as illustrations of the new settings layout.
 
 ## Docker web interface
 

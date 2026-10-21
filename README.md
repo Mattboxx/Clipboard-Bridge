@@ -37,7 +37,7 @@ and [sharing a clipboard between Apple and Android devices](https://mattboxx.git
 **Find a previous clipboard, preview an image or PDF, and copy it again.**
 The Windows app keeps search, file groups and Send/Receive together in one window.
 
-![Windows desktop app: searchable history, grouped files and image preview](docs/assets/windows-history.png)
+![Windows desktop app: compact shared history and transfer controls](docs/assets/windows-history-wide.png)
 
 *Real application screen with public sample data, not private clipboard contents.*
 
@@ -163,7 +163,7 @@ previews and filenames, including group members, not the complete document conte
 ### Windows
 
 The tray app supports manual sharing, configurable hotkeys, optional auto-sync,
-image/PDF previews, local history and automatic receiving. Left-click its icon
+image/PDF previews, shared history and automatic receiving. Left-click its icon
 to open History; sending is a separate action. Only one instance runs at a time.
 
 **Quick actions, next to the clock:** right-click the tray icon to send your
@@ -183,7 +183,7 @@ See the [desktop screenshots and animated tray demo](#desktop-in-action).
 - **General:** choose Client/Server mode, light/dark appearance and language.
 - **Connection:** set the server address and optional token/account; use
   **Check connection now** to verify the connection.
-- **Automation:** configure synchronization, local recording, automatic incoming
+- **Automation:** configure synchronization, automatic incoming
   file downloads and separate text/image/file notifications.
 - **Shortcuts:** configure global hotkeys for Send, Receive and opening History.
   History defaults to **Ctrl+Alt+H**; change it in **Settings > Shortcuts**.
@@ -197,18 +197,21 @@ See the [desktop screenshots and animated tray demo](#desktop-in-action).
 - Received files are saved in `Downloads/Clipboard Bridge` and placed in the
   Windows clipboard. Clicking a file notification opens the received-files folder.
 - Enable **Preview** in History to see the selected image or first PDF page,
-  including local items and the first previewable member of a file group.
+  including the first previewable member of a file group.
   Thumbnails load in the background without changing your clipboard or saving downloads.
-- **This PC** history is private to that PC. **Server** history contains uploaded
-  items, visible to the other devices. Use Send or auto-sync to publish local content.
+- History automatically follows the host selected in Settings: your external server
+  in Client mode, or this PC's embedded host in Server mode. There is no separate
+  Local/Server selector. Use the compact type filters and search to find shared items.
+- The lightweight desktop uses matte graphite or light surfaces, blue accents,
+  clearly separated file icons and a responsive image/PDF preview pane. It does not
+  capture the desktop or require a heavier graphics engine.
 - Clipboard changes made by an administrator-level application may not be
   detected by an ordinary Windows process. This affects **all Windows packages**;
   Clipboard Bridge may also need administrator privileges in that situation.
 - The interface is available in English and Italian. Settings and data belong
   in your writable user folders, not Program Files.
 
-![Connection and optional account settings](docs/assets/windows-connection.png)
-![Synchronization and notification settings](docs/assets/windows-automation.png)
+![Shared history with a PDF selected in the preview pane](docs/assets/windows-history.png)
 
 </details>
 
