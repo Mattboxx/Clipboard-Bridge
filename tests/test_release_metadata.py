@@ -24,7 +24,8 @@ def test_current_component_versions_match_docs_and_catalog_mirror():
     server = re.search(r'^SERVER_VERSION = "([0-9.]+)"', server_source, re.M).group(1)
     android_source = (ROOT / "android/app/build.gradle.kts").read_text(encoding="utf-8")
     android = re.search(r'versionName = "([^"]+)"', android_source).group(1)
-    for filename in ("README.md", "README.it.md", "docs/index.html"):
+    for filename in ("README.md", "README.it.md", "docs/index.html",
+                     "docs/tutorial.html", "docs/tutorial.it.html", "maintainer/TUTORIAL_DEVTO.md"):
         text = (ROOT / filename).read_text(encoding="utf-8")
         assert f"clipboard-bridge-server:{server}" in text
         assert f"Clipboard.Bridge.Android.universal.V{android}.apk" in text

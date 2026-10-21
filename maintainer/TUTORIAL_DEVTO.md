@@ -30,7 +30,7 @@ a suitable private network route.
 ## 1. Make Windows the host
 
 Download the Windows installer or portable EXE from the
-[release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.15).
+[release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.17).
 Intel/AMD Windows 10/11 PCs normally need x64; Windows 11 Snapdragon PCs need ARM64.
 
 Open the app. Right-click its clipboard icon near the Windows clock and choose
@@ -50,9 +50,9 @@ and the mobile clients. Left-clicking the tray icon opens History. Its default
 ## 2. Connect iPhone or iPad with two Shortcuts
 
 Download the signed
-[Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Load.Clipboard.shortcut)
+[Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut)
 and
-[Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/iPhone.Download.Clipboard.shortcut)
+[Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut)
 files on your iPhone and add them to Apple's Shortcuts app.
 
 Edit the Get Contents of URL action in each Shortcut:
@@ -88,7 +88,7 @@ there is no native Mac client.
 ## 3. Connect Android
 
 Install the
-[signed Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.15/Clipboard.Bridge.Android.universal.V1.0.0-beta.11.apk).
+[signed Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk).
 It requires Android 10 or newer and is a public beta. In the app's settings, enter
 the same host address and save. Add credentials only if configured on your host.
 
@@ -133,7 +133,7 @@ folder:
 ```yaml
 services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.8
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
     restart: unless-stopped
     ports:
       - "5088:5088"

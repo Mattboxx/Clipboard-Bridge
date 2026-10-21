@@ -13,6 +13,6 @@ repo: https://github.com/Mattboxx/Clipboard-Bridge
 support: https://github.com/Mattboxx/Clipboard-Bridge/issues
 port: 5088
 defaultPassword: $APP_PASSWORD
-releaseNotes: More reliable threaded server, safer local sessions and configurable upload size.
+releaseNotes: Preserve damaged history and existing files on storage failures, reject ambiguous account directories, and update Flask. Existing data mounts, accounts and Apple Shortcut URLs stay compatible.
 submitter: Mattboxx
 submission: https://github.com/Mattboxx/Clipboard-Bridge-AppStore
