@@ -255,8 +255,22 @@ def prune_finished_updates(cache, *, now=None):
             continue
 
 
+def _system_library(name, *, ole=False):
+    # An absolute system path avoids PyInstaller's basename-based DLL redirection
+    # and does not search the current directory or an update download folder.
+    kernel = ctypes.WinDLL("kernel32.dll", use_last_error=True)
+    directory = ctypes.create_unicode_buffer(32768)
+    get_directory = kernel.GetSystemDirectoryW
+    get_directory.argtypes, get_directory.restype = (wintypes.LPWSTR, wintypes.UINT), wintypes.UINT
+    length = get_directory(directory, len(directory))
+    if not length or length >= len(directory):
+        raise UpdateError("unsupported_build")
+    return (ctypes.OleDLL if ole else ctypes.WinDLL)(str(Path(directory.value) / (name + ".dll")),
+                                                   use_last_error=True)
+
+
 def file_version(path):
-    version = ctypes.WinDLL("version", use_last_error=True)
+    version = _system_library("version")
     size = version.GetFileVersionInfoSizeW
     size.argtypes, size.restype = (wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)), wintypes.DWORD
     ignored = wintypes.DWORD()
@@ -344,7 +358,7 @@ def launch_handoff(ticket, *, timeout=30):
 
 
 def _process_handle(pid, expected_image):
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel = _system_library("kernel32")
     kernel.OpenProcess.argtypes, kernel.OpenProcess.restype = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD), wintypes.HANDLE
     handle = kernel.OpenProcess(0x100000 | 0x1000, False, pid)
     if not handle:
@@ -360,13 +374,13 @@ def _process_handle(pid, expected_image):
 
 
 def _close_handle(handle):
-    close = ctypes.WinDLL("kernel32", use_last_error=True).CloseHandle
+    close = _system_library("kernel32").CloseHandle
     close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
     close(handle)
 
 
 def _wait(handle, milliseconds):
-    wait = ctypes.WinDLL("kernel32", use_last_error=True).WaitForSingleObject
+    wait = _system_library("kernel32").WaitForSingleObject
     wait.argtypes, wait.restype = (wintypes.HANDLE, wintypes.DWORD), wintypes.DWORD
     return wait(handle, milliseconds)
 
@@ -375,7 +389,7 @@ def _shell_open(path, arguments=(), *, wait=False, startup=False):
     if getattr(sys, "frozen", False):
         # This runs only in the helper, never in the UI. External installers must
         # not inherit PyInstaller's bundled-DLL search path or temporary runtime.
-        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel = _system_library("kernel32")
         kernel.SetDllDirectoryW.argtypes, kernel.SetDllDirectoryW.restype = (wintypes.LPCWSTR,), wintypes.BOOL
         if not kernel.SetDllDirectoryW(None):
             raise UpdateError("launch_denied")
@@ -390,19 +404,19 @@ def _shell_open(path, arguments=(), *, wait=False, startup=False):
                     ("lpDirectory", wintypes.LPCWSTR), ("nShow", ctypes.c_int), ("hInstApp", wintypes.HINSTANCE),
                     ("lpIDList", ctypes.c_void_p), ("lpClass", wintypes.LPCWSTR), ("hkeyClass", wintypes.HKEY),
                     ("dwHotKey", wintypes.DWORD), ("hIcon", wintypes.HANDLE), ("hProcess", wintypes.HANDLE)]
-    execute = ctypes.WinDLL("shell32", use_last_error=True).ShellExecuteExW
+    execute = _system_library("shell32").ShellExecuteExW
     execute.argtypes, execute.restype = (ctypes.POINTER(ExecuteInfo),), wintypes.BOOL
     info = ExecuteInfo()
     info.cbSize, info.fMask, info.lpVerb, info.nShow = ctypes.sizeof(info), 0x40 | 0x100, "open", 1
     info.lpFile, info.lpDirectory = str(path), str(Path(path).parent)
     info.lpParameters = subprocess.list2cmdline(list(arguments))
-    ole = ctypes.OleDLL("ole32")
+    ole = _system_library("ole32", ole=True)
     ole.CoInitializeEx.argtypes, ole.CoInitializeEx.restype = (ctypes.c_void_p, wintypes.DWORD), ctypes.c_long
     initialized = ole.CoInitializeEx(None, 2 | 4) in (0, 1)
     try:
         if not execute(ctypes.byref(info)) or not info.hProcess:
             raise UpdateError("launch_denied")
-        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel = _system_library("kernel32")
         kernel.GetProcessId.argtypes, kernel.GetProcessId.restype = (wintypes.HANDLE,), wintypes.DWORD
         pid = kernel.GetProcessId(info.hProcess)
         if wait:
