@@ -449,6 +449,7 @@ def apply_ticket(ticket, cache):
     target = backup = stage = None
     stopped = False
     installer_started = False
+    phase = "ticket"
     try:
         if ticket.stat().st_size > 65536:
             raise UpdateError("invalid_ticket")
@@ -476,15 +477,19 @@ def apply_ticket(ticket, cache):
                 or payload.parent != ticket.parent or target.suffix.lower() != ".exe"
                 or file_digest(target) != value["original_sha256"]):
             raise UpdateError("invalid_ticket")
+        phase = "payload"
         verify_executable(payload, update.sha256, update.version, update.architecture
                           if update.kind == "portable" else None)
+        phase = "parent"
         parent_handle = _process_handle(value["parent_pid"], target)
+        phase = "ready"
         _write_json(ticket.parent / "ready.json", {"state": "ready"})
         if _wait(parent_handle, 120000) != 0:
             raise UpdateError("parent_timeout")
         if (ticket.parent / "cancel.json").exists():
             raise UpdateError("cancelled")
         stopped = True
+        phase = "replace"
         if not target.is_file() or file_digest(target) != value["original_sha256"]:
             stopped = False  # Do not launch or overwrite an externally changed executable.
             raise UpdateError("target_changed")
@@ -507,6 +512,7 @@ def apply_ticket(ticket, cache):
             mark_download(stage, update.url)
             _replace(target, backup)
             _replace(stage, target)
+        phase = "restart"
         pid = _shell_open(target, startup=True)
         _write_json(ticket.parent / "result.json", {"state": "installed", "version": update.version, "pid": pid})
         if backup:
@@ -531,7 +537,9 @@ def apply_ticket(ticket, cache):
                 error = UpdateError("recovery_failed")
         try:
             _write_json(ticket.parent / "result.json", {"state": "failed",
-                        "code": error.code if isinstance(error, UpdateError) else "install_failed"})
+                        "code": error.code if isinstance(error, UpdateError) else "install_failed",
+                        "phase": phase, "error_type": type(error).__name__,
+                        "winerror": getattr(error, "winerror", None) if isinstance(error, OSError) else None})
         except OSError:
             pass
         return 1
