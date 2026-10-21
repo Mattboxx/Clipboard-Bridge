@@ -30,6 +30,11 @@ renamed as ARM64.
 the native payload, exercises its isolated HTTP host and single-instance behavior,
 then installs on a disposable GitHub runner. It compares installed/source executable
 hashes and checks existing configuration, local history and embedded-host data.
+Both native workflows also run the actual frozen update helper, upgrading public
+2.0.17 to the candidate for portable and installer distributions in disposable
+profiles. Hashes, restart and example-data preservation are checked. The test
+harness terminates only its owned test parent; the production updater waits for
+graceful exit and never force-kills applications.
 It never installs onto the maintainer's computer. Real standard-user upgrades,
 clipboard/hotkeys, notifications and SmartScreen still need manual acceptance.
 

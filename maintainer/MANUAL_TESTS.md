@@ -8,6 +8,17 @@ Use disposable example content, never personal clipboard data in screenshots.
 
 - [ ] Fresh standard-user install, no administrator rights; create history and receive a PDF.
 - [ ] Upgrade an existing installation; compare credentials, hotkeys, appearance and history.
+- [ ] In Settings > Updates, check without installing; cancel a download and retry.
+      Compare installed and portable behavior for both architectures. Verify that
+      old clients require a manual 2.0.18 upgrade to obtain these controls.
+- [ ] Enable automatic installation explicitly, Save and leave Settings closed.
+      With a newer official stable release, check restart and data preservation;
+      open Settings during download to defer restart. Disable checks and confirm
+      no background GitHub requests. Keep clipboard/server credentials out of logs.
+- [ ] On a standard-user desktop with normal Windows protection enabled, record
+      actual unsigned-download approval/block behavior; cancellation must leave
+      the old app usable. Test a read-only portable folder and interrupted install.
+      CI's frozen replacement/installer tests do not validate every security prompt.
 - [ ] Portable and installer launch only one background instance.
 - [ ] Record a History hotkey, save, open/close/reopen three times; tray click only opens/focuses.
 - [ ] Text from Word/browser with accents, emoji, flags and joined emoji arrives without styling.
