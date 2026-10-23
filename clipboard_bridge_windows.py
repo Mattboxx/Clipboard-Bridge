@@ -2479,6 +2479,28 @@ def _confirm_update_restart(version):
     return bool(answer and answer[0] and not stop_event.is_set() and not _update_cancel.is_set())
 
 
+def _finish_update_handoff(ticket, version):
+    """Commit on the UI thread so a visible Cancel cannot race shutdown."""
+    try:
+        if _update_cancel.is_set() or stop_event.is_set():
+            updates.cancel_handoff(ticket)
+            raise updates.UpdateError("cancelled")
+        for window in _root.winfo_children():
+            button = getattr(window, "_update_cancel_button", None)
+            if button is not None:
+                button.state(["disabled"])
+        updates.commit_handoff(ticket)
+        _set_update_status("installing", version)
+        do_exit(_icon, None)
+    except Exception as error:
+        try:
+            updates.cancel_handoff(ticket)
+        except OSError:
+            pass
+        _update_maintenance.clear()
+        _update_error(error)
+
+
 def _download_and_apply_update(candidate, *, automatic=False):
     global _available_payload
     if not getattr(sys, "frozen", False):
@@ -2511,13 +2533,12 @@ def _download_and_apply_update(candidate, *, automatic=False):
             return
         _update_maintenance.set()
         ticket = updates.prepare_handoff(candidate, payload, sys.executable, UPDATE_CACHE,
-                                         language=config.get("lang", "en"))
+                                         language=config.get("lang", "en"), cancelled=_update_cancel)
         state = _load_update_state()
         state.update(last_apply_version=candidate.version, last_apply_at=time.time(), last_ticket=ticket.parent.name)
         _save_update_state(state)
-        updates.launch_handoff(ticket)
-        _set_update_status("installing", candidate.version)
-        _cmd_q.put(lambda: do_exit(_icon, None))
+        updates.launch_handoff(ticket, cancelled=_update_cancel)
+        _cmd_q.put(lambda: _finish_update_handoff(ticket, candidate.version))
     except Exception:
         _update_maintenance.clear()
         raise
@@ -3858,6 +3879,7 @@ def open_settings(icon=None, item=None):
     install_update_button.pack(side="left", padx=(8, 0))
     cancel_update_button = ttk.Button(update_actions, text=t("update_cancel_download"), name="update_cancel",
                                      command=_update_cancel.set)
+    root._update_cancel_button = cancel_update_button
     cancel_update_button.pack(side="left", padx=(8, 0))
     ttk.Label(updates_tab, text=t("update_security"), wraplength=430, style="Muted.TLabel").pack(
         fill="x", pady=(12, 8))

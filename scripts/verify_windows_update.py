@@ -100,6 +100,7 @@ def exercise(old, executable, installer, architecture, root, kind):
         processes.append(helper)
         assert wait_for_file(folder / "ready.json", helper)["state"] == "ready"
         assert updates.file_digest(target) == OLD_HASHES[architecture], "Replacement happened before parent exit"
+        updates.commit_handoff(ticket)
         # Test harness only: terminate the exact disposable old process tree. The
         # production helper never kills applications and waits for graceful exit.
         subprocess.run(["taskkill", "/PID", str(parent.pid), "/T", "/F"], check=True, capture_output=True)

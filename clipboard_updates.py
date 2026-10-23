@@ -21,7 +21,8 @@ import uuid
 
 REPOSITORY = "Mattboxx/Clipboard-Bridge"
 RELEASE_PAGE = f"https://github.com/{REPOSITORY}/releases/latest"
-RELEASE_API = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
+RELEASE_API = f"https://api.github.com/repos/{REPOSITORY}/releases"
+MAX_RELEASE_PAGES = 10
 MAX_DOWNLOAD = 256 * 1024 * 1024
 API_LIMIT = 1024 * 1024
 HELPER_FLAG = "--clipboard-bridge-apply-update"
@@ -152,11 +153,32 @@ def select_update(release, current, architecture, kind):
 
 def check_update(current, architecture, kind, *, open_url=None):
     try:
-        with (open_url or _open)(RELEASE_API, metadata=True) as response:
-            raw = response.read(API_LIMIT + 1)
-        if len(raw) > API_LIMIT:
-            raise UpdateError("invalid_release")
-        return select_update(json.loads(raw), current, architecture, kind)
+        newest, newest_parts = None, version_tuple(current)
+        if architecture not in ("x64", "arm64") or kind not in ("installer", "portable"):
+            raise UpdateError("unsupported_build")
+        for page in range(1, MAX_RELEASE_PAGES + 1):
+            with (open_url or _open)(RELEASE_API + f"?per_page=20&page={page}", metadata=True) as response:
+                raw = response.read(API_LIMIT + 1)
+            if len(raw) > API_LIMIT:
+                raise UpdateError("invalid_release")
+            releases = json.loads(raw)
+            if not isinstance(releases, list) or len(releases) > 20:
+                raise UpdateError("invalid_release")
+            for release in releases:
+                if not isinstance(release, dict):
+                    raise UpdateError("invalid_release")
+                if release.get("draft") is not False or release.get("prerelease") is not False:
+                    continue
+                version = release.get("tag_name")
+                if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+                    continue
+                parts = version_tuple(version)
+                if parts > newest_parts:
+                    newest, newest_parts = release, parts
+            if len(releases) < 20:
+                return select_update(newest, current, architecture, kind) if newest else None
+        # A bounded scan that did not reach its end must not report "up to date".
+        raise UpdateError("check_failed")
     except UpdateError:
         raise
     except (ValueError, OSError, urllib.error.URLError):
@@ -233,7 +255,7 @@ def _write_json(path, value):
 
 
 def prune_finished_updates(cache, *, now=None):
-    """Remove only recognized, finished update files older than seven days."""
+    """Remove old finished attempts and abandoned pre-handoff downloads only."""
     root = Path(cache).resolve()
     if not root.is_dir():
         return
@@ -247,14 +269,19 @@ def prune_finished_updates(cache, *, now=None):
             if (not re.fullmatch(r"[0-9a-f]{32}", folder.name) or folder.is_symlink()
                     or folder.resolve().parent != root or not folder.is_dir()):
                 continue
-            result = folder / "result.json"
-            if not result.is_file() or result.stat().st_mtime >= cutoff:
-                continue
             files = list(folder.iterdir())
-            names = {"request.json", "ready.json", "cancel.json", "result.json", "progress.json", "runner.exe"}
+            names = {"request.json", "ready.json", "commit.json", "cancel.json", "result.json", "progress.json", "runner.exe"}
             if any(path.is_symlink() or not path.is_file() or (path.name not in names and not re.fullmatch(
-                    r"Clipboard\.Bridge(?:\.Portable\.Windows\.(?:x64|arm64)\.V|_windows_client_and_server_setup_(?:x64|arm64)_V)[0-9.]+\.exe",
+                    r"Clipboard\.Bridge(?:\.Portable\.Windows\.(?:x64|arm64)\.V|_windows_client_and_server_setup_(?:x64|arm64)_V)[0-9.]+\.(?:exe|part)",
                     path.name)) for path in files):
+                continue
+            result = folder / "result.json"
+            if result.is_file():
+                if result.stat().st_mtime >= cutoff:
+                    continue
+            elif ((folder / "request.json").exists() or (folder / "ready.json").exists()
+                  or max([folder.stat().st_mtime] + [path.stat().st_mtime for path in files]) >= cutoff):
+                # An unfinished helper may still be waiting for a running parent.
                 continue
             for path in files:
                 path.unlink()
@@ -309,7 +336,22 @@ def verify_executable(path, checksum, version, architecture=None):
         raise UpdateError("integrity_failed")
 
 
-def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, language="en"):
+def _check_cancelled(cancelled):
+    if cancelled is not None and cancelled.is_set():
+        raise UpdateError("cancelled")
+
+
+def cancel_handoff(ticket):
+    (Path(ticket).parent / "commit.json").unlink(missing_ok=True)
+    _write_json(Path(ticket).parent / "cancel.json", {"cancelled": True})
+
+
+def commit_handoff(ticket):
+    _write_json(Path(ticket).parent / "commit.json", {"state": "committed"})
+
+
+def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, language="en", cancelled=None):
+    _check_cancelled(cancelled)
     payload, executable, cache = Path(payload).resolve(), Path(executable).resolve(), Path(cache).resolve()
     if payload.parent.parent != cache or not re.fullmatch(r"[0-9a-f]{32}", payload.parent.name):
         raise UpdateError("invalid_ticket")
@@ -317,6 +359,7 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
         raise UpdateError("integrity_failed")
     verify_executable(payload, update.sha256, update.version, update.architecture
                       if update.kind == "portable" else None)
+    _check_cancelled(cancelled)
     if not executable.is_file() or executable.suffix.lower() != ".exe":
         raise UpdateError("unsupported_build")
     # Preflight writes before asking the app to quit, including read-only portable folders.
@@ -331,7 +374,7 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
             probe.unlink(missing_ok=True)
         except OSError:
             pass
-    if any((payload.parent / name).exists() for name in ("request.json", "ready.json", "cancel.json", "result.json")):
+    if any((payload.parent / name).exists() for name in ("request.json", "ready.json", "commit.json", "cancel.json", "result.json")):
         # A timed-out helper may still be waiting for its original parent. Never
         # recycle its ticket or remove its cancellation marker during a retry.
         folder = cache / uuid.uuid4().hex
@@ -344,6 +387,7 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
         payload = fresh
     runner = payload.parent / "runner.exe"
     shutil.copy2(executable, runner)
+    _check_cancelled(cancelled)
     ticket = payload.parent / "request.json"
     _write_json(ticket, {"schema": 1, "update": asdict(update), "target": str(executable),
                          "original_sha256": file_digest(executable),
@@ -351,18 +395,24 @@ def prepare_handoff(update, payload, executable, cache, *, parent_pid=None, lang
     return ticket
 
 
-def launch_handoff(ticket, *, timeout=30):
+def launch_handoff(ticket, *, timeout=30, cancelled=None):
     ticket = Path(ticket)
+    if cancelled is not None and cancelled.is_set():
+        cancel_handoff(ticket)
+        raise UpdateError("cancelled")
     process = subprocess.Popen([str(ticket.parent / "runner.exe"), HELPER_FLAG, str(ticket)],
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
+        if cancelled is not None and cancelled.is_set():
+            cancel_handoff(ticket)
+            raise UpdateError("cancelled")
         if (ticket.parent / "ready.json").is_file():
             return process
         if process.poll() is not None:
             raise UpdateError("handoff_failed")
         time.sleep(.1)
-    _write_json(ticket.parent / "cancel.json", {"cancelled": True})
+    cancel_handoff(ticket)
     raise UpdateError("handoff_failed")
 
 
@@ -507,9 +557,15 @@ def apply_ticket(ticket, cache):
         parent_handle = _process_handle(value["parent_pid"], target)
         phase = "ready"
         _write_json(ticket.parent / "ready.json", {"state": "ready"})
-        if _wait(parent_handle, 120000) != 0:
-            raise UpdateError("parent_timeout")
-        if (ticket.parent / "cancel.json").exists():
+        while True:
+            if (ticket.parent / "cancel.json").exists():
+                raise UpdateError("cancelled")
+            waiting = _wait(parent_handle, 1000)
+            if waiting == 0:
+                break
+            if waiting != 258:  # WAIT_TIMEOUT: graceful server shutdown is still in progress.
+                raise UpdateError("handoff_failed")
+        if (ticket.parent / "cancel.json").exists() or not (ticket.parent / "commit.json").is_file():
             raise UpdateError("cancelled")
         stopped = True
         phase = "replace"
@@ -547,6 +603,7 @@ def apply_ticket(ticket, cache):
                 pass  # A cleanup error must not roll back an already running update.
         return 0
     except Exception as error:
+        recovery_ready = False
         if stopped and target is not None:
             try:
                 if backup is not None and backup.exists():
@@ -557,7 +614,7 @@ def apply_ticket(ticket, cache):
                         raise UpdateError("recovery_failed")
                     shutil.copy2(ticket.parent / "runner.exe", recovery)
                     _replace(recovery, target)
-                _shell_open(target, startup=True)
+                recovery_ready = True
             except Exception:
                 error = UpdateError("recovery_failed")
         try:
@@ -567,6 +624,16 @@ def apply_ticket(ticket, cache):
                         "winerror": getattr(error, "winerror", None) if isinstance(error, OSError) else None})
         except OSError:
             pass
+        if recovery_ready:
+            try:
+                # The recovered app reads its result immediately at startup.
+                _shell_open(target, startup=True)
+            except Exception:
+                try:
+                    _write_json(ticket.parent / "result.json", {"state": "failed", "code": "recovery_failed",
+                                "phase": "recovery", "error_type": "UpdateError", "winerror": None})
+                except OSError:
+                    pass
         return 1
     finally:
         if parent_handle:

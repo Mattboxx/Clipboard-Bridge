@@ -11,6 +11,10 @@ Use disposable example content, never personal clipboard data in screenshots.
 - [ ] In Settings > Updates, check without installing; cancel a download and retry.
       Compare installed and portable behavior for both architectures. Verify that
       old clients require a manual 2.0.18 upgrade to obtain these controls.
+- [ ] Cancel during executable preparation and helper startup; later manual exit
+      must not trigger installation. Retry and confirm no stale cancel marker.
+      With Windows hosting a slow disposable upload, verify graceful shutdown and
+      update recovery reporting, including a request that lasts over two minutes.
 - [ ] Enable automatic installation explicitly, Save and leave Settings closed.
       With a newer official stable release, check restart and data preservation;
       open Settings during download to defer restart. Disable checks and confirm

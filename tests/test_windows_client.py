@@ -1909,6 +1909,68 @@ def test_update_checks_do_not_install_without_explicit_opt_in(tmp_path, monkeypa
     assert len(installs) == 1, "Failed/restarted updates must not loop automatically"
 
 
+@pytest.mark.parametrize("phase", ["copy", "helper", "queued", "commit", "commit_write_failure", "cancel_write_failure", "ui_failure", "exit_failure"])
+def test_update_handoff_keeps_cancellation_effective_until_ui_commit(tmp_path, monkeypatch, phase):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client.sys, "frozen", True, raising=False)
+    folder = Path(client.UPDATE_CACHE) / ("a" * 32)
+    folder.mkdir(parents=True, exist_ok=True)
+    payload = folder / "public-update.exe"
+    payload.write_bytes(b"public sample")
+    ticket = folder / "request.json"
+    ticket.write_text("{}")
+    candidate = SimpleNamespace(version="99.0.0", sha256=client.updates.file_digest(payload))
+    client._available_payload = payload
+    client._update_cancel.clear()
+    monkeypatch.setattr(client, "_confirm_update_restart", lambda version: True)
+    exits, disabled = [], []
+    def disable(flags):
+        if phase == "ui_failure":
+            raise RuntimeError("synthetic widget failure")
+        disabled.append(flags)
+    button = SimpleNamespace(state=disable)
+    monkeypatch.setattr(client, "_root", SimpleNamespace(winfo_children=lambda: [SimpleNamespace(_update_cancel_button=button)]))
+    def exit_app(*args):
+        if phase == "exit_failure":
+            raise RuntimeError("synthetic shutdown failure")
+        exits.append((ticket.parent / "commit.json").is_file())
+    monkeypatch.setattr(client, "do_exit", exit_app)
+    def prepare(*args, **kwargs):
+        assert kwargs["cancelled"] is client._update_cancel
+        if phase == "copy":
+            client._update_cancel.set()
+            raise client.updates.UpdateError("cancelled")
+        return ticket
+    def launch(path, **kwargs):
+        assert path == ticket and kwargs["cancelled"] is client._update_cancel
+        if phase == "helper":
+            client._update_cancel.set()
+            raise client.updates.UpdateError("cancelled")
+    monkeypatch.setattr(client.updates, "prepare_handoff", prepare)
+    monkeypatch.setattr(client.updates, "launch_handoff", launch)
+    if phase in ("copy", "helper"):
+        with pytest.raises(client.updates.UpdateError, match="cancelled"):
+            client._download_and_apply_update(candidate)
+    else:
+        client._download_and_apply_update(candidate)
+        if phase in ("queued", "cancel_write_failure"):
+            client._update_cancel.set()
+        if phase in ("commit_write_failure", "cancel_write_failure"):
+            def fail(*args):
+                raise OSError("synthetic write failure")
+            monkeypatch.setattr(client.updates,
+                "commit_handoff" if phase == "commit_write_failure" else "cancel_handoff", fail)
+        client._cmd_q.get_nowait()()
+    if phase == "commit":
+        assert exits == [True] and disabled == [["disabled"]]
+        assert client._update_status[0] == "installing"
+    else:
+        assert exits == [] and not (folder / "commit.json").exists()
+        assert not client._update_maintenance.is_set()
+        if phase == "queued":
+            assert (folder / "cancel.json").is_file() and client._update_status[0] == "cancelled"
+
+
 def load_client(tmp_path, monkeypatch):
     local_app_data = tmp_path / "LocalAppData"
     user_profile = tmp_path / "User"

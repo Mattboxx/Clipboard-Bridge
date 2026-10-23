@@ -118,8 +118,9 @@ From 2.0.18, open **Settings > Updates**:
 
 1. **Check now** looks for a newer stable Windows release in the official GitHub
    repository. It never installs just because you pressed Check.
-2. **Download and install** shows progress, lets you cancel the download and asks
-   before restarting. Save any Settings changes first.
+2. **Download and install** shows progress, lets you cancel through preparation
+   and asks before restarting. Cancel is disabled when restart is committed.
+   Save any Settings changes first.
 3. Leave **Check GitHub for updates automatically** enabled for a background check
    about 30 seconds after launch (when due) and at most once per day after success.
    Offline failures retry later; they do not block clipboard sharing.
@@ -144,6 +145,13 @@ installation cannot promise to bypass that decision. A failed application/start
 attempt restores the previous EXE when possible, but cannot undo every external
 installer/Windows failure; use the GitHub installer if recovery fails. A failed
 version is not retried automatically for 24 hours; manual retry remains available.
+
+Checks select the newest stable Windows version, not a newer Android/server release.
+The scan is limited to 200 release entries; reaching that limit reports a failed
+check rather than incorrectly claiming the app is current. Old finished attempts
+and abandoned downloads are cleaned after seven days. Unfinished helpers are kept.
+When Windows is hosting, the updater waits for graceful shutdown of active requests;
+it never force-closes the app. A failed handoff leaves the existing app available.
 
 > **Windows 11 security:** version 2.0.18 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for

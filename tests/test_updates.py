@@ -73,16 +73,43 @@ def test_metadata_request_has_no_client_credentials():
     calls = []
     def open_url(url, **kwargs):
         calls.append((url, kwargs))
-        return io.BytesIO(json.dumps(release()).encode())
+        return io.BytesIO(json.dumps([release()]).encode())
     assert updates.check_update("2.0.18", "x64", "portable", open_url=open_url)
-    assert calls == [(updates.RELEASE_API, {"metadata": True})]
+    assert calls == [(updates.RELEASE_API + "?per_page=20&page=1", {"metadata": True})]
 
 
-@pytest.mark.parametrize("body", [b"not-json", b"[]", b" " * (updates.API_LIMIT + 1)],
-                         ids=["not-json", "array", "oversized"])
+@pytest.mark.parametrize("body", [b"not-json", b"{}", b" " * (updates.API_LIMIT + 1)],
+                         ids=["not-json", "object", "oversized"])
 def test_bad_or_unbounded_metadata_fails_safely(body):
     with pytest.raises(updates.UpdateError):
         updates.check_update("2.0.18", "x64", "portable", open_url=lambda *a, **kw: io.BytesIO(body))
+
+
+def test_windows_update_is_found_behind_newer_android_server_and_beta_releases():
+    entries = [release("android-v1.0.0-beta.12"), release("v1.0.9"),
+               dict(release("99.0.0"), prerelease=True), dict(release("98.0.0"), draft=True),
+               release("2.0.19"), release("2.0.20"), release("2.0.17")]
+    candidate = updates.check_update("2.0.18", "x64", "portable",
+        open_url=lambda *a, **kw: io.BytesIO(json.dumps(entries).encode()))
+    assert candidate.version == "2.0.20"
+
+
+def test_release_scan_follows_pages_and_does_not_silently_accept_truncation(monkeypatch):
+    monkeypatch.setattr(updates, "MAX_RELEASE_PAGES", 2)
+    calls = []
+    def response(url, **kwargs):
+        calls.append(url)
+        return io.BytesIO(json.dumps([release("v1.0.9")] * 20 if len(calls) == 1 else [release()]).encode())
+    assert updates.check_update("2.0.18", "x64", "portable", open_url=response).version == "2.0.19"
+    assert calls[-1].endswith("&page=2")
+    with pytest.raises(updates.UpdateError, match="check_failed"):
+        updates.check_update("2.0.18", "x64", "portable",
+            open_url=lambda *a, **kw: io.BytesIO(json.dumps([release()] * 20).encode()))
+
+
+def test_empty_release_list_is_a_valid_no_update_result():
+    assert updates.check_update("2.0.18", "x64", "portable",
+        open_url=lambda *a, **kw: io.BytesIO(b"[]")) is None
 
 
 def test_verified_download_and_progress(tmp_path, monkeypatch):
@@ -128,6 +155,7 @@ def helper_fixture(tmp_path, monkeypatch, kind="portable"):
                "original_sha256": updates.file_digest(target), "parent_pid": 1234, "language": "it"}
     ticket = folder / "request.json"
     ticket.write_text(json.dumps(request))
+    updates.commit_handoff(ticket)
     monkeypatch.setattr(updates, "verify_executable", lambda path, checksum, version, architecture=None:
                         None if updates.file_digest(path) == checksum else (_ for _ in ()).throw(updates.UpdateError("integrity_failed")))
     monkeypatch.setattr(updates, "_process_handle", lambda *args: 42)
@@ -159,6 +187,7 @@ def test_portable_restart_failure_rolls_back_and_keeps_old_app_usable(tmp_path, 
         starts.append(target.read_bytes())
         if len(starts) == 1:
             raise updates.UpdateError("launch_denied")
+        assert json.loads((ticket.parent / "result.json").read_text())["code"] == "launch_denied"
         return 123
     monkeypatch.setattr(updates, "_shell_open", start)
     assert updates.apply_ticket(ticket, cache) == 1
@@ -176,8 +205,24 @@ def test_cancelled_handoff_never_replaces_or_restarts_a_manually_closed_app(tmp_
 
 def test_parent_must_exit_before_any_replacement(tmp_path, monkeypatch):
     cache, ticket, target, _ = helper_fixture(tmp_path, monkeypatch)
-    monkeypatch.setattr(updates, "_wait", lambda *args: 258)
-    monkeypatch.setattr(updates, "_shell_open", lambda *a, **kw: pytest.fail("Running parent must be left alone"))
+    waited = []
+    def wait(handle, milliseconds):
+        assert target.read_bytes() == b"old"
+        waited.append(milliseconds)
+        return 258 if len(waited) <= 130 else 0
+    monkeypatch.setattr(updates, "_wait", wait)
+    monkeypatch.setattr(updates, "_shell_open", lambda *a, **kw: 321)
+    assert updates.apply_ticket(ticket, cache) == 0 and target.read_bytes() == b"hello"
+    assert waited == [1000] * 131, "Do not expire during a graceful server shutdown lasting over two minutes"
+
+
+def test_parent_wait_can_be_cancelled_without_closing_or_restarting_parent(tmp_path, monkeypatch):
+    cache, ticket, target, _ = helper_fixture(tmp_path, monkeypatch)
+    def wait(*args):
+        (ticket.parent / "cancel.json").write_text("{}")
+        return 258
+    monkeypatch.setattr(updates, "_wait", wait)
+    monkeypatch.setattr(updates, "_shell_open", lambda *a, **kw: pytest.fail("Cancelled helper restarted the parent"))
     assert updates.apply_ticket(ticket, cache) == 1 and target.read_bytes() == b"old"
 
 
@@ -266,6 +311,7 @@ def test_cache_cleanup_only_removes_old_finished_owned_folders(tmp_path):
     active = tmp_path / ("b" * 32)
     active.mkdir()
     (active / "runner.exe").write_bytes(b"active")
+    os.utime(active / "runner.exe", (now,) * 2)
     unknown = tmp_path / ("c" * 32)
     unknown.mkdir()
     (unknown / "result.json").write_text("{}")
@@ -275,6 +321,62 @@ def test_cache_cleanup_only_removes_old_finished_owned_folders(tmp_path):
     assert not old.exists()
     assert (active / "runner.exe").read_bytes() == b"active"
     assert (unknown / "user-file.txt").read_text() == "preserve"
+
+
+def test_old_abandoned_downloads_are_pruned_but_active_tickets_and_unknown_files_are_kept(tmp_path):
+    now, past = 2_000_000_000, 2_000_000_000 - 8 * 86400
+    name = updates.select_update(release(), "2.0.18", "x64", "portable").name
+    folders = [tmp_path / (letter * 32) for letter in ("a", "b", "c", "d")]
+    for folder in folders:
+        folder.mkdir()
+        (folder / name).write_bytes(b"hello")
+    (folders[1] / "request.json").write_text("{}")
+    (folders[2] / "unrecognized.txt").write_text("preserve")
+    (folders[3] / name).with_suffix(".part").write_bytes(b"he")
+    for folder in folders:
+        for path in folder.iterdir():
+            os.utime(path, (past, past))
+        os.utime(folder, (past, past))
+    updates.prune_finished_updates(tmp_path, now=now)
+    assert not folders[0].exists() and not folders[3].exists()
+    assert (folders[1] / "request.json").is_file()
+    assert (folders[2] / "unrecognized.txt").read_text() == "preserve"
+
+
+def test_cancellation_during_runner_copy_prevents_handoff_ticket(tmp_path, monkeypatch):
+    cache, ticket, target, candidate = helper_fixture(tmp_path, monkeypatch)
+    for name in ("request.json", "runner.exe", "commit.json"):
+        (ticket.parent / name).unlink()
+    event, copied = threading.Event(), updates.shutil.copy2
+    def copy(*args):
+        result = copied(*args)
+        event.set()
+        return result
+    monkeypatch.setattr(updates.shutil, "copy2", copy)
+    with pytest.raises(updates.UpdateError, match="cancelled"):
+        updates.prepare_handoff(candidate, ticket.parent / candidate.name, target, cache, cancelled=event)
+    assert not ticket.exists() and target.read_bytes() == b"old"
+
+
+def test_launch_cancellation_reaches_the_waiting_helper(tmp_path, monkeypatch):
+    event = threading.Event()
+    ticket = tmp_path / "request.json"
+    ticket.write_text("{}")
+    def spawn(*args, **kwargs):
+        event.set()
+        return type("Process", (), {"poll": lambda self: None})()
+    monkeypatch.setattr(updates.subprocess, "Popen", spawn)
+    with pytest.raises(updates.UpdateError, match="cancelled"):
+        updates.launch_handoff(ticket, cancelled=event)
+    assert (tmp_path / "cancel.json").is_file()
+
+
+def test_an_uncommitted_helper_never_installs_after_a_later_manual_exit(tmp_path, monkeypatch):
+    cache, ticket, target, _ = helper_fixture(tmp_path, monkeypatch)
+    (ticket.parent / "commit.json").unlink()
+    monkeypatch.setattr(updates, "_shell_open", lambda *a, **kw: pytest.fail("No installation was committed"))
+    assert updates.apply_ticket(ticket, cache) == 1
+    assert target.read_bytes() == b"old"
 
 
 def test_retry_never_recycles_a_previous_helpers_ticket_or_cancel_marker(tmp_path, monkeypatch):

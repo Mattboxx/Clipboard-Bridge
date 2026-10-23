@@ -6,7 +6,7 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
-## Windows 2.0.18 - 2026-10-21
+## Windows 2.0.18 - 2026-10-23
 
 - Recompose History around a full-width compact list, a single transfer band and
   inline type filters. Follow the configured host automatically instead of showing
@@ -30,6 +30,13 @@ No pending release changes.
 - Preserve Windows Internet-zone checks. Packages remain unsigned and may require
   Windows approval; the updater does not disable or bypass security protections.
 - Exercise actual frozen portable/installer upgrades on disposable native runners.
+- Find the newest stable Windows version even when Android or server releases were
+  published later. Fail clearly if the bounded release scan cannot finish.
+- Keep cancellation effective during preparation and helper startup; require an
+  explicit UI handoff before replacement. Wait for graceful host shutdown without
+  an arbitrary two-minute timeout and report failures before restarting recovery.
+- Use a fresh handoff for retries and clean up abandoned pre-handoff downloads after
+  seven days without touching unfinished helpers or unrelated files.
 - Android beta.12, standalone server 1.0.9, store catalogs and signed Apple exports
   are unchanged. Older Windows versions need one manual upgrade to get the updater.
 

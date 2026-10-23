@@ -71,6 +71,10 @@ Windows approval decisions are preserved, not bypassed. Automatic installation i
 off by default and may not be unattended on a security policy that blocks unsigned
 files. The helper changes only app executables and its own private update cache;
 it does not erase the user profile or force-close applications.
+An explicit UI commit is required before the helper may replace files, and
+cancellation withdraws that commit. Release discovery is bounded to 200 entries
+and fails explicitly if truncated. Cache cleanup removes only recognized expired
+attempt files; unfinished helper tickets and unrelated files are preserved.
 
 Native clients and Apple Shortcuts retain compatible account URLs. Optional HTTP
 headers are also supported by the standalone API, but neither form encrypts
