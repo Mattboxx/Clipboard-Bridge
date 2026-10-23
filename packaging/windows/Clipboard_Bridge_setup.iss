@@ -1,7 +1,7 @@
 ; Windows installer. Source and output paths are relative to the repository root.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.17"
+  #define MyAppVersion "2.0.18"
 #endif
 
 #ifndef MyAppArchitecture
@@ -17,6 +17,7 @@ OutputDir=Output
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{FF43BA53-C19E-4278-AD71-60162436216E}
+AppMutex=Local\ClipboardBridge.Client.SingleInstance
 AppName=Clipboard Bridge
 AppVersion={#MyAppVersion}
 AppVerName=Clipboard Bridge {#MyAppVersion}

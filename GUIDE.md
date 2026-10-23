@@ -105,14 +105,55 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.17` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.18` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
 The installer uses the current user's LocalAppData folder and does not require
 administrator privileges.
 
-> **Windows 11 security:** version 2.0.17 is currently unsigned, so Smart App Control can
+### Windows updates
+
+From 2.0.18, open **Settings > Updates**:
+
+1. **Check now** looks for a newer stable Windows release in the official GitHub
+   repository. It never installs just because you pressed Check.
+2. **Download and install** shows progress, lets you cancel through preparation
+   and asks before restarting. Cancel is disabled when restart is committed.
+   Save any Settings changes first.
+3. Leave **Check GitHub for updates automatically** enabled for a background check
+   about 30 seconds after launch (when due) and at most once per day after success.
+   Offline failures retry later; they do not block clipboard sharing.
+4. To install without the confirmation each time, enable **Download and install
+   updates automatically** and click **Save**. This is off by default. Settings
+   windows defer automatic installation; close them when you are ready. The client
+   waits for its active transfers, then briefly stops sharing while restarting.
+
+The updater retains the running executable's architecture and package type.
+Portable updates replace the same EXE in the same writable folder; the installer
+updates the current per-user installation. Configuration, history and received files
+stay in their existing user folders. Read-only locations must be updated manually.
+Run source checkouts with Git/pip instead; the updater installs only frozen EXEs.
+Clients older than 2.0.18 need one manual upgrade before these controls exist.
+
+Downloads use HTTPS and exact official asset names. Size, GitHub SHA-256, embedded
+version and executable architecture are checked before replacement. Checks contact
+GitHub without sending clipboard contents or server/account credentials. These
+checks are not trusted publisher signing: packages are still unsigned, and Windows
+may require approval or block them. No Windows protection is disabled. Automatic
+installation cannot promise to bypass that decision. A failed application/start
+attempt restores the previous EXE when possible, but cannot undo every external
+installer/Windows failure; use the GitHub installer if recovery fails. A failed
+version is not retried automatically for 24 hours; manual retry remains available.
+
+Checks select the newest stable Windows version, not a newer Android/server release.
+The scan is limited to 200 release entries; reaching that limit reports a failed
+check rather than incorrectly claiming the app is current. Old finished attempts
+and abandoned downloads are cleaned after seven days. Unfinished helpers are kept.
+When Windows is hosting, the updater waits for graceful shutdown of active requests;
+it never force-closes the app. A failed handoff leaves the existing app available.
+
+> **Windows 11 security:** version 2.0.18 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -166,20 +207,24 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
   notification, or choose independently whether received text, images and files should
   produce an alert. Automatically received text and images are copied to the clipboard
   before their notification appears.
-- **History…**: browse the server and local history; re-use or delete items.
+- **History…**: browse the selected host's shared history; re-use or delete items.
   Left-clicking the tray icon opens this window; it does not send the clipboard.
 
-In Windows 2.0.17, History also offers a search field, type filter
+In Windows 2.0.18, History also offers a search field, type filter
 and previous/next server pages. Search matches previews and filenames, including all
 files in a group, not full document contents. The standalone server web page has the
 same controls. Changing a filter restarts from the first page; Clear on the web page
 still clears the entire selected account's history, not just the search results.
-History uses one compact list: choose **Server** or **This PC**, then double-click an
-item or press **Copy**. Local items can also be sent with **Send to server**.
+History uses one compact list. Its source is automatic: the external server in Client
+mode, or the embedded Windows host in Server mode. Changing the host/account in Settings
+refreshes the list; there is no separate Local/Server selector. Double-click an item
+or press **Copy**. Send, Receive and Add files are together above the list; type filters
+and search narrow the results without changing the clipboard.
 The **Preview** checkbox opens or closes the optional preview pane. Selected images
 are shown as thumbnails, with proportions and camera orientation preserved. PDFs
 show their first page and page count, without requiring an installed PDF reader.
-This also works for local files and the first supported member in a file group. Loading runs
+This also works for the first supported member in a file group. The preview moves
+beside the list in a wide window and below it in a narrow one. Loading runs
 in the background and does not copy anything or save extra files. Missing, unsupported
 or unusually large files, and password-protected PDFs, show a preview-unavailable
 message; transfers are unchanged.
@@ -249,10 +294,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.17 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.17):
+[Clipboard Bridge 2.0.18 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.18):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -280,7 +325,7 @@ Apple documents the same procedure in its
 ### 5.1 Send (clipboard to server)
 
 Copied text is stored and received as **plain Unicode text**. Server 1.0.9 and
-Windows Server mode 2.0.17 remove RTF formatting without removing emoji or accents.
+Windows Server mode 2.0.18 remove RTF formatting without removing emoji or accents.
 Documents sent as files, including `.rtf`, keep their original bytes.
 
 This version automatically handles a single item or a list received from the iOS Share

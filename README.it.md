@@ -37,7 +37,7 @@ e [clipboard tra dispositivi Apple e Android](https://mattboxx.github.io/Clipboa
 **Ritrova un elemento, visualizza l'anteprima di un'immagine o PDF e copialo di nuovo.**
 L'app Windows riunisce ricerca, gruppi di file e comandi Invia/Ricevi in una finestra.
 
-![App desktop Windows: cronologia ricercabile, gruppi di file e anteprima immagine](docs/assets/windows-history.png)
+![App desktop Windows: cronologia condivisa compatta e comandi di trasferimento](docs/assets/windows-history-wide.png)
 
 *Schermata reale con dati di esempio pubblici, non contenuti privati della clipboard.*
 
@@ -79,20 +79,29 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.17 | Android 1.0.0-beta.12 | Server 1.0.9
+**Versioni attuali:** Windows 2.0.18 | Android 1.0.0-beta.12 | Server 1.0.9
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
-| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.17.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.x64.V2.0.17.exe) |
-| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.17.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/Clipboard.Bridge.Portable.Windows.arm64.V2.0.17.exe) |
+| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.18.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.x64.V2.0.18.exe) |
+| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.18.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/Clipboard.Bridge.Portable.Windows.arm64.V2.0.18.exe) |
 | **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.17/iPhone.Download.Clipboard.shortcut) |
+| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
 L'installer è l'opzione Windows più semplice. L'EXE portable non richiede installazione.
 Entrambi salvano impostazioni e cronologia nella cartella dell'utente e le mantengono
-negli aggiornamenti. Per identificare il processore apri **Impostazioni > Sistema >
+negli aggiornamenti.
+**Da Windows 2.0.18, apri Impostazioni > Aggiornamenti** per controllare GitHub e
+installare una nuova versione stabile. Il controllo automatico è attivo;
+download/installazione automatici sono **disattivati finché non li abiliti e salvi**.
+Mantiene x64/ARM64 e il formato installato/portable, attende i trasferimenti del
+client e riavvia l'app. Verifica lo SHA-256 pubblicato da GitHub, non un certificato
+del produttore. Windows può ancora chiedere un'autorizzazione. Per i client
+precedenti serve prima un'installazione manuale della 2.0.18.
+
+Per identificare il processore apri **Impostazioni > Sistema >
 Informazioni > Tipo sistema**. Chiudi l'app prima di passare da x64 ad ARM64:
 le due architetture condividono le impostazioni.
 
@@ -100,7 +109,7 @@ le due architetture condividono le impostazioni.
 > Defender o Smart App Control potrebbero bloccarli. Leggi [CODE_SIGNING.md](CODE_SIGNING.md);
 > non disattivare la protezione Windows per aggirare un avviso.
 
-File, checksum e note sono nella [release 2.0.17](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.17).
+File, checksum e note sono nella [release 2.0.18](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.18).
 Sono incluse anteprime immagini/PDF e versioni ARM64 native. Le modifiche complete
 sono nel [CHANGELOG.md](CHANGELOG.md); Android e server hanno versioni indipendenti.
 
@@ -138,7 +147,7 @@ Office, archivi, audio, video ed estensioni personalizzate come `.shortcut`.
 **Il testo copiato arriva come testo Unicode normale**, anche se l'app di origine
 usa RTF. Emoji, accenti, tabulazioni e righe vengono conservati; font, colori e
 grassetto non vengono trasferiti. I documenti `.rtf` inviati come file restano intatti.
-Funziona con il server 1.0.9 o Windows in modalità server 2.0.17, per tutti i client connessi.
+Funziona con il server 1.0.9 o Windows in modalità server 2.0.18, per tutti i client connessi.
 
 **Conta sempre l'ultimo invio.** Testo, immagini e file hanno la stessa priorità.
 Più file inviati insieme rimangono **un'unica voce di cronologia**: ripristinarla
@@ -160,7 +169,7 @@ completo dei documenti.
 ### Windows
 
 L'app nell'area di notifica offre invio manuale, hotkey configurabili, sincronizzazione
-opzionale, anteprime immagini/PDF, cronologia locale e ricezione automatica. Il clic
+opzionale, anteprime immagini/PDF, cronologia condivisa e ricezione automatica. Il clic
 sinistro sull'icona apre la cronologia: l'invio è un'azione separata. Non si avviano istanze multiple.
 
 **Comandi rapidi accanto all'orologio:** clic destro sull'icona per inviare la
@@ -181,7 +190,7 @@ Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
 - **Generale:** modalità Client/Server, aspetto chiaro/scuro e lingua.
 - **Connessione:** indirizzo server, token/account opzionali e pulsante
   **Verifica connessione** per controllare il collegamento.
-- **Automazione:** sincronizzazione, registrazione locale, download automatico
+- **Automazione:** sincronizzazione, download automatico
   dei file in arrivo e notifiche separate per testo, immagini e file.
 - **Scorciatoie:** configura le hotkey globali di Invio, Ricezione e apertura Cronologia.
   La cronologia usa inizialmente **Ctrl+Alt+H**: puoi cambiarla in
@@ -197,18 +206,21 @@ Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
 - I file ricevuti sono salvati in `Downloads/Clipboard Bridge` e inseriti nella
   clipboard Windows. Cliccando una notifica file si apre la cartella dei file ricevuti.
 - Attiva **Anteprima** nella cronologia per l'immagine selezionata o la prima pagina
-  del PDF, anche per elementi locali e il primo membro visualizzabile di un gruppo.
+  del PDF, anche per il primo membro visualizzabile di un gruppo.
   Le miniature si caricano in background senza modificare la clipboard o salvare download.
-- **Questo PC** contiene la cronologia privata del PC. **Server** contiene gli elementi
-  inviati e visibili agli altri dispositivi. Usa Invia o auto-sync per pubblicare i contenuti locali.
+- La cronologia segue automaticamente il server scelto nelle impostazioni: quello
+  esterno in modalità Client o quello integrato nel PC in modalità Server. Non serve
+  più scegliere Locale/Server. I filtri per tipo e la ricerca trovano gli elementi condivisi.
+- L'interfaccia leggera offre superfici opache chiare o grafite, accenti blu, icone
+  separate dai nomi e un'anteprima immagini/PDF adattabile alla finestra. Non acquisisce
+  lo sfondo del desktop e non richiede un motore grafico più pesante.
 - Gli appunti copiati da un programma con privilegi amministrativi possono non essere
   rilevati da un processo Windows normale. Vale per **tutti i pacchetti Windows**:
   in quel caso potrebbe servire avviare anche Clipboard Bridge come amministratore.
 - L'interfaccia è italiana e inglese. Impostazioni e dati risiedono nelle cartelle
   scrivibili dell'utente, non in Program Files.
 
-![Impostazioni di connessione e account opzionale](docs/assets/windows-connection.png)
-![Impostazioni di sincronizzazione e notifiche](docs/assets/windows-automation.png)
+![Cronologia condivisa con PDF selezionato nel pannello anteprima](docs/assets/windows-history.png)
 
 </details>
 
@@ -520,7 +532,7 @@ rimuovono le voci vecchie.
 | Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
 | Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
-| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.17`; richiede Python x64 e Inno Setup |
+| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.18`; richiede Python x64 e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
 | Build Android | Java 17, Android SDK 35; [istruzioni Gradle e firma privata](android/README.md#build-from-source) |
 | Build Docker dai sorgenti | `docker build -t clipboard-bridge-server:dev .` |

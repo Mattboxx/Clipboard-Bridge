@@ -57,6 +57,25 @@ browser history, logs and screenshots. Treat every such URL as a credential.
 
 The project does not collect telemetry or receive users' clipboard contents.
 
+From Windows 2.0.18, the optional update feature contacts the official GitHub
+Releases API (automatic checks default on) and downloads from GitHub when requested
+or when automatic installation is explicitly enabled. GitHub sees normal network
+request metadata, such as the client's IP address. Clipboard contents and clipboard
+server/account credentials are never sent with these requests. Disable automatic
+checks in Settings > Updates to stop background GitHub requests.
+
+Updates require exact official assets, SHA-256, size and PE version/architecture
+checks. This does not authenticate an independent publisher if the GitHub project
+itself is compromised. Windows packages remain unsigned; Internet-zone checks and
+Windows approval decisions are preserved, not bypassed. Automatic installation is
+off by default and may not be unattended on a security policy that blocks unsigned
+files. The helper changes only app executables and its own private update cache;
+it does not erase the user profile or force-close applications.
+An explicit UI commit is required before the helper may replace files, and
+cancellation withdraws that commit. Release discovery is bounded to 200 entries
+and fails explicitly if truncated. Cache cleanup removes only recognized expired
+attempt files; unfinished helper tickets and unrelated files are preserved.
+
 Native clients and Apple Shortcuts retain compatible account URLs. Optional HTTP
 headers are also supported by the standalone API, but neither form encrypts
 credentials over HTTP. No interactive login, pairing or token renewal is required.

@@ -263,10 +263,11 @@ def test_readme_desktop_media_are_visible_near_the_introduction(filename, headin
     text = (ROOT / filename).read_text(encoding="utf-8")
     assert text.index(heading) < 3000
     showcase = text.split(heading, 1)[1].split("\n## ", 1)[0]
-    assert "docs/assets/windows-history.png" in showcase
+    assert "docs/assets/windows-history-wide.png" in showcase
     assert "docs/assets/demo/windows-tray-menu.gif" in showcase
     assert "<details>" not in showcase
     assert text.count("docs/assets/windows-history.png") == 1
+    assert text.count("docs/assets/windows-history-wide.png") == 1
     assert text.count('src="docs/assets/demo/windows-tray-menu.gif"') == 1
     assert "sample data" in showcase or "dati di esempio" in showcase
     assert "not a phone-to-PC transfer" in showcase or "non un trasferimento telefono-PC" in showcase

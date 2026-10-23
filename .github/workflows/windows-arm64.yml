@@ -10,12 +10,17 @@ on:
       - "clipboard_bridge_windows.py"
       - "clipboard_text.py"
       - "clipboard_storage.py"
+      - "clipboard_updates.py"
+      - "clipboard_design.py"
+      - "tests/test_updates.py"
+      - "scripts/verify_windows_update.py"
       - "tests/test_clipboard_text.py"
       - "tests/test_clipboard_storage.py"
       - "requirements-client.txt"
       - "requirements-build.txt"
       - "scripts/verify_windows_build.py"
       - "tests/test_windows_client.py"
+      - "tests/test_windows_design.py"
       - "tests/windows_clipboard_worker.py"
       - "VERSION"
 
@@ -49,7 +54,7 @@ jobs:
 
       - name: Test Windows client on ARM64
         run: |
-          python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py
+          python -m pytest -q tests/test_windows_client.py tests/test_windows_design.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows ARM64 tests failed' }
 
       - name: Build native portable client
@@ -93,6 +98,12 @@ jobs:
           python scripts/verify_windows_build.py "$installed" --architecture arm64 --smoke
           if ($LASTEXITCODE -ne 0) { throw 'Installed ARM64 client verification failed' }
           Get-ChildItem Output/arm64/*.exe | Get-FileHash -Algorithm SHA256 | Format-Table
+
+      - name: Verify frozen portable and installer update from previous public release
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          python scripts/verify_windows_update.py "dist/Clipboard Bridge.exe" "Output/arm64/Clipboard.Bridge_windows_client_and_server_setup_arm64_V$version.exe" --architecture arm64
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen ARM64 updater verification failed' }
 
       - name: Upload verified Windows ARM64 executables
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

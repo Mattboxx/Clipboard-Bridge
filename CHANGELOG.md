@@ -6,6 +6,40 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Windows 2.0.18 - 2026-10-23
+
+- Recompose History around a full-width compact list, a single transfer band and
+  inline type filters. Follow the configured host automatically instead of showing
+  competing Local/Server source selectors. Preserve existing cached data.
+- Add lightweight flat light/graphite surfaces, restrained blue accents, consistent
+  native glyph spacing, slim loading indicators and a responsive image/PDF inspector.
+  Give history icons their own bounded column and refresh their colors on theme changes.
+- Override light hover/readonly defaults in dark selectors. Cache symbol fonts,
+  avoid resetting an unchanged Tk theme and redraw update status only when it changes.
+- Refresh the public site with matching surfaces, reduced-motion-aware transitions
+  and actual desktop captures using public sample data only.
+- Add Settings > Updates in English and Italian: manual checks, download progress,
+  cancellation and optional automatic download/installation from official GitHub
+  stable releases. Automatic checks are enabled; installation is opt-in.
+- Select native x64/ARM64 and installed/portable assets, reject downgrades,
+  prereleases, unexpected URLs, missing hashes and damaged downloads. Verify the
+  GitHub SHA-256, embedded version and executable architecture before replacement.
+- Run replacement outside the UI process, wait for the app to exit, preserve user
+  data and restart. Attempt to restore the old EXE on installation/start failure.
+  Defer automatic restart while Settings are open and avoid failed-update loops.
+- Preserve Windows Internet-zone checks. Packages remain unsigned and may require
+  Windows approval; the updater does not disable or bypass security protections.
+- Exercise actual frozen portable/installer upgrades on disposable native runners.
+- Find the newest stable Windows version even when Android or server releases were
+  published later. Fail clearly if the bounded release scan cannot finish.
+- Keep cancellation effective during preparation and helper startup; require an
+  explicit UI handoff before replacement. Wait for graceful host shutdown without
+  an arbitrary two-minute timeout and report failures before restarting recovery.
+- Use a fresh handoff for retries and clean up abandoned pre-handoff downloads after
+  seven days without touching unfinished helpers or unrelated files.
+- Android beta.12, standalone server 1.0.9, store catalogs and signed Apple exports
+  are unchanged. Older Windows versions need one manual upgrade to get the updater.
+
 ## Server 1.0.9 / Android 1.0.0-beta.12 - 2026-10-21
 
 - Raise the standalone server's supported Flask minimum to the reviewed patched

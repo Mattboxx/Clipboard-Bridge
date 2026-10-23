@@ -79,6 +79,7 @@ clipboard_bridge-Server.py   Standalone server entry point
 clipboard_bridge_windows.py Windows entry point and embedded host
 clipboard_text.py           Shared text conversion
 clipboard_storage.py        Shared history persistence
+clipboard_updates.py        GitHub metadata, verified downloads and Windows helper
 android/                    Android application and Gradle wrapper
 Iphone Shortcuts/           Signed exports and update instructions
 packaging/windows/          Installer definition and generated version metadata
@@ -110,6 +111,25 @@ See [Windows packaging](../../packaging/windows/README.md) for the moved build
 commands. Tests must verify the new paths as well as actual source behavior.
 Keep source files in Git and ready-to-use packages in Releases. Never include
 private settings, signing keys or recordings of a personal desktop.
+
+## Windows Update Boundary
+
+The Settings controller uses background workers and one operation lock; no HTTP or
+installer waits run on the Tk thread. Automatic checks are on, installation is
+opt-in, and an open Settings window defers automatic restart. Only numeric stable
+Windows releases and exact official x64/ARM64 asset names are eligible. HTTPS,
+size/hash, embedded version and PE machine checks are mandatory. GitHub digests
+are transport/integrity evidence, not a trusted publisher signature.
+
+A copy of the current frozen EXE runs helper mode before tray, Tk or profile
+migration initialization. It validates a bounded ticket in the private update
+cache, verifies the parent process image, waits for exit and rechecks the payload
+and target before replacement. It never kills the parent or other applications.
+Portable replacement uses a backup; installer failure attempts EXE recovery.
+Windows ShellExecute preserves security approval decisions. The helper restarts
+the app and records a content-free result. No clipboard/account values enter the
+GitHub request or ticket. Native CI upgrades the public 2.0.17 binary in disposable
+profiles; this does not validate every interactive SmartScreen/Defender policy.
 
 ## Screenshots And Demos
 

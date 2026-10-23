@@ -29,12 +29,20 @@ import time
 import zipfile
 import webbrowser
 from contextlib import contextmanager, closing
-from functools import wraps
+from functools import lru_cache, wraps
 from ctypes import wintypes
 from email.message import Message
 from email.parser import BytesParser
 from email.policy import default as email_policy
 from urllib.parse import parse_qs, quote, unquote
+
+import clipboard_updates as updates
+
+if __name__ == "__main__" and sys.argv[1:2] == [updates.HELPER_FLAG]:
+    if len(sys.argv) != 3:
+        raise SystemExit(2)
+    raise SystemExit(updates.apply_ticket(sys.argv[2], os.path.join(
+        os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "Clipboard Bridge", "updates")))
 
 import requests
 import pypdfium2 as pdfium
@@ -46,6 +54,7 @@ from tkinter import ttk, messagebox, filedialog
 from tkinter import font as tkfont
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
 from clipboard_storage import HistoryStoreError, read_history, write_history
+import clipboard_design as design
 
 try:
     import keyboard
@@ -76,6 +85,8 @@ HOST_ITEMS = os.path.join(HOST_DIR, "items")
 HOST_INDEX = os.path.join(HOST_DIR, "index.json")
 SYNC_STATE_FILE = os.path.join(DATA_DIR, "sync_state.json")
 ERROR_LOG = os.path.join(DATA_DIR, "error.log")
+UPDATE_STATE_FILE = os.path.join(DATA_DIR, "update_state.json")
+UPDATE_CACHE = os.path.join(DATA_DIR, "updates")
 ICON_PATH = os.path.join(RES_DIR, "icon.ico")
 VERSION_PATH = os.path.join(RES_DIR, "VERSION")
 
@@ -179,6 +190,8 @@ DEFAULT_CONFIG = {
     "hotkey_send": "ctrl+alt+c",
     "hotkey_receive": "ctrl+alt+v",
     "hotkey_history": "ctrl+alt+h",
+    "check_updates": True,
+    "auto_install_updates": False,
 }
 
 stop_event = threading.Event()
@@ -203,6 +216,14 @@ _connection_state = "checking"
 _connection_checked_server = None
 _connection_check_generation = 0
 _instance_mutex = None
+_update_busy = threading.Lock()
+_update_status_lock = threading.Lock()
+_update_status = ("idle", "", 0)
+_available_update = None
+_available_payload = None
+_update_cancel = threading.Event()
+_update_maintenance = threading.Event()
+_settings_open = threading.Event()
 
 # ---------------------------------------------------------------- translations
 STRINGS = {
@@ -217,8 +238,8 @@ STRINGS = {
         "hotkeys": "Keyboard shortcuts",
         "language": "Language",
         "mode": "Mode",
-        "mode_client": "Client (use external server)",
-        "mode_server": "Server (this PC)",
+        "mode_client": "Connect to a server",
+        "mode_server": "Use this PC as the server",
         "server_on": "Server mode ON — connect to {addr}",
         "client_on": "Client mode ON",
         "status_connected": "Connection: CONNECTED ({server})",
@@ -228,6 +249,27 @@ STRINGS = {
         "status_checking": "Connection: checking...",
         "connection_changed": "Settings changed. Check the connection again.",
         "remote_changed": "Connection changed. Retry on the selected connection; an earlier upload may already have completed.",
+        "tab_updates": "Updates",
+        "chk_updates": "Check GitHub for updates automatically",
+        "chk_auto_install": "Download and install updates automatically",
+        "update_check_now": "Check now",
+        "update_download": "Download and install",
+        "update_cancel_download": "Cancel download",
+        "update_release": "GitHub releases",
+        "update_idle": "Current version: {version}",
+        "update_checking": "Checking GitHub...",
+        "update_current": "You are up to date ({version}).",
+        "update_available": "Version {version} is available.",
+        "update_downloading": "Downloading {version}: {percent}%",
+        "update_waiting": "Waiting for active transfers to finish...",
+        "update_installing": "Installing the update. Clipboard Bridge will restart.",
+        "update_cancelled": "Download cancelled. The current app is unchanged.",
+        "update_failed": "Update could not be completed. Retry or open GitHub releases.",
+        "update_integrity": "The download could not be verified. Nothing was installed.",
+        "update_readonly": "The app folder is read-only. Use the installer from GitHub.",
+        "update_unsupported": "Automatic installation requires the packaged Windows app.",
+        "update_confirm": "Restart to install version {version}? Unsaved Settings changes will not be saved. Windows may ask you to approve the unsigned download.",
+        "update_security": "Downloads are verified against GitHub's SHA-256. Windows files are currently unsigned; Windows may require approval. No security protections are disabled.",
         "tray_connected": "🟢 Connected",
         "tray_disconnected": "🔴 Disconnected",
         "check_connection": "Check connection now",
@@ -272,11 +314,13 @@ STRINGS = {
         "no_keyboard": "The 'keyboard' library is not installed",
         "choose_files": "Choose the files to send",
         "win_history": "Clipboard Bridge - History",
-        "tab_server": "Server",
+        "tab_server": "Shared",
         "tab_local": "This PC",
+        "library": "Library", "add_files": "Add files", "transfer": "Transfer",
+        "history_pc_host": "Hosted on this PC", "history_remote_host": "Connected server",
         "refresh": "Refresh",
         "history_search": "Search previews and filenames",
-        "all_types": "All types", "text_type": "Text", "image_type": "Images",
+        "all_types": "All items", "text_type": "Text", "image_type": "Images",
         "file_type": "Files", "bundle_type": "File groups",
         "previous": "Previous", "next": "Next",
         "history_results": "{shown} shown / {total} results",
@@ -345,8 +389,8 @@ STRINGS = {
         "hotkeys": "Scorciatoie da tastiera",
         "language": "Lingua",
         "mode": "Modalità",
-        "mode_client": "Client (usa server esterno)",
-        "mode_server": "Server (questo PC)",
+        "mode_client": "Collega a un server",
+        "mode_server": "Usa questo PC come server",
         "server_on": "Modalità server attiva — connettiti a {addr}",
         "client_on": "Modalità client attiva",
         "status_connected": "Connessione: COLLEGATO ({server})",
@@ -356,6 +400,27 @@ STRINGS = {
         "status_checking": "Connessione: verifica in corso...",
         "connection_changed": "Impostazioni modificate. Verifica di nuovo la connessione.",
         "remote_changed": "Connessione cambiata. Riprova sulla connessione selezionata; un invio precedente potrebbe essere gia completato.",
+        "tab_updates": "Aggiornamenti",
+        "chk_updates": "Controlla automaticamente gli aggiornamenti su GitHub",
+        "chk_auto_install": "Scarica e installa automaticamente gli aggiornamenti",
+        "update_check_now": "Controlla ora",
+        "update_download": "Scarica e installa",
+        "update_cancel_download": "Annulla download",
+        "update_release": "Release GitHub",
+        "update_idle": "Versione attuale: {version}",
+        "update_checking": "Controllo su GitHub...",
+        "update_current": "Il programma è aggiornato ({version}).",
+        "update_available": "È disponibile la versione {version}.",
+        "update_downloading": "Download della {version}: {percent}%",
+        "update_waiting": "Attendo la fine dei trasferimenti in corso...",
+        "update_installing": "Installazione in corso. Clipboard Bridge si riavvierà.",
+        "update_cancelled": "Download annullato. Il programma attuale non è stato modificato.",
+        "update_failed": "Aggiornamento non completato. Riprova o apri le release GitHub.",
+        "update_integrity": "Non è stato possibile verificare il download. Nessuna installazione eseguita.",
+        "update_readonly": "La cartella del programma è in sola lettura. Usa l'installer da GitHub.",
+        "update_unsupported": "L'installazione automatica richiede l'eseguibile Windows.",
+        "update_confirm": "Riavviare per installare la versione {version}? Le modifiche non salvate nelle Impostazioni andranno perse. Windows potrebbe chiedere di autorizzare il download non firmato.",
+        "update_security": "I download vengono verificati con lo SHA-256 di GitHub. I file Windows non sono ancora firmati: potrebbe essere richiesta un'autorizzazione. Nessuna protezione viene disattivata.",
         "tray_connected": "🟢 Connesso",
         "tray_disconnected": "🔴 Disconnesso",
         "check_connection": "Verifica connessione ora",
@@ -400,11 +465,13 @@ STRINGS = {
         "no_keyboard": "Libreria 'keyboard' non installata",
         "choose_files": "Scegli i file da inviare",
         "win_history": "Clipboard Bridge - Cronologia",
-        "tab_server": "Server",
+        "tab_server": "Condivisi",
         "tab_local": "Questo PC",
+        "library": "Raccolta", "add_files": "Aggiungi file", "transfer": "Trasferisci",
+        "history_pc_host": "Server su questo PC", "history_remote_host": "Server collegato",
         "refresh": "Aggiorna",
         "history_search": "Cerca nelle anteprime e nei nomi dei file",
-        "all_types": "Tutti i tipi", "text_type": "Testo", "image_type": "Immagini",
+        "all_types": "Tutti", "text_type": "Testo", "image_type": "Immagini",
         "file_type": "File", "bundle_type": "Gruppi di file",
         "previous": "Precedenti", "next": "Successivi",
         "history_results": "{shown} visualizzati / {total} risultati",
@@ -607,6 +674,8 @@ def _remote_commit(expected=None):
 @contextmanager
 def _remote_operation(expected=None):
     with _remote_activity_lock:
+        if _update_maintenance.is_set():
+            raise RuntimeError(t("update_installing"))
         nested = hasattr(_remote_request_context, "settings")
         if not nested:
             with _settings_lock:
@@ -2352,6 +2421,208 @@ def open_received_folder(icon=None, item=None):
 
 
 # ---------------------------------------------------------------- monitor / sync
+def _set_update_status(state, version="", percent=0):
+    global _update_status
+    with _update_status_lock:
+        _update_status = (state, version, percent)
+
+
+def _load_update_state():
+    try:
+        with open(UPDATE_STATE_FILE, encoding="utf-8") as source:
+            value = json.loads(source.read(65537))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _update_timestamp(state, key):
+    value = state.get(key)
+    # Ignore corrupt, non-finite and future timestamps rather than disabling checks.
+    return value if type(value) in (int, float) and 0 <= value <= time.time() else 0
+
+
+def _save_update_state(value):
+    try:
+        updates._write_json(UPDATE_STATE_FILE, value)
+    except OSError:
+        raise updates.UpdateError("state_unavailable") from None
+
+
+def _update_distribution():
+    installed = (os.path.basename(sys.executable).lower() == "clipboard bridge.exe"
+                 and os.path.isfile(os.path.join(APP_DIR, "unins000.exe")))
+    return "installer" if installed else "portable"
+
+
+def _update_error(error):
+    code = error.code if isinstance(error, updates.UpdateError) else "failed"
+    _set_update_status({"cancelled": "cancelled", "integrity_failed": "integrity",
+                        "folder_readonly": "readonly", "unsupported_build": "unsupported"}.get(code, "failed"))
+
+
+def _confirm_update_restart(version):
+    answer, finished = [], threading.Event()
+    def prompt():
+        try:
+            if stop_event.is_set() or _update_cancel.is_set():
+                return
+            parent = next((window for window in _root.winfo_children()
+                           if getattr(window, "_view_name", None) == "settings"), _root)
+            answer.append(messagebox.askyesno(t("tab_updates"), t("update_confirm", version=version), parent=parent))
+        finally:
+            finished.set()
+    _cmd_q.put(prompt)
+    while not finished.wait(.2):
+        if stop_event.is_set() or _update_cancel.is_set():
+            return False
+    return bool(answer and answer[0] and not stop_event.is_set() and not _update_cancel.is_set())
+
+
+def _finish_update_handoff(ticket, version):
+    """Commit on the UI thread so a visible Cancel cannot race shutdown."""
+    try:
+        if _update_cancel.is_set() or stop_event.is_set():
+            updates.cancel_handoff(ticket)
+            raise updates.UpdateError("cancelled")
+        for window in _root.winfo_children():
+            button = getattr(window, "_update_cancel_button", None)
+            if button is not None:
+                button.state(["disabled"])
+        updates.commit_handoff(ticket)
+        _set_update_status("installing", version)
+        do_exit(_icon, None)
+    except Exception as error:
+        try:
+            updates.cancel_handoff(ticket)
+        except OSError:
+            pass
+        _update_maintenance.clear()
+        _update_error(error)
+
+
+def _download_and_apply_update(candidate, *, automatic=False):
+    global _available_payload
+    if not getattr(sys, "frozen", False):
+        raise updates.UpdateError("unsupported_build")
+    payload = _available_payload
+    if payload is None or not os.path.isfile(payload) or updates.file_digest(payload) != candidate.sha256:
+        _set_update_status("downloading", candidate.version)
+        payload = updates.download_update(candidate, UPDATE_CACHE, cancelled=_update_cancel,
+                    progress=lambda done, total: _set_update_status("downloading", candidate.version, done * 100 // total))
+        _available_payload = payload
+    if automatic:
+        if (_settings_open.is_set() or not config.get("check_updates", True)
+                or not config.get("auto_install_updates", False)):
+            _set_update_status("available", candidate.version)
+            return
+    elif not _confirm_update_restart(candidate.version):
+        _set_update_status("available", candidate.version)
+        return
+    _set_update_status("waiting", candidate.version)
+    while not _remote_activity_lock.acquire(timeout=.2):
+        if _update_cancel.is_set() or stop_event.is_set():
+            raise updates.UpdateError("cancelled")
+    try:
+        if _update_cancel.is_set() or stop_event.is_set():
+            raise updates.UpdateError("cancelled")
+        # A Settings window may have opened while a transfer was finishing.
+        if automatic and (_settings_open.is_set() or not config.get("check_updates", True)
+                          or not config.get("auto_install_updates", False)):
+            _set_update_status("available", candidate.version)
+            return
+        _update_maintenance.set()
+        ticket = updates.prepare_handoff(candidate, payload, sys.executable, UPDATE_CACHE,
+                                         language=config.get("lang", "en"), cancelled=_update_cancel)
+        state = _load_update_state()
+        state.update(last_apply_version=candidate.version, last_apply_at=time.time(), last_ticket=ticket.parent.name)
+        _save_update_state(state)
+        updates.launch_handoff(ticket, cancelled=_update_cancel)
+        _cmd_q.put(lambda: _finish_update_handoff(ticket, candidate.version))
+    except Exception:
+        _update_maintenance.clear()
+        raise
+    finally:
+        _remote_activity_lock.release()
+
+
+def check_for_updates(*, manual=False):
+    global _available_update, _available_payload
+    if not _update_busy.acquire(blocking=False):
+        return
+    try:
+        _update_cancel.clear()
+        _set_update_status("checking")
+        architecture = updates.executable_architecture(sys.executable)
+        candidate = updates.check_update(APP_VERSION, architecture, _update_distribution())
+        state = _load_update_state()
+        state["last_checked"] = time.time()
+        _save_update_state(state)
+        if candidate is None:
+            _available_update = _available_payload = None
+            _set_update_status("current", APP_VERSION)
+            return
+        if _available_update != candidate:
+            _available_payload = None
+        _available_update = candidate
+        _set_update_status("available", candidate.version)
+        previous_attempt = (state.get("last_apply_version") == candidate.version
+                            and time.time() - _update_timestamp(state, "last_apply_at") < 86400)
+        if (not manual and config.get("check_updates", True) and config.get("auto_install_updates", False) and not previous_attempt
+                and not _settings_open.is_set()):
+            _download_and_apply_update(candidate, automatic=True)
+        elif not manual and state.get("notified_version") != candidate.version:
+            notify(t("update_available", version=candidate.version), action=lambda: _cmd_q.put(open_updates_settings))
+            state["notified_version"] = candidate.version
+            _save_update_state(state)
+    except Exception as error:
+        _update_error(error)
+    finally:
+        _update_busy.release()
+
+
+def install_available_update():
+    if _available_update is None or not _update_busy.acquire(blocking=False):
+        return
+    try:
+        _update_cancel.clear()
+        _download_and_apply_update(_available_update)
+    except Exception as error:
+        _update_error(error)
+    finally:
+        _update_busy.release()
+
+
+def update_loop():
+    # Surface helper failures after restart; never include local paths in messages.
+    state = _load_update_state()
+    folder = state.get("last_ticket", "")
+    if isinstance(folder, str) and re.fullmatch(r"[0-9a-f]{32}", folder):
+        try:
+            with open(os.path.join(UPDATE_CACHE, folder, "result.json"), encoding="utf-8") as source:
+                result = json.loads(source.read(65537))
+            if result.get("state") == "failed":
+                _set_update_status("failed")
+        except (OSError, ValueError, AttributeError):
+            pass
+    updates.prune_finished_updates(UPDATE_CACHE)
+    if stop_event.wait(30):
+        return
+    while not stop_event.is_set():
+        checked = _update_timestamp(_load_update_state(), "last_checked")
+        if config.get("check_updates", True) and time.time() - checked >= 86400:
+            check_for_updates()
+        if stop_event.wait(3600):
+            return
+
+
+def open_updates_settings():
+    open_settings()
+    window = _existing_view("settings")
+    if window is not None:
+        window._settings_navigation.select(window._updates_page)
+
+
 def sync_loop():
     last_text = last_img = last_files = last_server = None
     active_source = None
@@ -2505,22 +2776,22 @@ def sync_loop():
 # ---------------------------------------------------------------- history window
 _PALETTES = {
     "light": {
-        "canvas": "#f4f6f8", "panel": "#ffffff", "field": "#ffffff", "soft": "#f2f4f7",
-        "text": "#202830", "muted": "#627084", "border": "#d8dee5", "alternate": "#f8fafc",
-        "selected": "#e8f1ff", "selected_text": "#1357b5", "hover": "#e8edf4",
-        "scroll": "#bbc5d2", "scroll_active": "#8494a7", "disabled": "#99a2af",
-        "primary": "#1668dc", "primary_hover": "#0d55b8", "support": "#9f315e",
+        "canvas": "#e8edf2", "panel": "#f8fafc", "field": "#ffffff", "soft": "#edf1f6",
+        "rail": "#eaf0f5", "text": "#20252d", "muted": "#5c6876", "border": "#d5dee8",
+        "alternate": "#f2f6fa", "selected": "#dcecff", "selected_text": "#0757b3", "hover": "#e1eaf5",
+        "scroll": "#a9b6c5", "scroll_active": "#75879a", "disabled": "#8995a3",
+        "primary": "#2769db", "primary_hover": "#1c58bd", "on_primary": "#ffffff", "support": "#a72d58",
         "connected_bg": "#ecfdf3", "connected_fg": "#15803d",
         "checking_bg": "#eff6ff", "checking_fg": "#2563eb",
         "auth_bg": "#fff7ed", "auth_fg": "#c2410c",
         "offline_bg": "#fef2f2", "offline_fg": "#b91c1c",
     },
     "dark": {
-        "canvas": "#17191d", "panel": "#1e2126", "field": "#181b20", "soft": "#2b3038",
-        "text": "#e4e8ef", "muted": "#a8b1bf", "border": "#3a414b", "alternate": "#24282f",
-        "selected": "#253d60", "selected_text": "#b8d5ff", "hover": "#343d49",
-        "scroll": "#667386", "scroll_active": "#9cacc0", "disabled": "#778190",
-        "primary": "#1668dc", "primary_hover": "#0d55b8", "support": "#f5a5c4",
+        "canvas": "#181b1d", "panel": "#202325", "field": "#1b1e20", "soft": "#2b2f33",
+        "rail": "#1b1e20", "text": "#edf0f3", "muted": "#a9adb2", "border": "#34393e",
+        "alternate": "#23272a", "selected": "#263b52", "selected_text": "#e4efff", "hover": "#2c3136",
+        "scroll": "#626970", "scroll_active": "#9ca4ad", "disabled": "#838b94",
+        "primary": "#2769db", "primary_hover": "#1c58bd", "on_primary": "#ffffff", "support": "#ffacc8",
         "connected_bg": "#203b2c", "connected_fg": "#8be0aa",
         "checking_bg": "#26374f", "checking_fg": "#a7c8ff",
         "auth_bg": "#463321", "auth_fg": "#ffd096",
@@ -2550,9 +2821,12 @@ def _modern_window(root, appearance=None):
     root._colors = colors
     root.configure(background=colors["panel"])
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
-        tkfont.nametofont(name, root=root).configure(family="Segoe UI", size=-13)
+        font = tkfont.nametofont(name, root=root)
+        if font.cget("family") != "Segoe UI" or font.cget("size") != -13:
+            font.configure(family="Segoe UI", size=-13)
     style = ttk.Style(root)
-    style.theme_use("clam")
+    if style.theme_use() != "clam":
+        style.theme_use("clam")
     style.configure(".", font=("Segoe UI", -13), background=colors["panel"], foreground=colors["text"])
     style.configure("TFrame", background=colors["panel"])
     style.configure("TLabel", background=colors["panel"])
@@ -2608,12 +2882,16 @@ def _modern_window(root, appearance=None):
     # Keep Tk's scrollbar bindings, but replace the embossed thumb with a flat image.
     thumb = f"Bridge.{appearance}.Vertical.Scrollbar.thumb"
     if thumb not in style.element_names():
-        images = [ImageTk.PhotoImage(Image.new("RGB", (8, 24), colors[role]), master=_root)
-                  for role in ("scroll", "scroll_active")]
+        images = []
+        for role in ("scroll", "scroll_active"):
+            bitmap = Image.new("RGBA", (8, 24))
+            ImageDraw.Draw(bitmap).rounded_rectangle((1, 1, 6, 22), radius=3, fill=colors[role])
+            images.append(ImageTk.PhotoImage(bitmap, master=_root))
+        images.append(ImageTk.PhotoImage(Image.new("RGBA", (8, 24)), master=_root))
         if not hasattr(_root, "_scroll_images"):
             _root._scroll_images = {}
         _root._scroll_images[appearance] = images
-        style.element_create(thumb, "image", images[0], ("active", images[1]), border=2, sticky="nswe")
+        style.element_create(thumb, "image", images[0], ("disabled", images[2]), ("active", images[1]), border=2, sticky="nswe")
     style.layout("Slim.Vertical.TScrollbar", [("Vertical.Scrollbar.trough", {
         "sticky": "ns", "children": [(thumb, {"sticky": "nswe", "expand": 1})],
     })])
@@ -2645,6 +2923,12 @@ def _modern_window(root, appearance=None):
                     bordercolor=colors["panel"], lightcolor=colors["panel"], darkcolor=colors["panel"],
                     background=colors["panel"])
     style.configure("Settings.Section.TLabelframe.Label", font=("Segoe UI", -13, "bold"))
+    design.apply_styles(root, _root, style, appearance, colors)
+    if not getattr(root, "_chrome_bound", False):
+        root.bind("<Map>", lambda event: design.native_chrome(root, _palette(root),
+                  "dark" if _palette(root) is _PALETTES["dark"] else "light") if event.widget == root else None,
+                  add="+")
+        root._chrome_bound = True
     return style
 
 
@@ -2655,6 +2939,10 @@ def _update_appearance(appearance):
             _paint(widget, **roles)
         if isinstance(widget, ttk.Treeview):
             widget.tag_configure("alternate", background=_palette(widget)["alternate"])
+            _history_icons(widget)
+            for row, kind in getattr(widget, "_row_kinds", {}).items():
+                if widget.exists(row):
+                    widget.item(row, image=widget._item_icons.get(kind, ""))
         if getattr(widget, "_glyph", None):
             _set_button_icon(widget)
         for child in widget.winfo_children():
@@ -2667,7 +2955,7 @@ def _update_appearance(appearance):
 
 
 def _window_header(root, subtitle):
-    header = _paint(tk.Frame(root, padx=16, pady=10), background="panel")
+    header = _paint(tk.Frame(root, padx=16, pady=6), background="panel")
     header.pack(fill="x")
     try:
         with Image.open(ICON_PATH) as image:
@@ -2723,13 +3011,19 @@ def _tooltip(widget, text):
     widget.ui_label = text
 
 
+@lru_cache(maxsize=4)
+def _symbol_font(size=16):
+    fonts = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
+    fluent = os.path.join(fonts, "SegoeIcons.ttf")
+    return ImageFont.truetype(fluent if os.path.isfile(fluent) else os.path.join(fonts, "segmdl2.ttf"), size)
+
+
 def _set_button_icon(button):
     try:
-        font = ImageFont.truetype(os.path.join(os.environ.get("WINDIR", "C:/Windows"),
-                                             "Fonts", "segmdl2.ttf"), 16)
+        font = _symbol_font()
         images = []
         for role in (getattr(button, "_glyph_role", "text"), "disabled"):
-            bitmap = Image.new("RGBA", (20, 20))
+            bitmap = Image.new("RGBA", (28, 20))
             ImageDraw.Draw(bitmap).text((10, 10), button._glyph, font=font,
                                         fill=_palette(button)[role], anchor="mm")
             images.append(ImageTk.PhotoImage(bitmap, master=button))
@@ -2762,16 +3056,16 @@ class _SettingsNavigation(ttk.Frame):
         super().__init__(parent)
         self._pages = []
         self._selection = tk.StringVar(master=self)
-        self._rail = ttk.Frame(self, width=150)
+        self._rail = ttk.Frame(self, width=150, style="Rail.TFrame", padding=(6, 10))
         self._rail.pack(side="left", fill="y", padx=(0, 12))
         self._rail.pack_propagate(False)
         self._content = ttk.Frame(self)
         self._content.pack(side="left", fill="both", expand=True)
-        donation = ttk.Frame(self._rail)
+        donation = ttk.Frame(self._rail, style="Rail.TFrame")
         donation.pack(side="bottom", fill="x", pady=10)
         self._support_note = ttk.Label(donation, name="support_note", text=t("support_note"),
-                                       style="Muted.TLabel", font=("Segoe UI", -11),
-                                       wraplength=138, justify="left")
+                                       style="Rail.TLabel", font=("Segoe UI", -11),
+                                       wraplength=122, justify="left")
         self._support_note.pack(fill="x", padx=6, pady=(0, 8))
         support = _command_button(donation, "support", "Ko-fi", "\ueb51",
                                   lambda: _run_bg(lambda: webbrowser.open("https://ko-fi.com/mattboxx")))
@@ -2788,9 +3082,12 @@ class _SettingsNavigation(ttk.Frame):
 
     def add(self, page, *, text):
         self._pages.append(page)
-        ttk.Radiobutton(self._rail, text=text, value=str(page), variable=self._selection,
-                        style="Navigation.TRadiobutton", command=lambda: self.select(page)).pack(
-                            fill="x", pady=(0, 4))
+        glyph = ("\ue713", "\ue774", "\ue895", "\ue765", "\ue777")[min(len(self._pages) - 1, 4)]
+        button = ttk.Radiobutton(self._rail, text=text, value=str(page), variable=self._selection,
+                                 compound="left", style="Navigation.TRadiobutton", command=lambda: self.select(page))
+        button._glyph, button._glyph_role = glyph, "text"
+        _set_button_icon(button)
+        button.pack(fill="x", pady=(0, 5))
         if len(self._pages) == 1:
             self.select(page)
 
@@ -2813,7 +3110,7 @@ def _settings_page(notebook):
     page = ttk.Frame(notebook)
     canvas = _paint(tk.Canvas(page, highlightthickness=0, borderwidth=0), background="panel")
     scrollbar = ttk.Scrollbar(page, orient="vertical", command=canvas.yview, style="Slim.Vertical.TScrollbar")
-    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.configure(yscrollcommand=lambda first, last: _scroll_set(scrollbar, first, last))
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
     content = ttk.Frame(canvas, padding=(20, 12))
@@ -2837,29 +3134,55 @@ def _settings_page(notebook):
     return page, content
 
 
+def _scroll_set(scrollbar, first, last):
+    scrollbar.set(first, last)
+    inactive = float(first) <= 0 and float(last) >= 1
+    if scrollbar.instate(["disabled"]) != inactive:
+        scrollbar.state(["disabled"] if inactive else ["!disabled"])
+
+
 def _history_table(parent):
     frame = ttk.Frame(parent)
     frame.pack(fill="both", expand=True, padx=16)
     tree = ttk.Treeview(frame, columns=("content", "type", "date", "size"),
-                        show="headings", selectmode="browse")
+                        show="tree headings", selectmode="browse")
+    # A dedicated image column cannot consume the content column's text area.
+    tree.column("#0", width=38, minwidth=38, stretch=False)
+    tree.heading("#0", text="")
     for name, width, minimum, stretch, anchor in (
-        ("content", 500, 230, True, "w"), ("type", 95, 95, False, "w"),
-        ("date", 125, 125, False, "w"), ("size", 65, 65, False, "e"),
+        ("content", 500, 180, True, "w"), ("type", 88, 75, False, "w"),
+        ("date", 120, 112, False, "w"), ("size", 65, 58, False, "e"),
     ):
         tree.heading(name, text=t("column_" + name), anchor=anchor)
         tree.column(name, width=width, minwidth=minimum, stretch=stretch, anchor=anchor)
     tree.tag_configure("alternate", background=_palette(parent)["alternate"])
+    _history_icons(tree)
     scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview, style="Slim.Vertical.TScrollbar")
-    tree.configure(yscrollcommand=scroll.set)
+    tree.configure(yscrollcommand=lambda first, last: _scroll_set(scroll, first, last))
     tree.pack(side="left", fill="both", expand=True)
     scroll.pack(side="right", fill="y")
     return tree
 
 
+def _history_icons(tree):
+    tree._item_icons = {}
+    try:
+        font = _symbol_font()
+        for kind, glyph, role in (("text", "\ue8a4", "primary"), ("image", "\ue91b", "connected_fg"),
+                                  ("file", "\ue8a5", "muted"), ("bundle", "\ue8b7", "support")):
+            bitmap = Image.new("RGBA", (22, 22))
+            ImageDraw.Draw(bitmap).text((11, 11), glyph, font=font, fill=_palette(tree)[role], anchor="mm")
+            tree._item_icons[kind] = ImageTk.PhotoImage(bitmap, master=tree)
+    except OSError:
+        pass
+
+
 def _fill_history_table(tree, items):
     tree.delete(*tree.get_children())
+    tree._row_kinds = {}
     kinds = {"text": "text_type", "image": "image_type", "file": "file_type", "bundle": "bundle_type"}
     for index, item in enumerate(items):
+        tree._row_kinds[str(index)] = item.get("type")
         size = item.get("size")
         if size is None:
             size_text = ""
@@ -2868,7 +3191,7 @@ def _fill_history_table(tree, items):
         else:
             size_text = f"{size / (1024 ** (2 if size >= 1024 ** 2 else 1)):.1f} {'MB' if size >= 1024 ** 2 else 'KB'}"
         date = str(item.get("timestamp") or "").replace("T", " ")[:16]
-        tree.insert("", "end", iid=str(index), values=(
+        tree.insert("", "end", iid=str(index), image=tree._item_icons.get(item.get("type"), ""), values=(
             (item.get("preview") or item.get("filename") or "").replace("\n", " ").replace("\r", " "),
             t(kinds.get(item.get("type"), "file_type")), date, size_text,
         ), tags=("alternate",) if index % 2 else ())
@@ -2975,19 +3298,12 @@ def open_history_window(icon=None, item=None):
     root = tk.Toplevel(_root)
     root._view_name = "history"
     root.title(t("win_history"))
-    root.geometry("980x660")
+    root.geometry("1120x720")
     root.minsize(760, 480)
     _modern_window(root)
     apply_window_icon(root)
     header = _window_header(root, t("history").rstrip("\u2026"))
     _command_button(header, "settings", t("settings").rstrip("\u2026"), "\ue713", open_settings).pack(side="right", padx=(8, 0))
-    receive = ttk.Button(header, text=t("receive_short"), style="Primary.TButton",
-                         command=lambda: _run_bg(action_get_latest))
-    receive.pack(side="right")
-    _tooltip(receive, t("receive_now"))
-    send = ttk.Button(header, text=t("send_short"), command=lambda: _run_bg(action_send_clipboard))
-    send.pack(side="right", padx=(0, 6))
-    _tooltip(send, t("send_now"))
 
     ui_q = queue.Queue()
     search_job = pump_job = preview_job = initial_refresh_job = None
@@ -3000,50 +3316,76 @@ def open_history_window(icon=None, item=None):
     page_size = 100
     items = []
     loaded_source = None
-    source = tk.StringVar(master=root, value="server")
+    kind_filter = tk.StringVar(master=root, value="")
+    observed_source = _connection_ticket()
     query = tk.StringVar(master=root)
     preview_visible = tk.BooleanVar(master=root, value=False)
     status = tk.StringVar(master=root)
-    toolbar = ttk.Frame(root)
-    toolbar.pack(fill="x", padx=16, pady=(2, 12))
-    sources = ttk.Frame(toolbar)
-    sources.pack(side="left", padx=(0, 12))
-    for value, key in (("server", "tab_server"), ("local", "tab_local")):
-        ttk.Radiobutton(sources, text=t(key), value=value, variable=source,
-                        style="Segment.TRadiobutton", command=lambda: refresh(reset=True)).pack(side="left")
+    ttk.Separator(root).pack(fill="x")
+    shell = ttk.Frame(root)
+    shell.pack(fill="both", expand=True)
+    transfer_band = ttk.Frame(shell, padding=(16, 6))
+    transfer_band.pack(fill="x")
+    transfer_actions = ttk.Frame(transfer_band)
+    transfer_actions.pack(side="right", padx=(10, 0))
+    _command_button(transfer_actions, "add_files", t("add_files"), "\ue8b7", action_send_file).pack(side="left", padx=(0, 6))
+    _command_button(transfer_actions, "send", t("send_short"), "\ue898",
+                    lambda: _run_bg(action_send_clipboard)).pack(side="left", padx=(0, 6))
+    receive = _command_button(transfer_actions, "receive", t("receive_short"), "\ue896",
+                              lambda: _run_bg(action_get_latest))
+    receive.configure(style="Primary.TButton")
+    receive._glyph_role = "on_primary"
+    _set_button_icon(receive)
+    receive.pack(side="left")
+    host_label = ttk.Label(transfer_band, text=t("history_pc_host" if config.get("mode") == "server" else "history_remote_host"),
+                          font=("Segoe UI", -13, "bold"))
+    host_label.pack(anchor="w")
+    status_label = ttk.Label(transfer_band, textvariable=status, style="Meta.TLabel")
+    status_label.pack(anchor="w", pady=(2, 0))
+    ttk.Separator(shell).pack(fill="x")
+    main = ttk.Frame(shell)
+    main.pack(fill="both", expand=True)
+    toolbar = ttk.Frame(main)
+    toolbar.pack(fill="x", padx=16, pady=6)
     refresh_button = _command_button(toolbar, "refresh", t("refresh"), "\ue72c", lambda: refresh())
     refresh_button.pack(side="right", padx=(6, 0))
-    kinds = ("", "text", "image", "file", "bundle")
-    kind_selector = ttk.Combobox(toolbar, state="readonly", width=13,
-        values=[t(key) for key in ("all_types", "text_type", "image_type", "file_type", "bundle_type")])
-    kind_selector.current(0)
-    kind_selector.pack(side="right", padx=(8, 0))
-    search_symbol = ttk.Label(toolbar, text="\ue721", font=("Segoe MDL2 Assets", -14))
-    search_symbol.pack(side="left", padx=(0, 6))
+    for value, key in (("", "all_types"), ("text", "text_type"), ("image", "image_type"),
+                        ("file", "file_type"), ("bundle", "bundle_type")):
+        ttk.Radiobutton(toolbar, text=t(key), value=value, variable=kind_filter,
+                        style="Filter.TRadiobutton", command=lambda: refresh(reset=True)).pack(side="left", padx=(0, 3))
+    search_symbol = ttk.Label(toolbar, text="\ue721", font=("Segoe MDL2 Assets", -14), style="Muted.TLabel")
+    search_symbol.pack(side="left", padx=(7, 6))
     _tooltip(search_symbol, t("search_history"))
-    search_entry = ttk.Entry(toolbar, textvariable=query)
+    search_entry = ttk.Entry(toolbar, textvariable=query, width=16)
     search_entry.pack(side="left", fill="x", expand=True)
     _tooltip(search_entry, t("history_search"))
 
-    footer = ttk.Frame(root, padding=(16, 10))
+    footer = ttk.Frame(main, padding=(16, 6))
     footer.pack(side="bottom", fill="x")
-    preview_bar = ttk.Frame(root, padding=(16, 8))
+    workspace = ttk.Frame(main)
+    workspace.pack(fill="both", expand=True)
+    loading_track = ttk.Frame(workspace, height=3)
+    loading_track.pack(side="top", fill="x", padx=16, pady=(0, 3))
+    loading_track.pack_propagate(False)
+    history_progress = ttk.Progressbar(loading_track, mode="indeterminate", maximum=100, length=100)
+    preview_bar = ttk.Frame(workspace, padding=(12, 10), width=280, height=150)
+    preview_bar.pack_propagate(False)
     preview_heading = ttk.Label(preview_bar, text=t("preview"), style="Muted.TLabel")
-    preview_heading.pack(anchor="w")
+    preview_heading.pack(anchor="w", pady=(0, 8))
     preview_text = _paint(tk.Text(preview_bar, height=3, wrap="word", state="disabled",
                            font=("Segoe UI", -13), borderwidth=0,
                            highlightthickness=0, padx=8, pady=6), background="soft", foreground="text",
                            selectbackground="selected", selectforeground="text", insertbackground="text")
     preview_scroll = ttk.Scrollbar(preview_bar, orient="vertical", command=preview_text.yview,
                                    style="Slim.Vertical.TScrollbar")
-    preview_text.configure(yscrollcommand=preview_scroll.set)
-    preview_text.pack(side="left", fill="x", expand=True)
+    preview_text.configure(yscrollcommand=lambda first, last: _scroll_set(preview_scroll, first, last))
+    preview_text.pack(side="left", fill="both", expand=True)
     preview_scroll.pack(side="right", fill="y")
     preview_canvas = ttk.Frame(preview_bar, height=180)
     preview_canvas.pack_propagate(False)
     preview_image = ttk.Label(preview_canvas, name="preview_image", anchor="center")
     preview_image.pack(fill="both", expand=True)
-    listing = _history_table(root)
+    listing = _history_table(workspace)
     empty = ttk.Label(listing.master, text=t("no_results"), style="Muted.TLabel")
 
     def selected():
@@ -3061,12 +3403,11 @@ def open_history_window(icon=None, item=None):
         preview_image.configure(image="", text="")
         preview_image.image = None
         preview_heading.configure(text=t("preview"))
-        preview_text.pack(side="left", fill="x", expand=True)
+        preview_text.pack(side="left", fill="both", expand=True)
         preview_scroll.pack(side="right", fill="y")
         entry = selected()
         copy_button.configure(state="normal" if entry else "disabled")
         delete_button.configure(state="normal" if entry else "disabled")
-        local_send.configure(state="normal" if entry else "disabled")
         value = t("preview_empty")
         if entry:
             members = entry.get("files", [])
@@ -3077,13 +3418,13 @@ def open_history_window(icon=None, item=None):
         preview_text.insert("1.0", value[:4000])
         preview_text.configure(state="disabled")
         if preview_visible.get() and entry:
-            is_server = source.get() == "server"
+            is_server = True
             target = _preview_target(entry, is_server)
             if target:
                 preview_text.pack_forget()
                 preview_scroll.pack_forget()
                 preview_image.configure(text=t("preview_loading"))
-                preview_canvas.pack(fill="x", pady=4)
+                preview_canvas.pack(fill="both", expand=True, pady=4)
                 generation = preview_generation
                 space = loaded_source if is_server else None
                 preview_pending = (generation, target, is_server, space, dict(config))
@@ -3112,7 +3453,9 @@ def open_history_window(icon=None, item=None):
                         if len(preview_cache) >= 4:
                             preview_cache.pop(next(iter(preview_cache)))
                         preview_cache[key] = image
-                    photo = ImageTk.PhotoImage(image, master=root)
+                    thumbnail = image.copy()
+                    thumbnail.thumbnail((max(100, preview_bar.winfo_width() - 24), 180), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(thumbnail, master=root)
                     preview_image.configure(image=photo, text="")
                     preview_image.image = photo
                     count = image.info.get("preview_pages")
@@ -3137,10 +3480,21 @@ def open_history_window(icon=None, item=None):
 
     def show_preview():
         if preview_visible.get():
-            preview_bar.pack(side="bottom", fill="x", before=listing.master)
+            wide = root.winfo_width() >= 1050
+            preview_bar.configure(width=280, height=150)
+            preview_bar.pack(side="right" if wide else "bottom", fill="y" if wide else "x",
+                             before=listing.master)
         else:
             preview_bar.pack_forget()
         update_selection()
+
+    preview_wide = root.winfo_width() >= 1050
+    def resize_preview(event):
+        nonlocal preview_wide
+        if event.widget == root and preview_visible.get() and (event.width >= 1050) != preview_wide:
+            preview_wide = event.width >= 1050
+            show_preview()
+    root.bind("<Configure>", resize_preview, add="+")
 
     def fill(page):
         items[:] = page.get("items", [])
@@ -3162,41 +3516,28 @@ def open_history_window(icon=None, item=None):
             offset = 0
         request_generation += 1
         generation = request_generation
-        search, kind = query.get(), kinds[max(0, kind_selector.current())]
-        is_server = source.get() == "server"
+        search, kind = query.get(), kind_filter.get()
         for button in (previous_button, next_button):
             button.configure(state="disabled")
-        if is_server:
-            local_send.pack_forget()
-            delete_button.pack(side="left", after=copy_button, padx=4)
-            page_controls.pack(side="right", before=copy_button)
-        else:
-            delete_button.pack_forget()
-            local_send.pack(side="left", after=copy_button, padx=6)
-            page_controls.pack_forget()
-            loaded_source = None
-            try:
-                page = {"items": _filter_history(_local_load(), search, kind)}
-            except HistoryStoreError:
-                items.clear()
-                listing.delete(*listing.get_children())
-                empty.place_forget()
-                update_selection()
-                status.set(t("local_history_error"))
-            else:
-                fill(page)
-            return
+        delete_button.pack(side="left", after=copy_button, padx=4)
+        page_controls.pack(side="right", before=copy_button)
+        loaded_source = None
         source_key, requested_offset = _connection_ticket(), offset
         items.clear()
         listing.delete(*listing.get_children())
         empty.place_forget()
         update_selection()
         status.set(t("loading"))
+        history_progress.pack(fill="x")
+        history_progress.start(30)
 
         def deliver(page=None):
             nonlocal loaded_source
             if generation != request_generation or not root.winfo_exists():
                 return
+            history_progress.stop()
+            history_progress.pack_forget()
+            history_progress["value"] = 0
             if source_key != _connection_ticket():
                 refresh(reset=True)
             elif page is None:
@@ -3220,17 +3561,13 @@ def open_history_window(icon=None, item=None):
         entry = selected()
         if entry is None:
             return
-        is_server, source_key = source.get() == "server", loaded_source
-        if is_server and source_key is None:
+        source_key = loaded_source
+        if source_key is None:
             refresh()
             return
 
         def work():
             try:
-                if not is_server:
-                    _copy_local_item(entry)
-                    notify(t("copied"))
-                    return
                 with _remote_operation(expected=source_key):
                     full = fetch_item(entry["id"])
                     kind = _copy_remote_item(full, update_latest=False)
@@ -3251,34 +3588,9 @@ def open_history_window(icon=None, item=None):
         _run_bg(work)
         return "break"
 
-    def send_local():
-        entry = selected()
-        if entry is None or source.get() != "local":
-            return
-        source_key = _connection_ticket()
-
-        def work():
-            try:
-                with _remote_operation(expected=source_key):
-                    if entry["type"] == "text":
-                        push_text(entry.get("text", ""))
-                    elif entry["type"] == "image" and entry.get("file"):
-                        with Image.open(os.path.join(LOCAL_DIR, entry["file"])) as image:
-                            push_image(image)
-                    elif entry["type"] in ("file", "bundle"):
-                        paths = entry.get("paths", []) if entry["type"] == "bundle" else [entry.get("path")]
-                        push_files(paths)
-                    else:
-                        raise ValueError(t("unavailable"))
-                    with _remote_commit():
-                        notify(t("sent_server"))
-            except Exception as error:
-                notify(t("send_err", e=error))
-        _run_bg(work)
-
     def delete_item(*_args):
         entry = selected()
-        if entry is None or source.get() != "server":
+        if entry is None:
             return
         source_key = loaded_source
         if source_key is None:
@@ -3301,7 +3613,6 @@ def open_history_window(icon=None, item=None):
     copy_button = ttk.Button(footer, text=t("copy_selected"), style="Primary.TButton", command=copy_item)
     copy_button.pack(side="left")
     delete_button = _command_button(footer, "delete", t("delete"), "\ue74d", delete_item)
-    local_send = ttk.Button(footer, text=t("send_to_server"), command=send_local)
     preview_button = ttk.Checkbutton(footer, name="preview", text=t("show_preview"),
                                     variable=preview_visible, command=show_preview)
     preview_button.pack(side="left", padx=(4, 0))
@@ -3317,11 +3628,10 @@ def open_history_window(icon=None, item=None):
     previous_button.pack(side="left")
     next_button = _command_button(page_controls, "next", t("next"), "\ue72a", lambda: move_page(1))
     next_button.pack(side="left", padx=(4, 0))
-    status_label = ttk.Label(footer, textvariable=status, style="Muted.TLabel", wraplength=340)
-    status_label.pack(side="left", fill="x", expand=True, padx=12)
-    status_label.bind("<Configure>", lambda event: status_label.configure(wraplength=max(80, event.width)))
 
-    menu = tk.Menu(root, tearoff=False)
+    menu = _paint(tk.Menu(root, tearoff=False), background="panel", foreground="text",
+                  activebackground="selected", activeforeground="selected_text",
+                  disabledforeground="disabled")
 
     def context_menu(event):
         row = listing.identify_row(event.y)
@@ -3331,10 +3641,7 @@ def open_history_window(icon=None, item=None):
         menu.delete(0, "end")
         menu.add_command(label=t("copy_selected"), command=copy_item)
         menu.add_command(label=t("preview"), command=lambda: (preview_visible.set(True), show_preview()))
-        if source.get() == "server":
-            menu.add_command(label=t("delete"), command=delete_item)
-        else:
-            menu.add_command(label=t("send_to_server"), command=send_local)
+        menu.add_command(label=t("delete"), command=delete_item)
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -3367,7 +3674,6 @@ def open_history_window(icon=None, item=None):
         search_job = root.after(250, apply_search)
 
     query.trace_add("write", schedule_search)
-    kind_selector.bind("<<ComboboxSelected>>", apply_search)
     search_entry.bind("<Return>", apply_search)
     def focus_search(_event):
         search_entry.focus_set()
@@ -3377,7 +3683,13 @@ def open_history_window(icon=None, item=None):
     root.bind("<Control-f>", focus_search)
 
     def pump():
-        nonlocal pump_job
+        nonlocal pump_job, observed_source
+        current_source = _connection_ticket()
+        if observed_source != current_source:
+            observed_source = current_source
+            preview_cache.clear()
+            host_label.configure(text=t("history_pc_host" if config.get("mode") == "server" else "history_remote_host"))
+            refresh(reset=True)
         try:
             while True:
                 ui_q.get_nowait()()
@@ -3393,6 +3705,7 @@ def open_history_window(icon=None, item=None):
         preview_pending = None
         preview_cache.clear()
         preview_image.image = None
+        history_progress.stop()
         for job in (search_job, pump_job, preview_job, initial_refresh_job):
             if job is not None:
                 root.after_cancel(job)
@@ -3498,8 +3811,9 @@ def open_settings(icon=None, item=None):
         return
     root = tk.Toplevel(_root)
     root._view_name = "settings"
+    _settings_open.set()
     root.title(t("win_settings"))
-    root.geometry("760x620")
+    root.geometry("820x680")
     root.minsize(700, 520)
     style = _modern_window(root)
     root.attributes("-topmost", True)
@@ -3526,12 +3840,80 @@ def open_settings(icon=None, item=None):
     connection_page, connection_tab = _settings_page(notebook)
     automation_page, automation_tab = _settings_page(notebook)
     shortcuts_page, shortcuts_tab = _settings_page(notebook)
+    updates_page, updates_tab = _settings_page(notebook)
     notebook.add(general_page, text=t("tab_general"))
     notebook.add(connection_page, text=t("tab_connection"))
     notebook.add(automation_page, text=t("tab_automation"))
     notebook.add(shortcuts_page, text=t("tab_shortcuts"))
+    notebook.add(updates_page, text=t("tab_updates"))
+    root._settings_navigation, root._updates_page = notebook, updates_page
+
+    update_checks = tk.BooleanVar(master=root, value=config.get("check_updates", True))
+    auto_updates = tk.BooleanVar(master=root, value=config.get("auto_install_updates", False))
+    update_box = ttk.LabelFrame(updates_tab, text=t("tab_updates"), style="Settings.Section.TLabelframe")
+    update_box.pack(fill="x")
+
+    def update_preferences():
+        if not update_checks.get():
+            auto_updates.set(False)
+        automatic_control.config(state="normal" if update_checks.get() else "disabled")
+
+    ttk.Checkbutton(update_box, text=t("chk_updates"), name="check_updates", variable=update_checks,
+                    command=update_preferences, style="Settings.TCheckbutton").pack(anchor="w")
+    automatic_control = ttk.Checkbutton(update_box, text=t("chk_auto_install"), name="auto_install_updates",
+                                       variable=auto_updates, style="Settings.TCheckbutton")
+    automatic_control.pack(anchor="w")
+    update_preferences()
+    update_text = tk.StringVar(master=root)
+    ttk.Label(update_box, textvariable=update_text, wraplength=430, name="update_status").pack(
+        fill="x", pady=(14, 8))
+    progress = ttk.Progressbar(update_box, mode="determinate", maximum=100, name="update_progress")
+    progress.pack(fill="x", pady=(0, 10))
+    update_actions = ttk.Frame(update_box)
+    update_actions.pack(fill="x")
+    check_update_button = ttk.Button(update_actions, text=t("update_check_now"), name="update_check",
+                                    command=lambda: _run_bg(lambda: check_for_updates(manual=True)))
+    check_update_button.pack(side="left")
+    install_update_button = ttk.Button(update_actions, text=t("update_download"), name="update_install",
+                                      command=lambda: _run_bg(install_available_update))
+    install_update_button.pack(side="left", padx=(8, 0))
+    cancel_update_button = ttk.Button(update_actions, text=t("update_cancel_download"), name="update_cancel",
+                                     command=_update_cancel.set)
+    root._update_cancel_button = cancel_update_button
+    cancel_update_button.pack(side="left", padx=(8, 0))
+    ttk.Label(updates_tab, text=t("update_security"), wraplength=430, style="Muted.TLabel").pack(
+        fill="x", pady=(12, 8))
+    ttk.Button(updates_tab, text=t("update_release"),
+               command=lambda: webbrowser.open(updates.RELEASE_PAGE)).pack(anchor="w")
+    update_job = None
+    rendered_update = None
+
+    def render_updates():
+        nonlocal update_job, rendered_update
+        with _update_status_lock:
+            state, version, percent = _update_status
+        snapshot = (state, version, percent, config.get("lang"))
+        if snapshot == rendered_update:
+            update_job = root.after(200, render_updates)
+            return
+        rendered_update = snapshot
+        update_text.set(t("update_" + state, version=version or APP_VERSION, percent=percent))
+        progress["value"] = percent
+        if state == "checking" and str(progress.cget("mode")) != "indeterminate":
+            progress.configure(mode="indeterminate")
+            progress.start(30)
+        elif state != "checking" and str(progress.cget("mode")) == "indeterminate":
+            progress.stop()
+            progress.configure(mode="determinate")
+        busy = state in ("checking", "downloading", "waiting", "installing")
+        check_update_button.config(state="disabled" if busy else "normal")
+        install_update_button.config(state="normal" if not busy and _available_update else "disabled")
+        cancel_update_button.config(state="normal" if state in ("downloading", "waiting") else "disabled")
+        update_job = root.after(200, render_updates)
+    render_updates()
 
     entries = {}
+    connection_fields = {}
 
     def add_field(parent, row, label, key, secret=False):
         parent.grid_columnconfigure(1, weight=1)
@@ -3540,6 +3922,7 @@ def open_settings(icon=None, item=None):
         entry = ttk.Entry(parent, textvariable=variable, show="*" if secret else "")
         entry.grid(row=row, column=1, sticky="ew", pady=6)
         entries[key] = variable
+        connection_fields[key] = entry
 
     mode = tk.StringVar(value=config.get("mode", "client"))
     mode_box = ttk.LabelFrame(
@@ -3583,17 +3966,9 @@ def open_settings(icon=None, item=None):
         values=("English", "Italiano"),
         state="readonly",
     ).grid(row=0, column=1, sticky="ew", pady=6)
-    ttk.Label(application_box, text=t("lbl_history_limit")).grid(
-        row=1, column=0, sticky="w", padx=(0, 14), pady=6
-    )
+    # Keep the old private cache limit for data compatibility, not as a second
+    # user-facing history. The History window always follows the selected host.
     history_limit = tk.StringVar(value=str(config.get("max_local_history", 100)))
-    ttk.Spinbox(
-        application_box,
-        textvariable=history_limit,
-        from_=10,
-        to=1000,
-        increment=10,
-    ).grid(row=1, column=1, sticky="ew", pady=6)
 
     appearance = tk.StringVar(master=root, value=config.get("appearance", "dark"))
 
@@ -3602,9 +3977,9 @@ def open_settings(icon=None, item=None):
         _update_appearance(appearance.get())
 
     ttk.Label(application_box, text=t("lbl_appearance")).grid(
-        row=2, column=0, sticky="w", padx=(0, 14), pady=6)
+        row=1, column=0, sticky="w", padx=(0, 14), pady=6)
     appearance_controls = ttk.Frame(application_box)
-    appearance_controls.grid(row=2, column=1, sticky="w", pady=6)
+    appearance_controls.grid(row=1, column=1, sticky="w", pady=6)
     for value, key in (("light", "light_theme"), ("dark", "dark_theme")):
         ttk.Radiobutton(appearance_controls, text=t(key), value=value, variable=appearance,
                         command=preview_appearance, style="Segment.TRadiobutton").pack(side="left")
@@ -3654,6 +4029,14 @@ def open_settings(icon=None, item=None):
     add_field(account_box, 1, t("lbl_user"), "username")
     add_field(account_box, 2, t("lbl_pass"), "password", secret=True)
 
+    def reflect_mode(*_args):
+        client_mode = mode.get() == "client"
+        for key, entry in connection_fields.items():
+            editable = not client_mode if key == "host_port" else client_mode
+            entry.configure(state="normal" if editable else "disabled")
+    mode.trace_add("write", reflect_mode)
+    reflect_mode()
+
     auto = tk.BooleanVar(value=config.get("auto_sync", False))
     auto_files = tk.BooleanVar(value=config.get("auto_receive_files", True))
     mon = tk.BooleanVar(value=config.get("monitor_clipboard", True))
@@ -3677,12 +4060,6 @@ def open_settings(icon=None, item=None):
         automation_box,
         text=t("chk_auto_files"),
         variable=auto_files,
-        style="Settings.TCheckbutton",
-    ).pack(anchor="w")
-    ttk.Checkbutton(
-        automation_box,
-        text=t("chk_monitor"),
-        variable=mon,
         style="Settings.TCheckbutton",
     ).pack(anchor="w")
     interval_box = ttk.Frame(automation_box)
@@ -3889,7 +4266,9 @@ def open_settings(icon=None, item=None):
         values.update(auto_sync=auto.get(), auto_receive_files=auto_files.get(),
                       monitor_clipboard=mon.get(), notifications_enabled=notifications.get(),
                       notify_text=notify_text.get(), notify_images=notify_images.get(),
-                      notify_files=notify_files.get(), hotkeys_enabled=hk.get())
+                      notify_files=notify_files.get(), hotkeys_enabled=hk.get(),
+                      check_updates=update_checks.get(),
+                      auto_install_updates=auto_updates.get() and update_checks.get())
         if values["hotkeys_enabled"]:
             errors = register_hotkeys(values)
             if errors:
@@ -3928,8 +4307,10 @@ def open_settings(icon=None, item=None):
         nonlocal probe_generation
         probe_generation += 1
         recorder.finish()
-        for job in (release_job, connection_job):
+        progress.stop()
+        for job in (release_job, connection_job, update_job):
             root.after_cancel(job)
+        _settings_open.clear()
         _root._appearance_override = None
         _update_appearance(config.get("appearance", "dark"))
         root.destroy()
@@ -4169,7 +4550,8 @@ def do_exit(icon, item):
     stop_host_server()
     unregister_hotkeys()
     stop_event.set()
-    icon.stop()
+    if icon is not None:
+        icon.stop()
     try:
         _cmd_q.put(_root.quit)
     except Exception:
@@ -4298,6 +4680,7 @@ def main():
         if config.get("mode") == "server":
             start_host_server()
         threading.Thread(target=sync_loop, daemon=True).start()
+        threading.Thread(target=update_loop, daemon=True).start()
         register_hotkeys()
         _icon = Icon("Clipboard Bridge", create_tray_icon(), "Clipboard Bridge", build_menu())
         _install_notification_click_handler(_icon)

@@ -11,6 +11,7 @@ from their own location, regardless of the caller's working directory.
 | `scripts\windows\build_release.bat` | Build x64 portable and installer packages | `dist/` and `Output/` |
 | `python scripts/prepare_release_assets.py` | Stage existing local x64 packages, Apple exports and an optional release APK | Versioned folder under `Output/`; keeps previously added files |
 | `python scripts/verify_windows_build.py EXE --architecture x64 --smoke` | Verify a frozen x64 payload and run an isolated smoke test | Validation output |
+| `python scripts/verify_windows_update.py EXE INSTALLER --architecture x64` | CI-only frozen portable/installer upgrade from the previous public release | Disposable profiles; refuses ordinary local execution |
 | `python scripts/notify_search_engines.py` | Preview public discovery URLs | No submission by default |
 
 Use `--architecture arm64` to verify a native ARM64 payload. Build ARM64 packages

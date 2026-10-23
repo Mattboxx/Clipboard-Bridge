@@ -421,7 +421,7 @@ def test_auto_sync_continues_with_a_damaged_optional_local_history(tmp_path, mon
 
 
 @pytest.mark.parametrize("lang", ["en", "it"])
-def test_damaged_local_history_shows_a_localized_error_and_settings_still_save(tmp_path, monkeypatch, tk_test_root, lang):
+def test_damaged_background_cache_does_not_block_host_history_or_settings(tmp_path, monkeypatch, tk_test_root, lang):
     client = load_client(tmp_path, monkeypatch)
     client.config.update(lang=lang, hotkeys_enabled=False, mode="client")
     index = Path(client.LOCAL_INDEX)
@@ -444,13 +444,9 @@ def test_damaged_local_history_shows_a_localized_error_and_settings_still_save(t
         window = next(child for child in tk_test_root.winfo_children()
                       if getattr(child, "_view_name", None) == "history")
         widgets = list(descendants(window))
-        local = next(child for child in widgets if isinstance(child, client.ttk.Radiobutton)
-                     and child.cget("text") == client.t("tab_local"))
-        local.invoke()
+        assert not any(isinstance(child, client.ttk.Radiobutton)
+                       and child.cget("text") == client.t("tab_local") for child in widgets)
         tk_test_root.update()
-        assert any(isinstance(child, client.ttk.Label) and child.cget("textvariable")
-                   and tk_test_root.getvar(child.cget("textvariable")) == client.t("local_history_error")
-                   for child in widgets)
         window._close_history()
         client.open_settings()
         window = next(child for child in tk_test_root.winfo_children()
@@ -1061,16 +1057,22 @@ def test_late_draft_probe_does_not_apply_to_changed_or_closed_settings(
                       if isinstance(child, client.tk.Toplevel))
         controls = list(descendants(window))
         pump_until(waiting.is_set)
+        assert not finished.is_set(), "The controlled HTTP response must still be pending before editing"
         if after_start == "edit":
             account = next(child for child in controls if isinstance(child, client.ttk.Entry)
                            and child.get() == "public-active")
             account.delete(0, "end")
             account.insert(0, "public-other")
+            assert account.get() == "public-other", (account.state(), client.config["mode"])
         else:
             tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
         release.set()
         pump_until(finished.is_set)
         if after_start == "edit":
+            # The worker can finish between draining the queue and checking its
+            # event. Wait for UI delivery too, not merely the network thread.
+            pump_until(lambda: any(isinstance(child, client.tk.Label)
+                                   and child.cget("text") == client.t("connection_changed") for child in controls))
             assert any(isinstance(child, client.tk.Label) and child.cget("text") == client.t("connection_changed")
                        for child in controls)
             button = next(child for child in controls if isinstance(child, client.ttk.Button)
@@ -1100,15 +1102,18 @@ def test_embedded_read_and_trim_are_serialized(embedded):
 
 
 @pytest.mark.parametrize("lang", ["en", "it"])
-def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_test_root):
+@pytest.mark.parametrize("appearance", ["dark", "light"])
+def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, appearance, tk_test_root):
     client = load_client(tmp_path, monkeypatch)
-    client.config["lang"] = lang
+    client.config.update(lang=lang, appearance=appearance)
     app = tk_test_root
     monkeypatch.setattr(client, "_root", app)
     requests_seen = []
+    hosts_seen = []
 
     def fetch(limit, query, kind, offset):
         requests_seen.append((query, kind, offset))
+        hosts_seen.append(client.server_url())
         size = 1 if query else limit
         return {"items": [{"id": str(offset + i), "type": kind or "text", "preview": query or f"item {offset + i}"}
                           for i in range(size)], "total": 235, "has_more": offset + size < 235}
@@ -1134,6 +1139,16 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_te
         listing = next(child for child in all_widgets if isinstance(child, client.ttk.Treeview))
         until(lambda: len(listing.get_children()) == 100)
         app.update()
+        style = client.ttk.Style(app)
+        assert "Treeitem.indicator" not in str(style.layout("Treeview.Item"))
+        image_column = listing.bbox("0", "#0")
+        content_column = listing.bbox("0", "content")
+        assert image_column[2] >= listing._item_icons["text"].width() + 12
+        assert image_column[0] + image_column[2] <= content_column[0]
+        assert not listing.item("0", "text")
+        assert "Glass." in str(style.layout("TButton"))
+        progress = next(child for child in all_widgets if isinstance(child, client.ttk.Progressbar))
+        assert progress.winfo_height() <= 5
         assert not any(isinstance(child, client.ttk.Notebook) for child in all_widgets)
         assert sum(bool(listing.bbox(row)) for row in listing.get_children()) >= 17
         scroll = next(child for child in listing.master.winfo_children() if isinstance(child, client.ttk.Scrollbar))
@@ -1170,21 +1185,24 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, tk_te
                      and not isinstance(child, client.ttk.Combobox))
         variable = client.tk.StringVar(master=app, name=entry.cget("textvariable"))
         variable.set("report")
-        selector = next(child for child in all_widgets if isinstance(child, client.ttk.Combobox))
-        assert selector.get() == client.t("all_types")
-        selector.current(3)
-        selector.event_generate("<<ComboboxSelected>>")
+        selector = next(child for child in all_widgets if isinstance(child, client.ttk.Radiobutton)
+                        and child.cget("text") == client.t("file_type"))
+        selector.invoke()
         until(lambda: len(listing.get_children()) == 1 and "report" in listing.item("0", "values")[0])
         assert requests_seen[-1] == ("report", "file", 0)
-        monkeypatch.setattr(client, "_local_load", lambda: [{"type": "file", "preview": "local report.pdf"}])
-        local = next(child for child in all_widgets if isinstance(child, client.ttk.Radiobutton)
-                     and child.cget("text") == client.t("tab_local"))
-        local.invoke()
-        app.update()
+        monkeypatch.setattr(client, "_local_load", lambda: pytest.fail("History must use the selected host, not the local copy log"))
+        assert not any(isinstance(child, client.ttk.Radiobutton)
+                       and child.cget("text") == client.t("tab_local") for child in all_widgets)
+        client._apply_config(dict(client.config, mode="server", host_port=5089))
+        until(lambda: hosts_seen[-1] == "http://127.0.0.1:5089" and bool(listing.get_children()))
         assert len(listing.get_children()) == 1
-        assert listing.item("0", "values")[0] == "local report.pdf"
-        assert not next_button.winfo_ismapped()
-        assert not next(child for child in all_widgets if child.winfo_name() == "delete").winfo_ismapped()
+        assert listing.item("0", "values")[0] == "report"
+        assert next_button.winfo_ismapped()
+        assert next(child for child in all_widgets if child.winfo_name() == "delete").winfo_ismapped()
+        for name in ("receive", "send", "add_files"):
+            button = next(child for child in all_widgets if child.winfo_name() == name)
+            assert button.winfo_ismapped()
+            assert button.winfo_width() >= button.winfo_reqwidth()
         scrollbar = next(child for child in all_widgets if isinstance(child, client.ttk.Scrollbar))
         assert "Slim" in scrollbar.cget("style")
         assert "uparrow" not in str(client.ttk.Style(app).layout("Slim.Vertical.TScrollbar"))
@@ -1571,6 +1589,8 @@ def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, t
         light.invoke()
         tk_test_root.update()
         assert history.cget("background") == client._PALETTES["light"]["panel"]
+        listing = next(child for child in descendants(history) if isinstance(child, client.ttk.Treeview))
+        light_icons = dict(listing._item_icons)
         assert client.config["appearance"] == "dark"
         note = next(child for child in controls if child.winfo_name() == "support_note")
         support = next(child for child in controls if child.winfo_name() == "support")
@@ -1586,6 +1606,7 @@ def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, t
              and child.cget("text") == client.t("cancel")).invoke()
         tk_test_root.update()
         assert history.cget("background") == client._PALETTES["dark"]["panel"]
+        assert listing._item_icons["text"] is not light_icons["text"]
         window, controls = settings()
         next(child for child in controls if isinstance(child, client.ttk.Radiobutton)
              and child.cget("text") == client.t("light_theme")).invoke()
@@ -1602,6 +1623,30 @@ def test_theme_preview_cancel_save_and_support_language(tmp_path, monkeypatch, t
             if child.winfo_exists():
                 command = child.protocol("WM_DELETE_WINDOW")
                 tk_test_root.tk.call(command) if command else child.destroy()
+
+
+def test_dark_controls_never_inherit_white_hover_states(tmp_path, monkeypatch, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    window = client.tk.Toplevel(tk_test_root)
+    try:
+        style = client._modern_window(window, "dark")
+        for name in ("TButton", "Command.TButton", "TEntry", "TCombobox", "TSpinbox",
+                     "TCheckbutton", "Settings.TCheckbutton", "TRadiobutton",
+                     "Navigation.TRadiobutton", "Segment.TRadiobutton", "Filter.TRadiobutton",
+                     "Treeview.Heading"):
+            for state in (("active",), ("pressed",), ("active", "selected"), ("active", "readonly"),
+                          ("focus",), ("disabled",), ("disabled", "selected")):
+                color = style.lookup(name, "background", state)
+                assert color, (name, state)
+                assert max(window.winfo_rgb(color)) < 35000, (name, state, color)
+        for name in ("TEntry", "TCombobox", "TSpinbox"):
+            for state in (("active",), ("readonly",), ("active", "readonly"), ("disabled",)):
+                color = style.lookup(name, "fieldbackground", state)
+                assert max(window.winfo_rgb(color)) < 35000, (name, state, color)
+        assert "indicator" not in str(style.layout("Filter.TRadiobutton")).lower()
+    finally:
+        window.destroy()
 
 
 def test_local_restore_never_copies_a_partial_file_group(tmp_path, monkeypatch):
@@ -1722,7 +1767,7 @@ def test_remote_image_preview_uses_snapshot_and_limits(tmp_path, monkeypatch, ov
     assert seen[-1] == "closed"
 
 
-def test_image_preview_async_selection_and_local_history(tmp_path, monkeypatch, tk_test_root):
+def test_image_preview_async_selection_and_automatic_windows_host(tmp_path, monkeypatch, tk_test_root):
     client = load_client(tmp_path, monkeypatch)
     monkeypatch.setattr(client, "_root", tk_test_root)
     monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [
@@ -1774,16 +1819,156 @@ def test_image_preview_async_selection_and_local_history(tmp_path, monkeypatch, 
         until(lambda: bool(label.cget("image")))
         assert label.image.width() == 120
         assert label.image.height() == 90
-        monkeypatch.setattr(client, "_local_load", lambda: [{"type": "image", "file": "local.png"}])
-        next(child for child in controls if isinstance(child, client.ttk.Radiobutton)
-             and child.cget("text") == client.t("tab_local")).invoke()
-        until(lambda: calls[-1][1] is False and bool(label.cget("image")))
-        assert calls[-1][0] == str(Path(client.LOCAL_DIR) / "local.png")
+        before = len(calls)
+        monkeypatch.setattr(client, "_local_load", lambda: pytest.fail("The Windows host uses its shared history"))
+        client._apply_config(dict(client.config, mode="server"))
+        until(lambda: len(calls) > before and bool(label.cget("image")))
+        assert calls[-1] == ("/clipboard/item/photo/raw", True)
     finally:
         release.set()
         for child in tk_test_root.winfo_children():
             command = child.protocol("WM_DELETE_WINDOW")
             tk_test_root.tk.call(command) if command else child.destroy()
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+def test_update_settings_are_clear_optional_and_persist(tmp_path, monkeypatch, tk_test_root, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, hotkeys_enabled=False)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "_run_bg", lambda action: None)
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: None)
+    assert client.config["check_updates"] is True
+    assert client.config["auto_install_updates"] is False
+    client.open_updates_settings()
+    tk_test_root.update()
+    window = client._existing_view("settings")
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+    widgets = {child.winfo_name(): child for child in descendants(window)}
+    try:
+        assert client._settings_open.is_set()
+        writes = []
+        status_variable = client.tk.StringVar(master=window, name=widgets["update_status"].cget("textvariable"))
+        trace = status_variable.trace_add("write", lambda *_args: writes.append(status_variable.get()))
+        until = time.monotonic() + .45
+        while time.monotonic() < until:
+            tk_test_root.update()
+            time.sleep(.01)
+        assert writes == [], "An unchanged updater status must not repeatedly redraw the form"
+        status_variable.trace_remove("write", trace)
+        assert widgets["update_cancel"].cget("text") != client.t("cancel")
+        assert str(widgets["update_install"].cget("state")) == "disabled"
+        widgets["auto_install_updates"].invoke()
+        widgets["check_updates"].invoke()
+        assert str(widgets["auto_install_updates"].cget("state")) == "disabled"
+        widgets["check_updates"].invoke()
+        assert not tk_test_root.getvar(widgets["auto_install_updates"].cget("variable"))
+        widgets["auto_install_updates"].invoke()
+        next(child for child in widgets.values() if isinstance(child, client.ttk.Button)
+             and child.cget("text") == client.t("save")).invoke()
+        assert client.config["check_updates"] and client.config["auto_install_updates"]
+        assert not client._settings_open.is_set()
+        saved = json.loads(Path(client.CONFIG_FILE).read_text(encoding="utf-8"))
+        assert saved["check_updates"] and saved["auto_install_updates"]
+    finally:
+        if window.winfo_exists():
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+
+
+@pytest.mark.parametrize("value", [None, "bad", True, float("nan"), float("inf"), -1, 10**20])
+def test_invalid_update_timestamps_cannot_disable_checks(tmp_path, monkeypatch, value):
+    client = load_client(tmp_path, monkeypatch)
+    assert client._update_timestamp({"time": value}, "time") == 0
+
+
+def test_update_checks_do_not_install_without_explicit_opt_in(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    candidate = SimpleNamespace(version="99.0.0")
+    monkeypatch.setattr(client.updates, "executable_architecture", lambda path: "x64")
+    monkeypatch.setattr(client.updates, "check_update", lambda *args: candidate)
+    notices, installs = [], []
+    monkeypatch.setattr(client, "notify", lambda *args, **kwargs: notices.append(args))
+    monkeypatch.setattr(client, "_download_and_apply_update", lambda *args, **kwargs: installs.append(args))
+    for _ in range(2):
+        client.check_for_updates()
+    assert len(notices) == 1 and not installs
+    client.config["auto_install_updates"] = True
+    client.check_for_updates(manual=True)
+    assert not installs, "A manual check must not close the app"
+    client._settings_open.set()
+    client.check_for_updates()
+    assert not installs, "Unsaved Settings must defer automatic installation"
+    client._settings_open.clear()
+    client.check_for_updates()
+    assert len(installs) == 1
+    client._save_update_state({"last_apply_version": candidate.version, "last_apply_at": time.time()})
+    client.check_for_updates()
+    assert len(installs) == 1, "Failed/restarted updates must not loop automatically"
+
+
+@pytest.mark.parametrize("phase", ["copy", "helper", "queued", "commit", "commit_write_failure", "cancel_write_failure", "ui_failure", "exit_failure"])
+def test_update_handoff_keeps_cancellation_effective_until_ui_commit(tmp_path, monkeypatch, phase):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client.sys, "frozen", True, raising=False)
+    folder = Path(client.UPDATE_CACHE) / ("a" * 32)
+    folder.mkdir(parents=True, exist_ok=True)
+    payload = folder / "public-update.exe"
+    payload.write_bytes(b"public sample")
+    ticket = folder / "request.json"
+    ticket.write_text("{}")
+    candidate = SimpleNamespace(version="99.0.0", sha256=client.updates.file_digest(payload))
+    client._available_payload = payload
+    client._update_cancel.clear()
+    monkeypatch.setattr(client, "_confirm_update_restart", lambda version: True)
+    exits, disabled = [], []
+    def disable(flags):
+        if phase == "ui_failure":
+            raise RuntimeError("synthetic widget failure")
+        disabled.append(flags)
+    button = SimpleNamespace(state=disable)
+    monkeypatch.setattr(client, "_root", SimpleNamespace(winfo_children=lambda: [SimpleNamespace(_update_cancel_button=button)]))
+    def exit_app(*args):
+        if phase == "exit_failure":
+            raise RuntimeError("synthetic shutdown failure")
+        exits.append((ticket.parent / "commit.json").is_file())
+    monkeypatch.setattr(client, "do_exit", exit_app)
+    def prepare(*args, **kwargs):
+        assert kwargs["cancelled"] is client._update_cancel
+        if phase == "copy":
+            client._update_cancel.set()
+            raise client.updates.UpdateError("cancelled")
+        return ticket
+    def launch(path, **kwargs):
+        assert path == ticket and kwargs["cancelled"] is client._update_cancel
+        if phase == "helper":
+            client._update_cancel.set()
+            raise client.updates.UpdateError("cancelled")
+    monkeypatch.setattr(client.updates, "prepare_handoff", prepare)
+    monkeypatch.setattr(client.updates, "launch_handoff", launch)
+    if phase in ("copy", "helper"):
+        with pytest.raises(client.updates.UpdateError, match="cancelled"):
+            client._download_and_apply_update(candidate)
+    else:
+        client._download_and_apply_update(candidate)
+        if phase in ("queued", "cancel_write_failure"):
+            client._update_cancel.set()
+        if phase in ("commit_write_failure", "cancel_write_failure"):
+            def fail(*args):
+                raise OSError("synthetic write failure")
+            monkeypatch.setattr(client.updates,
+                "commit_handoff" if phase == "commit_write_failure" else "cancel_handoff", fail)
+        client._cmd_q.get_nowait()()
+    if phase == "commit":
+        assert exits == [True] and disabled == [["disabled"]]
+        assert client._update_status[0] == "installing"
+    else:
+        assert exits == [] and not (folder / "commit.json").exists()
+        assert not client._update_maintenance.is_set()
+        if phase == "queued":
+            assert (folder / "cancel.json").is_file() and client._update_status[0] == "cancelled"
 
 
 def load_client(tmp_path, monkeypatch):
@@ -2069,7 +2254,7 @@ def test_real_clipboard_round_trip_uses_a_private_window_station():
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.17"
+    assert client.APP_VERSION == "2.0.18"
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
