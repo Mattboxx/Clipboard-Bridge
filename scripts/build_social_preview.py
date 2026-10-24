@@ -6,20 +6,23 @@ import pymupdf
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "docs/assets/clipboard-bridge-share.svg"
-TARGET = SOURCE.with_suffix(".png")
+ASSETS = (("clipboard-bridge-cover.svg", 1200, 630),
+          ("clipboard-bridge-cover-mobile.svg", 750, 750))
 
 
 def main():
-    with pymupdf.open(SOURCE) as vector:
-        with pymupdf.open(stream=vector.convert_to_pdf(), filetype="pdf") as document:
-            page = document[0]
-            scale = 1200 / page.rect.width
-            pixels = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
-            if (pixels.width, pixels.height) != (1200, 630):
-                raise ValueError("Expected a 1200 x 630 social preview")
-            pixels.save(TARGET)
-    print(TARGET.relative_to(ROOT))
+    for filename, width, height in ASSETS:
+        source = ROOT / "docs/assets" / filename
+        target = source.with_suffix(".png")
+        with pymupdf.open(source) as vector:
+            with pymupdf.open(stream=vector.convert_to_pdf(), filetype="pdf") as document:
+                page = document[0]
+                scale = width / page.rect.width
+                pixels = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+                if (pixels.width, pixels.height) != (width, height):
+                    raise ValueError(f"Expected a {width} x {height} cover")
+                pixels.save(target)
+        print(target.relative_to(ROOT))
 
 
 if __name__ == "__main__":
