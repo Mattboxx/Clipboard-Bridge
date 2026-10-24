@@ -49,3 +49,13 @@ footer{background:#0b0e12;color:#aab8ca}.tutorial-header{border-color:var(--line
 @media(max-height:760px) and (min-width:651px){.hero-inner{padding-top:20px;padding-bottom:240px}h1{font-size:44px}.hero-tagline{font-size:24px}.hero-visual{height:195px}.lead{font-size:15px}.hero-facts{margin-top:14px}.hero .actions{margin-top:16px}}
 @media(max-height:700px) and (max-width:650px){.hero-inner{padding-top:14px;padding-bottom:145px}h1{font-size:32px}.hero-tagline{font-size:22px}.lead{font-size:14px}.hero-visual{height:105px}.hero .actions{margin-top:14px}.hero-facts{margin-top:12px}.hero-caption{font-size:9px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}.motion-enabled .reveal-enter:not(.is-visible){opacity:1;transform:none}}
+
+/* The approved cover is shared with the READMEs and link previews. */
+.hero.hero-share{background:#17181b;margin-top:22px}
+.hero-share .hero-inner{max-width:1056px;padding:18px 24px 30px}
+.hero-share .hero-cover{margin:0;line-height:0;font-size:inherit}
+.hero-cover img{display:block;width:100%;height:auto;max-height:clamp(160px,calc(100svh - 500px),420px);aspect-ratio:1200/630;object-fit:contain}
+.hero-share .lead{max-width:660px;margin:8px auto 0}
+.hero-share .actions{margin-top:18px}
+.hero-share .hero-facts{margin-top:16px}
+@media(max-width:650px){.hero-share .hero-inner{padding:14px 16px 24px}.hero-share .eyebrow{font-size:11px}.hero-share .lead{font-size:14px}.hero-share .hero-facts{display:none}}
