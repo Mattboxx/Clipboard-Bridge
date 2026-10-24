@@ -6,4 +6,5 @@
 !clipboard_bridge-Server.py
 !clipboard_text.py
 !clipboard_storage.py
+!server_web_strings.json
 !LICENSE

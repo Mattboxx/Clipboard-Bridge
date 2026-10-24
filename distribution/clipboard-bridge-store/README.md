@@ -26,7 +26,7 @@ the per-app files on the `gh-pages` branch.
 5. Confirm and wait for ZimaOS to read the JSON catalog.
 6. Refresh the App Store if the new source does not appear immediately.
 7. Open the App Store again.
-8. Search for **Clipboard Bridge** or open the **Utilities** category.
+8. Search for **Clipboard Bridge** or open the **Productivity** category.
 9. Select the application and press **Install**.
 10. When installation finishes, open `http://ZIMA-IP:5088`.
 
@@ -252,7 +252,7 @@ adapters/runtipi/apps/clipboard-bridge/
 1. Open **App Store** in Runtipi.
 2. Select **Add custom app**.
 3. Use `clipboard-bridge` as the app ID and `Clipboard Bridge` as its name.
-4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`.
+4. Set the image to `ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`.
 5. Set container port `5088` and expose it through Runtipi.
 6. Add a persistent volume from `/data` in the container to the app data
    directory proposed by Runtipi.

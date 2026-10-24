@@ -6,6 +6,19 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Server 1.0.10 - 2026-10-24
+
+- Localize the web interface, login, confirmations and device setup in English,
+  Italian, Spanish, French, German, Portuguese and simplified Chinese. Remember
+  the browser's language choice while keeping English as the default.
+- Add an expandable connection guide for Windows, Android and Apple Shortcuts,
+  persistent Docker storage and safe updates. Link the public website and full
+  tutorial beside optional Ko-fi support without leaking account URLs externally.
+- Keep existing accounts, sessions, ports, data paths and Apple API URLs compatible.
+  Include translations inside the amd64/arm64 Docker image, with no new dependency.
+- Refresh catalog metadata and installation instructions for ZimaOS v2 Productivity.
+  Windows 2.0.19, Android beta.12 and signed Apple exports remain unchanged.
+
 ## Windows 2.0.19 - 2026-10-24
 
 - Load the complete selected text in History Preview instead of the

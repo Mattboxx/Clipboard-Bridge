@@ -79,7 +79,7 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.19 | Android 1.0.0-beta.12 | Server 1.0.9
+**Versioni attuali:** Windows 2.0.19 | Android 1.0.0-beta.12 | Server 1.0.10
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
@@ -147,7 +147,7 @@ Office, archivi, audio, video ed estensioni personalizzate come `.shortcut`.
 **Il testo copiato arriva come testo Unicode normale**, anche se l'app di origine
 usa RTF. Emoji, accenti, tabulazioni e righe vengono conservati; font, colori e
 grassetto non vengono trasferiti. I documenti `.rtf` inviati come file restano intatti.
-Funziona con il server 1.0.9 o Windows in modalità server 2.0.18, per tutti i client connessi.
+Funziona con il server 1.0.9 o successivo, o Windows in modalità server 2.0.18 o successiva, per tutti i client connessi.
 
 **Conta sempre l'ultimo invio.** Testo, immagini e file hanno la stessa priorità.
 Più file inviati insieme rimangono **un'unica voce di cronologia**: ripristinarla
@@ -327,7 +327,15 @@ ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`
+
+La pagina web e l'accesso supportano **inglese, italiano, spagnolo, francese,
+tedesco, portoghese e cinese semplificato**. Scegli la lingua nell'intestazione:
+il browser la ricorda; l'inglese resta la lingua predefinita. Apri **Collega i tuoi
+dispositivi** per trovare l'indirizzo del server, i passaggi per Windows, Android e
+Comandi Rapidi Apple e le istruzioni per aggiornare il container senza perdere dati.
+In fondo trovi sito del progetto, guida completa e supporto facoltativo su Ko-fi.
+Queste lingue riguardano l'interfaccia web, non le app native.
 
 Supporta Linux `amd64` e `arm64`. Il servizio ascolta sulla porta `5088`, conserva
 i dati persistenti in `/data` e non richiede un database separato. La pagina web offre
@@ -367,7 +375,7 @@ docker compose up -d
 
 Su PowerShell usa `Copy-Item .env.example .env` al posto di `cp`. Prima modifica `.env`
 per scegliere credenziali, cartella dati e tag immagine. Per fissare una versione usa
-`APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`; l'esempio usa altrimenti
+`APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`; l'esempio usa altrimenti
 l'ultima immagine stabile. Compose utilizza l'immagine pubblicata, non una compilazione dei sorgenti.
 
 Apri `http://IP_SERVER:5088/` da un altro dispositivo, oppure `http://localhost:5088/`
@@ -380,7 +388,7 @@ docker compose ps
 ```
 
 Per il backup copia la cartella dati a servizio fermo. Non rimuovere il volume durante
-l'aggiornamento. Tag: `latest` è stabile, `1.0.9` fissa una release, `edge` segue le build
+l'aggiornamento. Tag: `latest` è stabile, `1.0.10` fissa una release, `edge` segue le build
 collaudate di main. Vedi [DOCKER.md](DOCKER.md) per distribuzione e backup.
 
 </details>

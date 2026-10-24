@@ -23,6 +23,7 @@ import pytest
 
 
 IMAGE = os.environ.get("CLIPBOARD_TEST_IMAGE")
+PREVIOUS_IMAGE = os.environ.get("CLIPBOARD_TEST_PREVIOUS_IMAGE")
 pytestmark = pytest.mark.skipif(not IMAGE, reason="No disposable container image configured")
 
 
@@ -37,14 +38,14 @@ class ContainerHost:
         self.name, self.volume = name, volume
         self.base = ""
 
-    def start(self):
+    def start(self, image=None):
         docker("run", "--detach", "--name", self.name,
                "--label", "io.clipboard-bridge.test=storage",
                "--publish", "127.0.0.1::5088",
                "--mount", f"type=volume,source={self.volume},target=/data",
                "--env", "CLIPBOARD_MAX_UPLOAD_MB=4",
                "--env", "CLIPBOARD_ACCOUNTS=alice:test-password,bob:other-password",
-               IMAGE)
+               image or IMAGE)
         self.wait_ready()
 
     def wait_ready(self):
@@ -65,9 +66,9 @@ class ContainerHost:
         docker("restart", self.name)
         self.wait_ready()
 
-    def recreate(self):
+    def recreate(self, image=None):
         docker("rm", "--force", self.name)
-        self.start()
+        self.start(image)
 
     def request(self, method, route, data=None, content_type="text/plain; charset=utf-8",
                 account=None, headers=None, **query):
@@ -130,6 +131,48 @@ def test_container_transfers_latest_groups_and_account_isolation(container_host)
         assert files.read("photo.png") == b"test-image-bytes"
     host.request("POST", "/clipboard", b"newest text", account="alice")
     assert host.request("GET", "/clipboard/latest/raw", account="alice")[2] == b"newest text"
+
+
+@pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
+def test_container_ships_translations_and_device_guide(container_host, lang):
+    status, headers, body = container_host.request("GET", "/", lang=lang)
+    assert status == 200
+    html = body.decode("utf-8")
+    assert f'<html lang="{lang}">' in html
+    assert 'id="connect"' in html and 'class="setup-section"' in html
+    assert "https://mattboxx.github.io/Clipboard-Bridge/" in html
+    assert headers["Referrer-Policy"] == "no-referrer"
+
+
+@pytest.mark.skipif(not PREVIOUS_IMAGE, reason="No previous release image configured")
+def test_container_upgrade_preserves_old_history_files_and_login():
+    name = "clipboard-upgrade-test-" + uuid.uuid4().hex
+    volume = name + "-data"
+    docker("volume", "create", "--label", "io.clipboard-bridge.test=upgrade", volume)
+    host = ContainerHost(name, volume)
+    try:
+        host.start(PREVIOUS_IMAGE)
+        payload = b"old-release-file\x00\xff"
+        assert host.request("POST", "/clipboard", payload, "application/octet-stream",
+                            account="alice", filename="sample.shortcut")[0] == 200
+        assert host.request("POST", "/clipboard", "Shared \U0001f680".encode())[0] == 200
+        cookies = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
+        login = urllib.parse.urlencode({"username": "alice", "password": "test-password"}).encode()
+        with opener.open(host.base + "/login", data=login, timeout=5) as response:
+            assert response.status == 200
+        cookie = "; ".join(f"{item.name}={item.value}" for item in cookies)
+        assert cookie
+        old_version = json.loads(host.request("GET", "/health")[2])["version"]
+        host.recreate()
+        assert json.loads(host.request("GET", "/health")[2])["version"] != old_version
+        assert host.request("GET", "/clipboard/latest/raw", headers={"Cookie": cookie})[2] == payload
+        assert host.request("GET", "/clipboard/latest/raw", account="alice")[2] == payload
+        assert host.request("GET", "/clipboard/latest/raw")[2] == "Shared \U0001f680".encode()
+        assert host.request("GET", "/clipboard/history", account="bob")[0] == 200
+    finally:
+        docker("rm", "--force", name, check=False)
+        docker("volume", "rm", volume, check=False)
 
 
 def test_container_rejects_oversized_upload_without_mutating_history(container_host):

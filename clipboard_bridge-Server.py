@@ -54,7 +54,7 @@ from clipboard_storage import HistoryStoreError, read_history, write_history
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.9"
+SERVER_VERSION = "1.0.10"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -775,7 +775,7 @@ def _check_auth():
                 session["acct"] = u
             return
         if web:
-            return redirect("/login")
+            return redirect("/login?lang=" + _ui_lang())
         return jsonify({"error": "unauthorized"}), 401
 
     # 2) Web session already logged into an account
@@ -789,7 +789,7 @@ def _check_auth():
         if WEB_PASSWORD and not session.get("auth"):
             token = request.args.get("token", "")
             if not (AUTH_TOKEN and _same_secret(AUTH_TOKEN, token)):
-                return redirect("/login")
+                return redirect("/login?lang=" + _ui_lang())
         return
     if AUTH_TOKEN:
         token = request.headers.get("X-Auth-Token") or request.args.get("token", "")
@@ -837,29 +837,34 @@ def _upload_too_large(_error):
     }), 413
 
 
-LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+LOGIN_HTML = """<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipboard Bridge</title>
 <style>body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
 background:linear-gradient(180deg,#eef2ff,#f8fafc);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}}
-form{{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;width:320px;
+main{{box-sizing:border-box;max-width:calc(100% - 32px);background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:28px;width:380px;
 box-shadow:0 10px 30px -20px rgba(15,23,42,.3);text-align:center}}
 h1{{font-size:18px;margin:0 0 16px;color:#1e293b}}
 input{{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:15px;margin-bottom:10px}}
 button{{width:100%;border:0;background:#4f46e5;color:#fff;padding:11px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}}
-button:hover{{background:#4338ca}}.err{{color:#b91c1c;font-size:13px;margin-bottom:10px}}</style></head>
-<body><form method="post" action="/login">
+button:hover{{background:#4338ca}}.err{{color:#b91c1c;font-size:13px;margin-bottom:10px}}
+.language-form{{margin-bottom:20px}}select{{max-width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#1e293b}}
+</style></head>
+<body><main>{language_selector}<form method="post" action="/login?lang={lang}">
 <h1>&#128274; Clipboard Bridge</h1>
 {err}
 {user_field}
-<input type="password" name="password" placeholder="Password"{pw_autofocus}>
-<button type="submit">Enter</button>
-</form></body></html>"""
+<input type="password" name="password" placeholder="{password}" aria-label="{password}" autocomplete="current-password"{pw_autofocus}>
+<button type="submit">{login_label}</button>
+</form></main></body></html>"""
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    lang = _ui_lang()
+    strings = WEB_STRINGS[lang]
+    destination = "/?lang=" + lang
     if not (WEB_PASSWORD or ACCOUNTS):
-        return redirect("/")
+        return redirect(destination)
     err = ""
     if request.method == "POST":
         u = request.form.get("username", "").strip()
@@ -869,26 +874,31 @@ def login():
                 session.permanent = True
                 session["acct"] = u
                 session.pop("auth", None)
-                return redirect("/")
+                return redirect(destination)
         elif not WEB_PASSWORD:               # shared space is open, no password
             session.clear()
-            return redirect("/")
+            session["lang"] = lang
+            return redirect(destination)
         elif _same_secret(WEB_PASSWORD, pw):  # shared space password
             session.permanent = True
             session["auth"] = True
             session.pop("acct", None)
-            return redirect("/")
-        err = '<div class="err">Wrong username or password</div>'
-    user_field = ('<input name="username" placeholder="Username (empty = shared space)" autofocus>'
+            return redirect(destination)
+        err = f'<div class="err">{strings["login_error"]}</div>'
+    user_field = (f'<input name="username" placeholder="{strings["username"]}" aria-label="{strings["username"]}" autocomplete="username" autofocus>'
                   if ACCOUNTS else '')
     pw_autofocus = '' if ACCOUNTS else ' autofocus'
-    return Response(LOGIN_HTML.format(err=err, user_field=user_field, pw_autofocus=pw_autofocus),
+    return Response(LOGIN_HTML.format(err=err, user_field=user_field, pw_autofocus=pw_autofocus,
+                                     lang=lang, language_selector=_language_selector(lang, "/login"),
+                                     password=strings["password"], login_label=strings["login"]),
                     mimetype="text/html")
 
 
 @app.route("/logout")
 def logout():
+    lang = _ui_lang()
     session.clear()
+    session["lang"] = lang
     return redirect("/login" if (WEB_PASSWORD or ACCOUNTS) else "/")
 
 
@@ -1235,6 +1245,19 @@ code{background:#eef2ff;padding:2px 6px;border-radius:5px;font-size:13px}
 .lang{margin-top:6px;font-size:12px}
 .lang a{color:#94a3b8;text-decoration:none;padding:0 3px}
 .lang a.on{color:#4f46e5;font-weight:700}
+.language-form{margin:8px 0}
+.language-form select{max-width:100%;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font:inherit;font-size:13px}
+.setup-guide{border-block:1px solid #cbd5e1;padding:16px 0;margin:0 0 20px;font-size:14px;line-height:1.6}
+.setup-guide summary{cursor:pointer;font-weight:600;color:#334155}
+.setup-guide p{color:#475569;margin:12px 0}
+.setup-section{border-top:1px solid #e2e8f0;padding:12px 0}
+.setup-section ol{padding-left:24px;color:#475569}
+.setup-section li{margin:8px 0}
+.resource-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin:10px 0}
+.resource-link{color:#4338ca;text-underline-offset:3px;overflow-wrap:anywhere}
+.head{flex-wrap:wrap;gap:12px}
+.foot>div{flex:1 1 260px;min-width:0}
+@media(max-width:480px){.head>div:last-child{flex:1 1 100%;text-align:left!important}.url{gap:6px}.url code{min-width:0}.item{flex-wrap:wrap}.actions{margin-left:auto}}
 """
 
 _HOME_JS = """
@@ -1280,8 +1303,14 @@ def _ui_token():
 
 
 def _ui_lang():
-    lang = request.args.get("lang", "en")
-    return lang if lang in ("en", "it") else "en"
+    requested = request.args.get("lang")
+    lang = (requested if requested is not None else session.get("lang", "en"))
+    lang = lang.lower().replace("_", "-").split("-", 1)[0]
+    lang = lang if lang in WEB_LANGUAGES else "en"
+    if requested is not None and session.get("lang") != lang:
+        session.permanent = True
+        session["lang"] = lang
+    return lang
 
 
 def _home_url():
@@ -1289,74 +1318,54 @@ def _home_url():
     return "/?lang=" + _ui_lang() + (("&token=" + quote(tok, safe="")) if tok else "")
 
 
-WEB_STRINGS = {
-    "en": {
-        "subtitle": "Share text and files across your devices",
-        "online": "Online &middot; {n} in history",
-        "h_text": "Text", "ph_text": "Type or paste the text to share here...",
-        "save": "Save to server", "copy": "Copy",
-        "h_file": "File", "drop1": "Drop files here", "drop2": "or click to choose them",
-        "upload": "Upload",
-        "h_history": "History", "refresh": "Refresh", "clear": "Clear",
-        "search": "Search previews and filenames", "search_button": "Search", "all_types": "All types",
-        "text_type": "Text", "image_type": "Images", "file_type": "Files", "bundle_type": "File groups",
-        "previous": "Previous", "next": "Next", "results": "{n} results",
-        "no_results": "No matching items.", "js_error": "Operation failed. Refresh and try again.",
-        "download": "Download", "delete": "Delete",
-        "files": "files",
-        "empty": "Nothing yet. Save some text or upload a file above.",
-        "no_preview": "(no preview)",
-        "h_iphone": "iPhone (Shortcuts)",
-        "iphone_intro": "Just two shortcuts (Get Contents of URL) — they always send or fetch the most recent item:",
-        "ip_send": "Send &mdash; clipboard to server (body: File)",
-        "ip_recv": "Receive &mdash; latest item to clipboard",
-        "ip_multi": "Automatic multiple-file Shortcut endpoints",
-        "ip_bundle": "Send temporary ZIP as one file group",
-        "ip_meta": "Check the latest item type before receiving",
-        "token_note": "Token enabled: in the Shortcuts add the header",
-        "auth_optional": "Token and accounts are optional. Values placed in these URLs are visible in plain text; HTTP does not encrypt them.",
-        "login": "Log in", "logout": "Log out", "shared": "shared",
-        "acct_note": "You are in account <b>{name}</b> — these links carry its user &amp; password.",
-        "foot": "This page also works from the iPhone browser.",
-        "support": "Support on Ko-fi",
-        "support_note": "If Clipboard Bridge is useful to you, a donation helps with maintenance and updates. Thank you for choosing to support the project!",
-        "js_copied": "Copied to the clipboard", "js_del": "Delete this item?",
-        "js_clear": "Clear the whole history?",
-    },
-    "it": {
-        "subtitle": "Condividi testo e file tra i tuoi dispositivi",
-        "online": "Online &middot; {n} in cronologia",
-        "h_text": "Testo", "ph_text": "Scrivi o incolla qui il testo da condividere...",
-        "save": "Salva sul server", "copy": "Copia",
-        "h_file": "File", "drop1": "Trascina qui i file", "drop2": "oppure clicca per sceglierli",
-        "upload": "Carica",
-        "h_history": "Cronologia", "refresh": "Aggiorna", "clear": "Svuota",
-        "search": "Cerca nelle anteprime e nei nomi dei file", "search_button": "Cerca", "all_types": "Tutti i tipi",
-        "text_type": "Testo", "image_type": "Immagini", "file_type": "File", "bundle_type": "Gruppi di file",
-        "previous": "Precedenti", "next": "Successivi", "results": "{n} risultati",
-        "no_results": "Nessun elemento corrispondente.", "js_error": "Operazione non riuscita. Aggiorna e riprova.",
-        "download": "Scarica", "delete": "Elimina",
-        "files": "file",
-        "empty": "Ancora niente. Salva del testo o carica un file qui sopra.",
-        "no_preview": "(senza anteprima)",
-        "h_iphone": "iPhone (Comandi rapidi)",
-        "iphone_intro": "Bastano due comandi (Ottieni contenuto dell’URL): inviano o recuperano sempre l’ultimo elemento:",
-        "ip_send": "Invia &mdash; appunti al server (corpo: File)",
-        "ip_recv": "Ricevi &mdash; ultimo elemento negli appunti",
-        "ip_multi": "Endpoint per il Comando rapido multifile automatico",
-        "ip_bundle": "Invia lo ZIP temporaneo come unico gruppo",
-        "ip_meta": "Controlla il tipo dell'ultimo elemento prima di riceverlo",
-        "token_note": "Token attivo: nelle Shortcut aggiungi l'intestazione",
-        "auth_optional": "Token e account sono opzionali. I valori inseriti in questi URL sono visibili in chiaro; HTTP non li cifra.",
-        "login": "Accedi", "logout": "Esci", "shared": "condiviso",
-        "acct_note": "Sei nell'account <b>{name}</b> — questi link includono utente e password.",
-        "foot": "Questa pagina funziona anche dal browser dell’iPhone.",
-        "support": "Supporta su Ko-fi",
-        "support_note": "Se Clipboard Bridge ti è utile, una donazione aiuta a mantenere e aggiornare il progetto. Grazie di cuore se scegli di contribuire!",
-        "js_copied": "Copiato negli appunti", "js_del": "Eliminare questo elemento?",
-        "js_clear": "Svuotare tutta la cronologia?",
-    },
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "server_web_strings.json"),
+          encoding="utf-8") as _translations:
+    WEB_STRINGS = json.load(_translations)
+
+WEB_LANGUAGES = {
+    "en": "English", "it": "Italiano", "es": "Español", "fr": "Français",
+    "de": "Deutsch", "pt": "Português", "zh": "简体中文",
 }
+PROJECT_SITE = "https://mattboxx.github.io/Clipboard-Bridge/"
+
+
+def _language_selector(lang, action="/"):
+    options = "".join(
+        f'<option value="{code}"{" selected" if code == lang else ""}>{name}</option>'
+        for code, name in WEB_LANGUAGES.items()
+    )
+    token = _ui_token()
+    hidden = f'<input type="hidden" name="token" value="{escape(token)}">' if token else ""
+    label = WEB_STRINGS[lang]["language"]
+    return (f'<form class="language-form" method="get" action="{action}">{hidden}'
+            f'<select name="lang" aria-label="{label}" onchange="this.form.submit()">'
+            f'{options}</select><noscript><button type="submit">{label}</button></noscript></form>')
+
+
+def _public_link(url, label):
+    return (f'<a class="resource-link" href="{escape(url)}" target="_blank" '
+            f'rel="noopener noreferrer">{label}</a>')
+
+
+def _connection_guide(lang, base):
+    strings = WEB_STRINGS[lang]
+    tutorial = PROJECT_SITE + ("tutorial.it.html" if lang == "it" else "tutorial.html")
+    guide_label = strings["platform_guide"] + (" (English)" if lang not in ("en", "it") else "")
+    sections = ""
+    for key, title, fragment in (
+        ("windows", "Windows", "windows"), ("android", "Android", "android"),
+        ("apple", "iPhone, iPad &amp; Mac", "iphone"),
+        ("container", strings["container_title"], "docker"),
+    ):
+        steps = "".join(f'<li>{strings[f"{key}_{n}"]}</li>' for n in (1, 2, 3))
+        sections += (f'<details class="setup-section"><summary>{title}</summary><ol>{steps}</ol>'
+                     f'{_public_link(tutorial + "#" + fragment, guide_label)}</details>')
+    return (f'<details class="setup-guide" id="connect"><summary>{strings["connect"]}</summary>'
+            f'<p>{strings["connect_intro"]}</p><strong>{strings["server_address"]}</strong>'
+            f'{_urlrow("URL", base, strings["copy"])}'
+            f'<p>{strings["network_tip"]}</p><p>{strings["account_tip"]}</p>'
+            f'<div class="resource-links">{_public_link(PROJECT_SITE + "#download", strings["downloads"])}'
+            f'{_public_link(tutorial, strings["setup_guide"])}</div>{sections}</details>')
 
 
 def render_home():
@@ -1387,7 +1396,7 @@ def render_home():
         tid, kind = it["id"], it["type"]
         prev = escape(it.get("preview") or S["no_preview"])
         label = (f'{len(it.get("files", []))} {S["files"]}'
-                 if kind == "bundle" else kind)
+                 if kind == "bundle" else S[kind + "_type"])
         sub = f'{label} &middot; {_human(it.get("size"))} &middot; {escape(it.get("timestamp") or "")}'
         if kind == "image":
             media = f'<img class="thumb" src="/clipboard/item/{tid}/raw{tq}" alt="">'
@@ -1418,17 +1427,14 @@ def render_home():
 
     nota = f'<div class="nota">{S["auth_optional"]}</div>'
     if tok:
-        nota = (f'<div class="nota">{S["token_note"]} '
+        nota += (f'<div class="nota">{S["token_note"]} '
                 f'<code>X-Auth-Token: {escape(tok)}</code>.</div>')
     if acct:
         nota += f'<div class="nota">{S["acct_note"].format(name=escape(acct))}</div>'
 
-    en_href = "/?lang=en" + (("&token=" + encoded_token) if tok else "")
-    it_href = "/?lang=it" + (("&token=" + encoded_token) if tok else "")
-    en_on = "on" if lang == "en" else ""
-    it_on = "on" if lang == "it" else ""
-    lang_toggle = (f'<div class="lang"><a href="{en_href}" class="{en_on}">EN</a>'
-                   f'<a href="{it_href}" class="{it_on}">IT</a></div>')
+    lang_toggle = _language_selector(lang)
+    tutorial = PROJECT_SITE + ("tutorial.it.html" if lang == "it" else "tutorial.html")
+    guide_label = S["setup_guide"] + (" (English)" if lang not in ("en", "it") else "")
 
     # Current space + login/logout link
     if acct:
@@ -1456,6 +1462,8 @@ def render_home():
 <div class="head">{LOGO_SVG}
 <div><h1>Clipboard Bridge</h1><p>{S["subtitle"]}</p></div>
 <div style="margin-left:auto;text-align:right"><span class="badge">&#9679; {S["online"].format(n=len(items))}</span>{lang_toggle}{account_bar}</div></div>
+
+{_connection_guide(lang, base)}
 
 <div class="card">
 <h2>{IC_TEXT} {S["h_text"]}</h2>
@@ -1506,7 +1514,7 @@ def render_home():
 </details>
 </div>
 
-<footer class="foot"><div><span>{S["foot"]}</span><p class="support-note">{S["support_note"]}</p></div>
+<footer class="foot"><div><span>{S["foot"]}</span><div class="resource-links">{_public_link(PROJECT_SITE, S["project_site"])}{_public_link(tutorial, guide_label)}</div><p class="support-note">{S["support_note"]}</p></div>
 <a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">&#9825;</span>{S["support"]}</a></footer>
 </div>
 <div id="toast" class="toast"></div>

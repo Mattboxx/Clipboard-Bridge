@@ -38,7 +38,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows e iPhone</a></div>
     <p><strong>Su iPhone, tieni Invia e Ricevi nel Centro di Controllo o invia dal menu Condividi di un'altra app.</strong> Dopo la configurazione, non serve riaprire l'editor a ogni trasferimento.</p>
     <p>Guide specifiche in inglese: <a href="windows-iphone-clipboard.html" lang="en">Windows e iPhone</a> e <a href="apple-android-clipboard.html" lang="en">Apple e Android</a>.</p>
-    <div class="tutorial-meta">Aggiornato il 24 ottobre 2026 &middot; Windows 2.0.19 &middot; Android beta.12 &middot; server 1.0.9</div>
+    <div class="tutorial-meta">Aggiornato il 24 ottobre 2026 &middot; Windows 2.0.19 &middot; Android beta.12 &middot; server 1.0.10</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Windows e iPhone</a><a href="#help">Problemi comuni</a></aside>
@@ -121,12 +121,13 @@ Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
       </section>
       <section id="docker">
         <h2>Facoltativo: server Docker o NAS sempre acceso</h2>
+        <p>La pagina del server e l'accesso sono disponibili in inglese, italiano, spagnolo, francese, tedesco, portoghese e cinese semplificato. Scegli la lingua nell'intestazione e apri <strong>Collega i tuoi dispositivi</strong> per istruzioni, indirizzo del server e link alla guida. Il browser ricorda la scelta; le app native mantengono le proprie impostazioni di lingua.</p>
         <p>Ti permette di usare la clipboard anche a PC spento, avere la pagina web e separare gli account. Il server rimane tuo: non &egrave; un servizio cloud obbligatorio.</p>
         <p>Per i cataloghi personalizzati consulta la <a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme">guida App Store</a>. ZimaOS usa la <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">sorgente JSON permanente</a>. Non si tratta di un'approvazione negli store ufficiali.</p>
         <p>Con Docker e Compose gi&agrave; installati, salva questo file come <code>compose.yaml</code> in una cartella di progetto vuota:</p>
         <pre><code>services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
     restart: unless-stopped
     ports:
       - "5088:5088"
