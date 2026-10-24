@@ -366,32 +366,30 @@ https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json
 ```
 
 <details>
-<summary>Installazione e aggiornamento con Docker Compose</summary>
+<summary>Comandi basilari Docker Compose</summary>
+
+Docker Engine/Desktop e Compose devono essere gia in esecuzione. Nuova installazione
+da terminale Linux/Mac, senza Git o compilazione:
 
 ```bash
-git clone https://github.com/Mattboxx/Clipboard-Bridge.git
-cd Clipboard-Bridge
-cp .env.example .env
-docker compose up -d
-```
-
-Su PowerShell usa `Copy-Item .env.example .env` al posto di `cp`. Prima modifica `.env`
-per scegliere credenziali, cartella dati e tag immagine. Per fissare una versione usa
-`APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`; l'esempio usa altrimenti
-l'ultima immagine stabile. Compose utilizza l'immagine pubblicata, non una compilazione dei sorgenti.
-
-Apri `http://IP_SERVER:5088/` da un altro dispositivo, oppure `http://localhost:5088/`
-sull'host. La cartella persistente predefinita dell'host è `./data`.
-
-```bash
+mkdir clipboard-bridge
+cd clipboard-bridge
+curl -fL https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge/main/compose.yaml -o compose.yaml
+curl -fL https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge/main/.env.example -o .env
+nano .env
 docker compose pull
 docker compose up -d
 docker compose ps
 ```
 
-Per il backup copia la cartella dati a servizio fermo. Non rimuovere il volume durante
-l'aggiornamento. Tag: `latest` è stabile, `1.0.10` fissa una release, `edge` segue le build
-collaudate di main. Vedi [DOCKER.md](DOCKER.md) per distribuzione e backup.
+Salva `.env` prima dell'avvio. Apri `http://IP_SERVER:5088/` con l'IP del tuo host.
+Su Linux anteponi `sudo` ai comandi Docker se necessario. Non sovrascrivere `.env`
+o dati di un'installazione esistente.
+
+**Prima installazione, Windows/PowerShell, account, aggiornamenti o errori?** Segui
+**[DOCKER.md: guida completa comando per comando](DOCKER.md)**; dalla pagina puoi
+aprire la [versione italiana](DOCKER.it.md). Include installazione Docker, configurazione
+completa, collegamento dei telefoni, backup e risoluzione dei problemi.
 
 </details>
 
