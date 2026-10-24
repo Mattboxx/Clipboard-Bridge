@@ -1396,6 +1396,8 @@ def _remember_item(item_id, *, file_seen=False, suppress_notification=False, upd
         key = _sync_source_key()
         if update_latest:
             state.setdefault("latest_items", {})[key] = item_id
+        if state.get("pending_file_clipboards", {}).get(key) == item_id:
+            state["pending_file_clipboards"].pop(key)
         if file_seen:
             sources = state.setdefault("sources", {})
             seen = sources.setdefault(key, [])
@@ -1467,6 +1469,12 @@ def _auto_receive_remote_files():
 
     new_items = [item for item in reversed(remote_files) if item["id"] not in seen]
     latest = items[0] if items else {}
+    with _remote_commit(), _sync_state_lock:
+        state = _load_sync_state()
+        pending = state.get("pending_file_clipboards", {})
+        if key in pending and pending[key] != latest.get("id"):
+            pending.pop(key)
+            _save_sync_state(state)
     clipboard_paths = []
     for item in new_items:
         with _remote_commit():
@@ -1480,6 +1488,10 @@ def _auto_receive_remote_files():
             _mark_remote_file_seen(item["id"])
             if item["id"] == latest.get("id"):
                 clipboard_paths = paths
+                with _sync_state_lock:
+                    state = _load_sync_state()
+                    state.setdefault("pending_file_clipboards", {})[key] = item["id"]
+                    _save_sync_state(state)
             message = (t("files_arrived", n=len(paths)) if len(paths) > 1
                        else t("file_arrived", name=os.path.basename(paths[0])))
             notify_received("file", message,
@@ -1488,7 +1500,9 @@ def _auto_receive_remote_files():
     # Retry a busy clipboard using the saved files, without downloading/notifying twice.
     if latest.get("type") in ("file", "bundle") and latest.get("id") != _last_remembered_item():
         with _sync_state_lock:
-            saved = _load_sync_state().get("downloads", {}).get(key, {}).get(latest["id"], [])
+            state = _load_sync_state()
+            pending = state.get("pending_file_clipboards", {}).get(key)
+            saved = state.get("downloads", {}).get(key, {}).get(latest["id"], []) if pending == latest["id"] else []
         if saved and all(os.path.isfile(path) for path in saved):
             clipboard_paths = saved
     if clipboard_paths:
@@ -3158,6 +3172,8 @@ class _TextAutoscroll:
         self._cursor = ""
         widget.bind("<ButtonPress-2>", self.start, add="+")
         widget.bind("<ButtonRelease-2>", self.release, add="+")
+        # Suppress Text's native scan drag: our press does not initialize its anchor.
+        widget.bind("<B2-Motion>", lambda _event: "break", add="+")
         for event in ("<ButtonPress-1>", "<ButtonPress-3>", "<MouseWheel>",
                       "<KeyPress>", "<FocusOut>", "<Unmap>", "<Destroy>"):
             widget.bind(event, self.stop, add="+")
@@ -3395,6 +3411,7 @@ def open_history_window(icon=None, item=None):
     preview_pending = None
     preview_cache = {}
     file_action_running = False
+    selected_file_key = None
     request_generation = 0
     offset = 0
     page_size = 100
@@ -3512,7 +3529,7 @@ def open_history_window(icon=None, item=None):
         append_chunk()
 
     def update_selection(*_args):
-        nonlocal preview_generation, preview_job, preview_pending
+        nonlocal preview_generation, preview_job, preview_pending, selected_file_key
         preview_generation += 1
         preview_pending = None
         if preview_job is not None:
@@ -3527,17 +3544,20 @@ def open_history_window(icon=None, item=None):
         copy_button.configure(state="normal" if entry else "disabled")
         delete_button.configure(state="normal" if entry else "disabled")
         has_files = entry is not None and entry.get("type") in ("file", "image", "bundle")
+        file_key = (loaded_source, entry.get("id")) if has_files else None
         if has_files:
             file_actions.pack(side="top", fill="x")
             members = entry.get("files", [])
             if entry.get("type") == "bundle" and members:
+                member_index = max(0, file_choice.current()) if file_key == selected_file_key else 0
                 file_choice.configure(values=[member.get("filename") or t("file_type") for member in members])
-                file_choice.current(0)
+                file_choice.current(min(member_index, len(members) - 1))
                 file_choice.pack(side="left", fill="x", expand=True, padx=(8, 0))
             else:
                 file_choice.pack_forget()
         else:
             file_actions.pack_forget()
+        selected_file_key = file_key
         for button in (open_file_button, open_folder_button):
             button.configure(state="normal" if has_files and not file_action_running else "disabled")
         value = t("preview_empty")

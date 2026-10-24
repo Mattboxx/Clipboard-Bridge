@@ -3364,6 +3364,7 @@ def test_middle_click_autoscroll_direction_speed_and_cleanup(tmp_path, monkeypat
 
     widget = Text()
     scroll = client._TextAutoscroll(widget)
+    assert widget.events["<B2-Motion>"](None) == "break"
     event = SimpleNamespace(y_root=100)
     assert scroll.start(event) == "break"
     scroll.release(event)
@@ -3401,6 +3402,7 @@ def test_history_file_actions_are_async_and_do_not_change_clipboard(tmp_path, mo
     monkeypatch.setattr(client, "fetch_history_page", lambda *_: {"items": [entry], "total": 235})
     monkeypatch.setattr(client, "set_clipboard_files", lambda *_: pytest.fail("Opening must not copy"))
     monkeypatch.setattr(client, "fetch_item", lambda *_: pytest.fail("Use metadata/raw download, not Base64 JSON"))
+    monkeypatch.setattr(client, "_load_image_preview", lambda *_: None)
     paths = [str(tmp_path / name) for name in ("one.pdf", "two.pdf")][:2 if kind == "bundle" else 1]
     for path in paths:
         Path(path).write_bytes(b"test")
@@ -3444,8 +3446,14 @@ def test_history_file_actions_are_async_and_do_not_change_clipboard(tmp_path, mo
         chooser = next(child for child in controls if child.winfo_name() == "group_file")
         if kind == "bundle":
             chooser.current(1)
+            toggle = next(child for child in controls if child.winfo_name() == "preview")
+            toggle.invoke()
+            tk_test_root.update()
+            assert chooser.current() == 1
         window.geometry("760x480")
         tk_test_root.update()
+        if kind == "bundle":
+            assert chooser.current() == 1
         for action in (button, folder):
             assert action.winfo_ismapped() and action.winfo_width() >= action.winfo_reqwidth()
             assert action.winfo_rootx() + action.winfo_width() <= window.winfo_rootx() + window.winfo_width()
@@ -3565,9 +3573,50 @@ def test_busy_file_clipboard_retries_without_duplicate_download(tmp_path, monkey
     with pytest.raises(OSError):
         client._auto_receive_remote_files()
     assert client._last_remembered_item() is None
+    assert client._load_sync_state()["pending_file_clipboards"][client._sync_source_key()] == "new"
     assert client._auto_receive_remote_files() == copies[-1]
     assert len(downloads) == len(notifications) == 1
     assert client._last_remembered_item() == "new"
+    assert not client._load_sync_state()["pending_file_clipboards"]
+
+
+@pytest.mark.parametrize("kind", ["file", "bundle"])
+def test_open_only_cached_download_is_not_an_automatic_clipboard_retry(tmp_path, monkeypatch, kind):
+    client = load_client(tmp_path, monkeypatch)
+    entry = {"id": "existing", "type": kind, "filename": "report.pdf",
+             "files": [{"index": 0, "filename": "report.pdf"}]}
+    client.config.update(auto_sync=False, auto_receive_files=True)
+    monkeypatch.setattr(client, "fetch_history", lambda _: [entry])
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"public sample", raise_for_status=lambda: None))
+    monkeypatch.setattr(client, "fetch_bundle_member", lambda *_: ("report.pdf", b"public sample"))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda *_: pytest.fail("Open-only download must not be copied by polling"))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: pytest.fail("Open-only download must not notify as incoming"))
+    assert client._auto_receive_remote_files() == []
+    paths = client.save_remote_files(entry)
+    assert Path(paths[0]).is_file()
+    for _ in range(2):
+        assert client._auto_receive_remote_files() == []
+    assert client._last_remembered_item() is None
+
+
+def test_pending_file_clipboard_is_discarded_when_a_newer_text_arrives(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    history = []
+    monkeypatch.setattr(client, "fetch_history", lambda _: history)
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"public sample", raise_for_status=lambda: None))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda *_: (_ for _ in ()).throw(OSError("busy")))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: None)
+    client._auto_receive_remote_files()
+    history.append({"id": "file", "type": "file", "filename": "report.pdf"})
+    with pytest.raises(OSError):
+        client._auto_receive_remote_files()
+    history.insert(0, {"id": "new-text", "type": "text"})
+    assert client._auto_receive_remote_files() == []
+    assert not client._load_sync_state()["pending_file_clipboards"]
+    history.pop(0)
+    assert client._auto_receive_remote_files() == []
 
 
 def test_interrupted_bundle_removes_partial_downloads(tmp_path, monkeypatch):
