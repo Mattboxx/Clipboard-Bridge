@@ -6,6 +6,16 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Windows 2.0.19 - 2026-10-24
+
+- Load the complete selected text in History Preview instead of the
+  140-character history extract or a 4,000-character cutoff. Keep it read-only and
+  scrollable, fetch it in the background and insert large text incrementally.
+  Discard stale replies after selection, visibility, connection or window changes.
+- Preserve Unicode, emoji, whitespace and empty text. Keep image/PDF previews,
+  clipboard contents and existing settings unchanged. Standalone server 1.0.9,
+  Android beta.12, store catalogs and signed Apple exports are unchanged.
+
 ## Windows 2.0.18 - 2026-10-23
 
 - Recompose History around a full-width compact list, a single transfer band and

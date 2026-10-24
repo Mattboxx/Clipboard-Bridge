@@ -18,9 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import clipboard_updates as updates
 
 
+OLD_VERSION = "2.0.18"
 OLD_HASHES = {
-    "x64": "a21e9ee4d2ff100a0cafbef9d07e919cce66957632470b8e708746875c7e3f62",
-    "arm64": "c8eda7516508c1292832167de6e45e85e421e6878cd8108ca55db9e260d38469",
+    "x64": "9350c62d325e3c8c9f709a7dd8b95cc50a87a316b6858529eb499427f1b4ab18",
+    "arm64": "28bd03d34033496cddfe1a37495788641013f176519705dae83082faca65ae0d",
 }
 
 
@@ -70,9 +71,8 @@ def exercise(old, executable, installer, architecture, root, kind):
     candidate = updates.Update(version, architecture, kind, name,
         f"https://github.com/{updates.REPOSITORY}/releases/download/{version}/{name}",
         payload.stat().st_size, updates.file_digest(payload), updates.file_digest(executable))
-    # The old public build has no helper mode: run the new helper to exercise the
-    # actual 2.0.17 -> current replacement, not a same-binary mocked update.
-    shutil.copy2(executable, folder / "runner.exe")
+    # Use the previous public helper too, matching the updater users already run.
+    shutil.copy2(old, folder / "runner.exe")
     environment = os.environ.copy()
     for variable in ("LOCALAPPDATA", "APPDATA", "USERPROFILE", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"):
         environment[variable] = str(profile)
@@ -113,7 +113,7 @@ def exercise(old, executable, installer, architecture, root, kind):
         assert all(path.read_bytes() == contents for path, contents in before.items()), "User data changed"
         with opener.open(f"http://127.0.0.1:{port}/health", timeout=10) as response:
             assert response.status == 200, "Updated client did not restart"
-        print(f"Frozen {architecture} {kind}: 2.0.17 -> {version}, restart and data preservation OK")
+        print(f"Frozen {architecture} {kind}: {OLD_VERSION} -> {version}, restart and data preservation OK")
     finally:
         if restarted_pid:
             subprocess.run(["taskkill", "/PID", str(restarted_pid), "/T", "/F"], check=False, capture_output=True)
@@ -134,11 +134,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="clipboard-update-check-", ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
         old = root / "previous.exe"
-        url = (f"https://github.com/{updates.REPOSITORY}/releases/download/2.0.17/"
-               f"Clipboard.Bridge.Portable.Windows.{args.architecture}.V2.0.17.exe")
+        url = (f"https://github.com/{updates.REPOSITORY}/releases/download/{OLD_VERSION}/"
+               f"Clipboard.Bridge.Portable.Windows.{args.architecture}.V{OLD_VERSION}.exe")
         with updates._open(url) as response, old.open("xb") as output:
             shutil.copyfileobj(response, output)
-        updates.verify_executable(old, OLD_HASHES[args.architecture], "2.0.17", args.architecture)
+        updates.verify_executable(old, OLD_HASHES[args.architecture], OLD_VERSION, args.architecture)
         for kind in ("portable", "installer"):
             exercise(old, args.executable.resolve(), args.installer.resolve(), args.architecture, root, kind)
 
