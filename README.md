@@ -356,32 +356,29 @@ https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json
 ```
 
 <details>
-<summary>Install and update with Docker Compose</summary>
+<summary>Basic Docker Compose commands</summary>
+
+Docker Engine/Desktop and Compose must already be running. New installation,
+Linux/Mac terminal (no Git or source build required):
 
 ```bash
-git clone https://github.com/Mattboxx/Clipboard-Bridge.git
-cd Clipboard-Bridge
-cp .env.example .env
-docker compose up -d
-```
-
-On PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Edit `.env` first
-to choose credentials, data storage and the image tag. For a pinned deployment,
-set `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`; otherwise the example
-uses the latest stable image. Compose uses the published image, not a source build.
-
-Open `http://SERVER_IP:5088/` from another device, or `http://localhost:5088/` on
-the host. The default persistent host folder is `./data`.
-
-```bash
+mkdir clipboard-bridge
+cd clipboard-bridge
+curl -fL https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge/main/compose.yaml -o compose.yaml
+curl -fL https://raw.githubusercontent.com/Mattboxx/Clipboard-Bridge/main/.env.example -o .env
+nano .env
 docker compose pull
 docker compose up -d
 docker compose ps
 ```
 
-Back up the data directory with the service stopped. Do not remove its volume when
-updating. Image tags: `latest` is stable, `1.0.10` pins a release, `edge` tracks tested
-main-branch builds. See [DOCKER.md](DOCKER.md) for deployment and backup details.
+Save `.env` before starting. Open `http://SERVER_IP:5088/`, using your host's IP.
+On Linux, prefix Docker commands with `sudo` if required. Do not overwrite an
+existing installation's `.env` or data.
+
+**First time, Windows/PowerShell, accounts, updates or an error?** Follow
+**[DOCKER.md: complete command-by-command installation](DOCKER.md)** for Docker
+installation, a full configuration example, phone connections, backups and troubleshooting.
 
 </details>
 
