@@ -2411,7 +2411,7 @@ def test_real_clipboard_round_trip_uses_a_private_window_station():
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.18"
+    assert client.APP_VERSION == (Path(__file__).parents[1] / "VERSION").read_text(encoding="ascii").strip()
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)
