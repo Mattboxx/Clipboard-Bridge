@@ -91,6 +91,9 @@ def test_localized_device_guide_login_and_external_links(server, lang):
     logged_out = client.get("/logout", follow_redirects=True)
     assert f'<html lang="{lang}">' in logged_out.text
     assert strings["username"] in logged_out.text
+    with client.session_transaction() as preferences:
+        assert preferences.permanent and preferences["lang"] == lang
+        assert "acct" not in preferences and "auth" not in preferences
 
 
 @pytest.mark.parametrize("requested,expected", [("pt-BR", "pt"), ("es_ES", "es"),

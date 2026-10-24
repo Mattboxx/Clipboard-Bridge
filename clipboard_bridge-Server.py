@@ -877,6 +877,7 @@ def login():
                 return redirect(destination)
         elif not WEB_PASSWORD:               # shared space is open, no password
             session.clear()
+            session.permanent = True
             session["lang"] = lang
             return redirect(destination)
         elif _same_secret(WEB_PASSWORD, pw):  # shared space password
@@ -898,6 +899,7 @@ def login():
 def logout():
     lang = _ui_lang()
     session.clear()
+    session.permanent = True
     session["lang"] = lang
     return redirect("/login" if (WEB_PASSWORD or ACCOUNTS) else "/")
 
