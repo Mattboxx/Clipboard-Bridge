@@ -9,6 +9,8 @@ import uuid
 import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
+from string import Formatter
+from urllib.parse import urlsplit
 
 import pytest
 from flask.testing import FlaskClient
@@ -17,7 +19,7 @@ from flask.testing import FlaskClient
 SERVER_FILE = Path(__file__).resolve().parents[1] / "clipboard_bridge-Server.py"
 
 
-@pytest.mark.parametrize("lang", ["en", "it"])
+@pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
 def test_support_link_is_localized_and_does_not_leak_account_credentials(server, lang):
     class Links(HTMLParser):
         support = []
@@ -37,6 +39,70 @@ def test_support_link_is_localized_and_does_not_leak_account_credentials(server,
     assert set(parser.support[0]["rel"].split()) == {"noopener", "noreferrer"}
     assert server.WEB_STRINGS[lang]["support_note"] in html
     assert server.WEB_STRINGS[lang]["support"] in html
+
+
+def test_web_translations_have_complete_keys_and_matching_placeholders(server):
+    assert set(server.WEB_STRINGS) == set(server.WEB_LANGUAGES)
+    english = server.WEB_STRINGS["en"]
+    formatter = Formatter()
+    for strings in server.WEB_STRINGS.values():
+        assert strings.keys() == english.keys()
+        for key, value in strings.items():
+            assert isinstance(value, str) and value.strip()
+            fields = lambda text: {field for _, field, _, _ in formatter.parse(text) if field is not None}
+            assert fields(value) == fields(english[key]), key
+
+
+@pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
+def test_localized_device_guide_login_and_external_links(server, lang):
+    class Links(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links = []
+
+        def handle_starttag(self, tag, attributes):
+            if tag == "a":
+                self.links.append(dict(attributes))
+
+    client = server.app.test_client()
+    strings = server.WEB_STRINGS[lang]
+    login = client.get("/", query_string={"lang": lang}, follow_redirects=True)
+    assert login.status_code == 200
+    assert f'<html lang="{lang}">' in login.text
+    assert strings["username"] in login.text and strings["password"] in login.text
+    failed = client.post("/login", data={"username": "alice", "password": "bad"})
+    assert strings["login_error"] in failed.text
+    page = client.post("/login", data={"username": "alice", "password": "p&ss?word"}, follow_redirects=True)
+    assert page.status_code == 200
+    assert f'<html lang="{lang}">' in page.text
+    for key in ("connect", "windows_1", "android_2", "apple_3", "container_3"):
+        assert strings[key] in page.text
+    assert 'id="connect"' in page.text
+    assert 'action="/"' in page.text and 'name="lang"' in page.text
+    parser = Links()
+    parser.feed(page.text)
+    public = [link for link in parser.links if urlsplit(link.get("href", "")).scheme == "https"]
+    assert any(link["href"] == server.PROJECT_SITE for link in public)
+    for link in public:
+        assert urlsplit(link["href"]).hostname in {"mattboxx.github.io", "ko-fi.com"}
+        assert not urlsplit(link["href"]).query
+        assert "alice" not in link["href"] and "password" not in link["href"]
+        assert set(link["rel"].split()) == {"noopener", "noreferrer"}
+    logged_out = client.get("/logout", follow_redirects=True)
+    assert f'<html lang="{lang}">' in logged_out.text
+    assert strings["username"] in logged_out.text
+    with client.session_transaction() as preferences:
+        assert preferences.permanent and preferences["lang"] == lang
+        assert "acct" not in preferences and "auth" not in preferences
+
+
+@pytest.mark.parametrize("requested,expected", [("pt-BR", "pt"), ("es_ES", "es"),
+                                              ("zh-Hans", "zh"), ("FR", "fr"), ("unknown", "en")])
+def test_language_aliases_and_default(server, requested, expected):
+    client = server.app.test_client()
+    response = client.get("/login", query_string={"lang": requested})
+    assert f'<html lang="{expected}">' in response.text
+    assert f'<html lang="{expected}">' in client.get("/login").text
 
 
 @pytest.fixture()
@@ -764,7 +830,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.9"
+    assert response.get_json()["version"] == "1.0.10"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):

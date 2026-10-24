@@ -77,7 +77,7 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.19 | Android 1.0.0-beta.12 | Server 1.0.9
+**Current releases:** Windows 2.0.19 | Android 1.0.0-beta.12 | Server 1.0.10
 
 | Your device | Ready-to-use downloads |
 |---|---|
@@ -142,7 +142,7 @@ documents, archives, audio, video and custom extensions such as `.shortcut`.
 **Copied text arrives as plain Unicode text**, even if the source app uses RTF.
 Emoji, accents, tabs and line breaks are retained; fonts, colours and bold styling
 are not transferred. Actual `.rtf` documents sent as files remain unchanged.
-This works with server 1.0.9 or Windows Server mode 2.0.18, for every connected client.
+This works with server 1.0.9 or later, or Windows Server mode 2.0.18 or later, for every connected client.
 
 **The latest upload always wins.** Text, images and files have equal priority.
 Several files sent together stay in **one history item**; restoring or deleting it
@@ -318,11 +318,18 @@ actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
 ## Standalone server
 
-**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`
+**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`
 
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file
 uploads, searchable history, downloads, refresh, deletion and optional login.
+
+The web interface and login support **English, Italian, Spanish, French, German,
+Portuguese and simplified Chinese**. Choose a language in the page header; the
+browser remembers it. English is the default. Expand **Connect your devices** for
+Windows, Android and Apple Shortcuts setup, the server address, and safe container
+update steps. The footer links to the project website, full guide and optional Ko-fi support.
+These languages apply to the standalone web interface, not the native client apps.
 
 ### Browser interface
 
@@ -358,7 +365,7 @@ docker compose up -d
 
 On PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Edit `.env` first
 to choose credentials, data storage and the image tag. For a pinned deployment,
-set `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.9`; otherwise the example
+set `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`; otherwise the example
 uses the latest stable image. Compose uses the published image, not a source build.
 
 Open `http://SERVER_IP:5088/` from another device, or `http://localhost:5088/` on
@@ -371,7 +378,7 @@ docker compose ps
 ```
 
 Back up the data directory with the service stopped. Do not remove its volume when
-updating. Image tags: `latest` is stable, `1.0.9` pins a release, `edge` tracks tested
+updating. Image tags: `latest` is stable, `1.0.10` pins a release, `edge` tracks tested
 main-branch builds. See [DOCKER.md](DOCKER.md) for deployment and backup details.
 
 </details>

@@ -53,9 +53,13 @@ jobs:
       - name: Build server image
         run: docker build --tag clipboard-bridge-server:test .
 
+      - name: Fetch previous stable server for upgrade verification
+        run: docker pull ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+
       - name: Verify container persistence and transfer contracts
         env:
           CLIPBOARD_TEST_IMAGE: clipboard-bridge-server:test
+          CLIPBOARD_TEST_PREVIOUS_IMAGE: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
         run: python -m pytest -q tests/test_container.py
 
   windows-client:

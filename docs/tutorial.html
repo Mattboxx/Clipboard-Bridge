@@ -38,7 +38,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 24 October 2026 &middot; Windows 2.0.19 &middot; Android beta.12 &middot; server 1.0.9</div>
+    <div class="tutorial-meta">Updated 24 October 2026 &middot; Windows 2.0.19 &middot; Android beta.12 &middot; server 1.0.10</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -121,12 +121,13 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
       </section>
       <section id="docker">
         <h2>Optional: an always-on Docker or NAS host</h2>
+        <p>The server page offers English, Italian, Spanish, French, German, Portuguese and simplified Chinese, including login. Choose the language in its header and expand <strong>Connect your devices</strong> for setup steps, the server address and links to this guide. The browser remembers your choice; the native apps have their own language settings.</p>
         <p>Use this instead of Windows Server mode if you want shared history while the PC is off, a browser page and optional isolated accounts. It is your own host, not a mandatory cloud service.</p>
         <p>For compatible custom app stores, follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme">App Store guide</a>. ZimaOS uses the permanent <a href="https://mattboxx.github.io/Clipboard-Bridge-AppStore/store.json">JSON source</a>; these are custom catalogs, not claims of official store acceptance.</p>
         <p>With Docker and Compose already installed, save this as <code>compose.yaml</code> in an empty project folder:</p>
         <pre><code>services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
     restart: unless-stopped
     ports:
       - "5088:5088"

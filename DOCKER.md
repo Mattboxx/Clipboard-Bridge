@@ -7,7 +7,7 @@ sidecar. The image supports `linux/amd64` and `linux/arm64`.
 Current stable server image:
 
 ```text
-ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
 ```
 
 ## Docker Compose
@@ -18,6 +18,21 @@ docker compose up -d
 ```
 
 Open `http://SERVER-IP:5088` and configure credentials in `.env`.
+
+## Connect your devices and choose a language
+
+The page header offers English (default), Italian, Spanish, French, German,
+Portuguese and simplified Chinese. The selection is remembered for this browser,
+including the login page. It does not change clipboard text or file contents.
+
+Expand **Connect your devices** above the text editor for the server address and
+step-by-step Windows, Android and Apple Shortcuts instructions. Project website,
+downloads, full tutorial and optional Ko-fi support are linked without forwarding
+your account credentials. Full external guides remain available in English and Italian.
+
+For a source-only Python deployment, keep `server_web_strings.json` beside
+`clipboard_bridge-Server.py`, `clipboard_text.py` and `clipboard_storage.py`.
+The Docker image already includes these files; no language packs are needed.
 
 ## Image tags
 
@@ -67,7 +82,7 @@ until that application release has been tested.
 2. Open custom source management.
 3. Add the permanent `store.json` URL above.
 4. Refresh the App Store if the source does not appear immediately.
-5. Search for **Clipboard Bridge** under **Utilities**.
+5. Search for **Clipboard Bridge** under **Productivity**.
 6. Install it and open `http://ZIMA-IP:5088`.
 
 The ZimaOS data directory is
@@ -88,7 +103,7 @@ Restore it to the same location before restarting. Do not run
 
 ### History storage errors
 
-The unreleased storage-integrity update fails closed when an existing `index.json`
+The storage-integrity guard fails closed when an existing `index.json`
 is unreadable, invalid JSON, or not a list of objects. History endpoints return
 `503` with `code: history_unavailable` instead of silently starting an empty
 history. Uploads and deletes do not replace the damaged index, and newly staged
@@ -110,9 +125,8 @@ the last committed state; it does not replace backups or guarantee power-loss
 durability on every filesystem. One process owns the JSON store; independent
 Gunicorn workers or multiple containers must not write to the same data directory.
 
-Windows uses the same protections for its embedded host and local history in the
-candidate update. Quit the app before backing up or restoring its per-user data
-directory. Existing releases do not yet include this update.
+Windows uses the same protections for its embedded host and local history.
+Quit the app before backing up or restoring its per-user data directory.
 If only the optional Windows local history is damaged, a localized warning is
 shown without blocking healthy remote sending/receiving or saving Settings.
 
@@ -129,7 +143,7 @@ iPhone Shortcuts; API clients can alternatively use the `X-Clipboard-User` and
 Accounts are loaded at startup; restart the host after editing their configuration.
 For portable deployments, choose names that do not differ only by letter case or
 trailing dots. Such names can refer to one directory on Windows or a case-insensitive
-NAS volume. The unreleased account-storage guard returns `503` with
+NAS volume. The account-storage guard returns `503` with
 `code: account_storage_conflict` rather than allowing those accounts to share data.
 The shared space and unrelated users remain available. A healthy case-sensitive
 filesystem keeps existing distinct directories and behavior unchanged.

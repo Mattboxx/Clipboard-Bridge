@@ -74,6 +74,12 @@ pip install -r requirements-server.txt
 python clipboard_bridge-Server.py
 ```
 
+Keep `server_web_strings.json`, `clipboard_text.py` and `clipboard_storage.py`
+beside the server script. Docker already includes them. The server page and login
+offer English, Italian, Spanish, French, German, Portuguese and simplified Chinese.
+Choose the language in the header; expand **Connect your devices** for quick
+client setup and container update instructions. External full tutorials are in English and Italian.
+
 ### Option B — Run with Docker
 ```bash
 docker compose up -d --build
