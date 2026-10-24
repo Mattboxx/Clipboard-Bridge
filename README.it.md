@@ -1,6 +1,6 @@
 # <img src="docs/icon.svg" width="36" height="36" alt=""> Clipboard Bridge
 
-![Clipboard Bridge: condividi testo, foto e file tra Windows, Android e dispositivi Apple](docs/assets/clipboard-bridge-share.png)
+![Clipboard Bridge: condividi testo, foto e file tra Windows, Android e dispositivi Apple](docs/assets/clipboard-bridge-cover.png)
 
 **Copia su un dispositivo. Usa il contenuto su un altro.**
 

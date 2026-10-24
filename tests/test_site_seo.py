@@ -66,7 +66,7 @@ def test_chat_previews_use_the_approved_brand_cover_not_a_desktop_screenshot(fil
     properties = {meta["property"]: meta["content"] for meta in page.tags("meta")
                   if "property" in meta}
     names = {meta["name"]: meta["content"] for meta in page.tags("meta") if "name" in meta}
-    cover = BASE + "assets/clipboard-bridge-share.png"
+    cover = BASE + "assets/clipboard-bridge-cover.png"
     assert properties["og:image"] == properties["og:image:secure_url"] == cover
     assert properties["og:image:type"] == "image/png"
     assert (properties["og:image:width"], properties["og:image:height"]) == ("1200", "630")
@@ -79,24 +79,26 @@ def test_chat_previews_use_the_approved_brand_cover_not_a_desktop_screenshot(fil
     assert "assets/windows-history.png" not in json.dumps(page.json_ld)
 
 
-def test_share_cover_is_an_opaque_png_with_the_original_project_icon():
-    png = (DOCS / "assets/clipboard-bridge-share.png").read_bytes()
+@pytest.mark.parametrize("name,size", [("clipboard-bridge-cover", (1200, 630)),
+                                      ("clipboard-bridge-cover-mobile", (750, 750))])
+def test_share_cover_is_an_opaque_png_with_the_original_project_icon(name, size):
+    png = (DOCS / "assets" / (name + ".png")).read_bytes()
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
     width, height, depth, color = struct.unpack(">IIBB", png[16:26])
-    assert (width, height, depth, color) == (1200, 630, 8, 2)
-    svg = ET.parse(DOCS / "assets/clipboard-bridge-share.svg").getroot()
+    assert (width, height, depth, color) == (*size, 8, 2)
+    svg = ET.parse(DOCS / "assets" / (name + ".svg")).getroot()
     original = ET.parse(DOCS / "icon.svg").getroot()
     namespace = "{http://www.w3.org/2000/svg}"
     logo = svg.find(namespace + "g")
     assert [(node.tag, node.attrib) for node in logo] == [(node.tag, node.attrib) for node in original]
-    assert {"Optional automatic sync", "Send, receive & share", "Apple Shortcuts"} <= {
+    assert {"Server or Client mode", "Send, receive & share", "Apple Shortcuts"} <= {
         node.text for node in svg.findall(namespace + "text")}
 
 
 def test_home_and_both_readmes_share_the_cover_but_keep_real_demos():
     page = read_page("index.html")
     images = page.tags("img")
-    covers = [image for image in images if image.get("src") == "assets/clipboard-bridge-share.png"]
+    covers = [image for image in images if image.get("src") == "assets/clipboard-bridge-cover.png"]
     assert len(covers) == 1
     assert covers[0]["fetchpriority"] == "high"
     assert (covers[0]["width"], covers[0]["height"]) == ("1200", "630")
@@ -105,8 +107,25 @@ def test_home_and_both_readmes_share_the_cover_but_keep_real_demos():
     assert 'class="hero-visual"' not in (DOCS / "index.html").read_text(encoding="utf-8")
     for filename in ("README.md", "README.it.md"):
         text = (ROOT / filename).read_text(encoding="utf-8")
-        assert text.index("docs/assets/clipboard-bridge-share.png") < text.index("## ")
+        assert text.index("docs/assets/clipboard-bridge-cover.png") < text.index("## ")
         assert "docs/assets/windows-history-wide.png" in text
+
+
+def test_home_cover_follows_download_actions_with_a_readable_mobile_variant():
+    page = read_page("index.html")
+    actions = next(i for i, (_, attrs) in enumerate(page.elements)
+                   if attrs.get("class") == "actions")
+    cover = next(i for i, (_, attrs) in enumerate(page.elements)
+                 if attrs.get("class") == "hero-cover")
+    assert actions < cover
+    assert {"media": "(max-width: 650px)",
+            "srcset": "assets/clipboard-bridge-cover-mobile.png",
+            "width": "750", "height": "750"} in page.tags("source")
+    css = (DOCS / "home-cover.css").read_text(encoding="utf-8")
+    assert "@media(max-width:650px)" in css
+    assert ".hero-share .hero-cover{order:-1;margin:0}" in css
+    assert ".hero-cover img{aspect-ratio:1;max-height:none}" in css
+    assert (DOCS / "assets/clipboard-bridge-share.png").is_file()
 
 
 def test_tutorial_modified_dates_match_sitemap():

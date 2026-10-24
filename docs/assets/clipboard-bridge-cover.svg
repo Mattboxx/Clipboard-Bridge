@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Clipboard Bridge</title>
+  <desc id="description">Share text, photos and files between Windows, Android and Apple devices on your own network.</desc>
+  <rect width="1200" height="630" fill="#17181b"/>
+  <text x="600" y="94" text-anchor="middle" font-family="Helvetica" font-size="17" fill="#8d96a5">CLIPBOARD &amp; FILE SHARING</text>
+  <g transform="translate(234,171) scale(0.62)">
+    <rect x="44" y="31" width="168" height="208" rx="31" fill="#344054"/>
+    <rect x="62" y="57" width="133" height="158" rx="17" fill="#f3f6fa"/>
+    <rect x="96" y="20" width="65" height="41" rx="17" fill="#667085"/>
+    <rect x="110" y="8" width="37" height="34" rx="13" fill="#667085"/>
+    <path d="M86 92h85l7 7-7 7H86l-7-7z" fill="#3478f6"/>
+    <path d="M86 124h77l7 7-7 7H86l-7-7zM86 150h77l7 7-7 7H86l-7-7zM86 176h77l7 7-7 7H86l-7-7z" fill="#aeb8c5"/>
+  </g>
+  <text x="404" y="265" font-family="Helvetica" font-size="66" font-weight="bold" fill="#f4f5f8">Clipboard Bridge</text>
+  <text x="600" y="352" text-anchor="middle" font-family="Helvetica" font-size="31" fill="#93b7f7">Copy here. Paste there.</text>
+  <text x="600" y="399" text-anchor="middle" font-family="Helvetica" font-size="24" fill="#9299a5">Text, photos and files. Across your devices.</text>
+  <path d="M170 443H1030" stroke="#303237" stroke-width="1"/>
+  <!-- Platform symbols reuse the site's Lucide icon paths. -->
+  <g transform="translate(190,472) scale(1.15)" fill="none" stroke="#8c9bb1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="20" height="14" x="2" y="3" rx="2"/>
+    <path d="M8 21h8m-4-4v4"/>
+  </g>
+  <text x="234" y="495" font-family="Helvetica" font-size="24" fill="#c4cad4">Windows</text>
+  <text x="270" y="531" text-anchor="middle" font-family="Helvetica" font-size="20" fill="#9299a5">Server or Client mode</text>
+  <g transform="translate(460,472) scale(1.15)" fill="none" stroke="#8c9bb1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="14" height="20" x="5" y="2" rx="2"/>
+    <path d="M12 18h.01"/>
+  </g>
+  <text x="504" y="495" font-family="Helvetica" font-size="24" fill="#c4cad4">Android</text>
+  <text x="535" y="531" text-anchor="middle" font-family="Helvetica" font-size="20" fill="#9299a5">Send, receive &amp; share</text>
+  <g transform="translate(730,472) scale(1.15)" fill="none" stroke="#8c9bb1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>
+  </g>
+  <text x="774" y="495" font-family="Helvetica" font-size="24" fill="#c4cad4">iPhone, iPad &amp; Mac</text>
+  <text x="869" y="531" text-anchor="middle" font-family="Helvetica" font-size="20" fill="#9299a5">Apple Shortcuts</text>
+  <text x="599.19" y="590" text-anchor="end" font-family="Helvetica" font-size="17" fill="#8d96a5">On your network. Windows or Docker host.</text>
+  <text x="679.19" y="590" font-family="Helvetica" font-size="17" fill="#8d96a5">Self-hosted &#183; Free &amp; open source</text>
+</svg>
