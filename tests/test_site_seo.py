@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import struct
 from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
@@ -57,6 +58,55 @@ class Page(HTMLParser):
 
 def read_page(filename):
     return Page((DOCS / filename).read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("filename", PAGES)
+def test_chat_previews_use_the_approved_brand_cover_not_a_desktop_screenshot(filename):
+    page = read_page(filename)
+    properties = {meta["property"]: meta["content"] for meta in page.tags("meta")
+                  if "property" in meta}
+    names = {meta["name"]: meta["content"] for meta in page.tags("meta") if "name" in meta}
+    cover = BASE + "assets/clipboard-bridge-share.png"
+    assert properties["og:image"] == properties["og:image:secure_url"] == cover
+    assert properties["og:image:type"] == "image/png"
+    assert (properties["og:image:width"], properties["og:image:height"]) == ("1200", "630")
+    assert properties["og:image:alt"].startswith("Clipboard Bridge:")
+    assert names["twitter:card"] == "summary_large_image"
+    assert names["twitter:image"] == cover
+    assert names["twitter:image:alt"] == properties["og:image:alt"]
+    assert len([meta for meta in page.tags("meta") if meta.get("property") == "og:image"]) == 1
+    assert len([meta for meta in page.tags("meta") if meta.get("name") == "twitter:image"]) == 1
+    assert "assets/windows-history.png" not in json.dumps(page.json_ld)
+
+
+def test_share_cover_is_an_opaque_png_with_the_original_project_icon():
+    png = (DOCS / "assets/clipboard-bridge-share.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
+    width, height, depth, color = struct.unpack(">IIBB", png[16:26])
+    assert (width, height, depth, color) == (1200, 630, 8, 2)
+    svg = ET.parse(DOCS / "assets/clipboard-bridge-share.svg").getroot()
+    original = ET.parse(DOCS / "icon.svg").getroot()
+    namespace = "{http://www.w3.org/2000/svg}"
+    logo = svg.find(namespace + "g")
+    assert [(node.tag, node.attrib) for node in logo] == [(node.tag, node.attrib) for node in original]
+    assert {"Optional automatic sync", "Send, receive & share", "Apple Shortcuts"} <= {
+        node.text for node in svg.findall(namespace + "text")}
+
+
+def test_home_and_both_readmes_share_the_cover_but_keep_real_demos():
+    page = read_page("index.html")
+    images = page.tags("img")
+    covers = [image for image in images if image.get("src") == "assets/clipboard-bridge-share.png"]
+    assert len(covers) == 1
+    assert covers[0]["fetchpriority"] == "high"
+    assert (covers[0]["width"], covers[0]["height"]) == ("1200", "630")
+    assert covers[0]["alt"] == "Clipboard Bridge"
+    assert any(image.get("src") == "assets/windows-history.png" for image in images)
+    assert 'class="hero-visual"' not in (DOCS / "index.html").read_text(encoding="utf-8")
+    for filename in ("README.md", "README.it.md"):
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert text.index("docs/assets/clipboard-bridge-share.png") < text.index("## ")
+        assert "docs/assets/windows-history-wide.png" in text
 
 
 def test_tutorial_modified_dates_match_sitemap():
