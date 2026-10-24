@@ -54,7 +54,7 @@ footer{background:#0b0e12;color:#aab8ca}.tutorial-header{border-color:var(--line
 .hero.hero-share{background:#17181b;margin-top:22px}
 .hero-share .hero-inner{max-width:1056px;padding:18px 24px 30px}
 .hero-share .hero-cover{margin:0;line-height:0;font-size:inherit}
-.hero-cover img{display:block;width:100%;height:auto;max-height:clamp(160px,calc(100svh - 500px),420px);aspect-ratio:1200/630;object-fit:contain}
+.hero-cover img{display:block;width:100%;height:auto;max-height:clamp(220px,calc(100svh - 390px),480px);aspect-ratio:1200/630;object-fit:contain}
 .hero-share .lead{max-width:660px;margin:8px auto 0}
 .hero-share .actions{margin-top:18px}
 .hero-share .hero-facts{margin-top:16px}
