@@ -1119,6 +1119,7 @@ def test_history_window_search_and_pagination(tmp_path, monkeypatch, lang, appea
                           for i in range(size)], "total": 235, "has_more": offset + size < 235}
 
     monkeypatch.setattr(client, "fetch_history_page", fetch)
+    monkeypatch.setattr(client, "fetch_item", lambda item_id: {"id": item_id, "type": "text", "text": f"Full item {item_id}"})
 
     def widgets(parent):
         for child in parent.winfo_children():
@@ -1773,6 +1774,7 @@ def test_image_preview_async_selection_and_automatic_windows_host(tmp_path, monk
     monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [
         {"id": "photo", "type": "image", "filename": "photo.png"},
         {"id": "note", "type": "text", "preview": "A note"}], "total": 2})
+    monkeypatch.setattr(client, "fetch_item", lambda item_id: {"id": item_id, "type": "text", "text": "A complete note"})
     started, release, finished = threading.Event(), threading.Event(), threading.Event()
     calls = []
 
@@ -1829,6 +1831,161 @@ def test_image_preview_async_selection_and_automatic_windows_host(tmp_path, monk
         for child in tk_test_root.winfo_children():
             command = child.protocol("WM_DELETE_WINDOW")
             tk_test_root.tk.call(command) if command else child.destroy()
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+@pytest.mark.parametrize("mode", ["client", "server"])
+def test_text_preview_fetches_all_content_and_scrolls_without_copying(tmp_path, monkeypatch, tk_test_root, lang, mode):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, mode=mode, appearance="dark" if lang == "en" else "light",
+                         username="public-example", password="example-only")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    text = ("Caff\u00e8 \U0001f600\U0001f1ee\U0001f1f9 line\twith spacing\r\n" * 2400) + "END OF THE COMPLETE CLIPBOARD"
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {
+        "items": [{"id": "long-note", "type": "text", "preview": text[:140]}], "total": 1})
+    monkeypatch.setattr(client, "_copy_remote_item", lambda *_args, **_kw: pytest.fail("Preview must not copy"))
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    calls, heartbeat, errors = [], [], []
+    ui_thread = threading.get_ident()
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+
+    def fetch(item_id):
+        assert threading.get_ident() != ui_thread
+        calls.append((item_id, client.server_url(), client.auth_params()))
+        started.set()
+        release.wait(5)
+        finished.set()
+        return {"id": item_id, "type": "text", "text": text}
+    monkeypatch.setattr(client, "fetch_item", fetch)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 6
+        while not predicate():
+            assert time.monotonic() < deadline
+            tk_test_root.update()
+            time.sleep(.01)
+
+    window = None
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children() if getattr(child, "_view_name", None) == "history")
+        controls = list(descendants(window))
+        tree = next(child for child in controls if isinstance(child, client.ttk.Treeview))
+        preview = next(child for child in controls if isinstance(child, client.tk.Text))
+        rendered_lengths = []
+        insert = preview.insert
+        def observe_insert(index, value, *tags):
+            result = insert(index, value, *tags)
+            if value == text[:16384]:
+                tk_test_root.after(0, lambda: rendered_lengths.append(len(preview.get("1.0", "end-1c"))))
+            return result
+        monkeypatch.setattr(preview, "insert", observe_insert)
+        until(lambda: bool(tree.get_children()))
+        assert not calls
+        next(child for child in controls if child.winfo_name() == "preview").invoke()
+        until(started.is_set)
+        tk_test_root.after(0, lambda: heartbeat.append(True))
+        until(lambda: bool(heartbeat))
+        assert preview.get("1.0", "end-1c") == client.t("preview_loading")
+        release.set()
+        until(lambda: preview.get("1.0", "end-1c") == text)
+        assert rendered_lengths and 0 < rendered_lengths[0] < len(text), "Rendering must yield to UI events"
+        assert len(calls) == 1 and calls[0][0] == "long-note"
+        assert calls[0][1] == ("http://127.0.0.1:5088" if mode == "server" else client.server_url())
+        assert calls[0][2]["user"] == "public-example"
+        assert str(preview.cget("state")) == "disabled"
+        assert preview.yview()[1] < 1
+        preview.yview_moveto(1)
+        tk_test_root.update()
+        assert preview.yview()[0] > 0 and preview.yview()[1] == 1
+        assert not errors
+    finally:
+        release.set()
+        if window is not None and window.winfo_exists():
+            window._close_history()
+        finished.wait(1)
+
+
+@pytest.mark.parametrize("change", ["selection", "hide", "connection", "close", "empty", "failure"])
+def test_text_preview_discards_stale_responses_and_handles_empty_or_failed_text(tmp_path, monkeypatch, tk_test_root, change):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [
+        {"id": "slow", "type": "text", "preview": "Incomplete extract"},
+        {"id": "ready", "type": "text", "text": "Another complete note"}], "total": 2})
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    errors = []
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+
+    def fetch(_item_id):
+        started.set()
+        release.wait(5)
+        finished.set()
+        if change == "failure":
+            raise OSError("synthetic unavailable item")
+        return {"type": "text", "text": "" if change == "empty" else "OBSOLETE RESPONSE"}
+    monkeypatch.setattr(client, "fetch_item", fetch)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 6
+        while not predicate():
+            assert time.monotonic() < deadline
+            tk_test_root.update()
+            time.sleep(.01)
+
+    window = None
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children() if getattr(child, "_view_name", None) == "history")
+        controls = list(descendants(window))
+        tree = next(child for child in controls if isinstance(child, client.ttk.Treeview))
+        preview = next(child for child in controls if isinstance(child, client.tk.Text))
+        toggle = next(child for child in controls if child.winfo_name() == "preview")
+        until(lambda: len(tree.get_children()) == 2)
+        toggle.invoke()
+        until(started.is_set)
+        if change == "selection":
+            tree.selection_set("1")
+            tk_test_root.update()
+        elif change == "hide":
+            toggle.invoke()
+        elif change == "connection":
+            client._apply_config(dict(client.config, username="new-example"))
+            monkeypatch.setattr(client, "fetch_history_page", lambda *_args: {"items": [
+                {"id": "new", "type": "text", "text": "New connection"}], "total": 1})
+            until(lambda: preview.get("1.0", "end-1c") == "New connection")
+        elif change == "close":
+            window._close_history()
+        release.set()
+        until(finished.is_set)
+        for _ in range(12):
+            tk_test_root.update()
+            time.sleep(.02)
+        if change == "close":
+            assert not window.winfo_exists()
+        elif change == "hide":
+            assert not preview.winfo_ismapped()
+            assert "OBSOLETE" not in preview.get("1.0", "end-1c")
+        else:
+            expected = {"selection": "Another complete note", "connection": "New connection",
+                        "empty": "", "failure": client.t("preview_unavailable")}[change]
+            assert preview.get("1.0", "end-1c") == expected
+        assert not errors
+    finally:
+        release.set()
+        if window is not None and window.winfo_exists():
+            window._close_history()
+        finished.wait(1)
 
 
 @pytest.mark.parametrize("lang", ["en", "it"])
@@ -2254,7 +2411,7 @@ def test_real_clipboard_round_trip_uses_a_private_window_station():
 def test_runtime_data_uses_user_writable_folders(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
 
-    assert client.APP_VERSION == "2.0.18"
+    assert client.APP_VERSION == (Path(__file__).parents[1] / "VERSION").read_text(encoding="ascii").strip()
     assert client.DATA_DIR == str(tmp_path / "LocalAppData" / "Clipboard Bridge")
     assert client.CONFIG_FILE.startswith(client.DATA_DIR)
     assert client.HOST_DIR.startswith(client.DATA_DIR)

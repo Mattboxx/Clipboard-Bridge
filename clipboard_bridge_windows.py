@@ -3306,7 +3306,7 @@ def open_history_window(icon=None, item=None):
     _command_button(header, "settings", t("settings").rstrip("\u2026"), "\ue713", open_settings).pack(side="right", padx=(8, 0))
 
     ui_q = queue.Queue()
-    search_job = pump_job = preview_job = initial_refresh_job = None
+    search_job = pump_job = preview_job = text_insert_job = initial_refresh_job = None
     preview_generation = 0
     preview_running = False
     preview_pending = None
@@ -3392,6 +3392,31 @@ def open_history_window(icon=None, item=None):
         selection = listing.selection()
         return items[int(selection[0])] if selection and int(selection[0]) < len(items) else None
 
+    def set_preview_text(value):
+        nonlocal text_insert_job
+        if text_insert_job is not None:
+            root.after_cancel(text_insert_job)
+            text_insert_job = None
+        preview_text.configure(state="normal")
+        preview_text.delete("1.0", "end")
+        preview_text.configure(state="disabled")
+        preview_text.yview_moveto(0)
+        generation = preview_generation
+
+        def append_chunk(offset=0):
+            nonlocal text_insert_job
+            text_insert_job = None
+            if generation != preview_generation:
+                return
+            end = offset + 16384
+            preview_text.configure(state="normal")
+            preview_text.insert("end", value[offset:end])
+            preview_text.configure(state="disabled")
+            if end < len(value):
+                text_insert_job = root.after(1, append_chunk, end)
+
+        append_chunk()
+
     def update_selection(*_args):
         nonlocal preview_generation, preview_job, preview_pending
         preview_generation += 1
@@ -3413,22 +3438,29 @@ def open_history_window(icon=None, item=None):
             members = entry.get("files", [])
             value = "\n".join(member.get("filename", "") for member in members) if members else (
                 entry.get("text") or entry.get("preview") or entry.get("filename") or "")
-        preview_text.configure(state="normal")
-        preview_text.delete("1.0", "end")
-        preview_text.insert("1.0", value[:4000])
-        preview_text.configure(state="disabled")
+            if entry.get("type") == "text" and isinstance(entry.get("text"), str):
+                value = entry["text"]
+        set_preview_text(value)
         if preview_visible.get() and entry:
             is_server = True
-            target = _preview_target(entry, is_server)
+            kind = "text" if entry.get("type") == "text" else "image"
+            target = entry.get("id") if kind == "text" else _preview_target(entry, is_server)
+            if kind == "text" and isinstance(entry.get("text"), str):
+                return
             if target:
-                preview_text.pack_forget()
-                preview_scroll.pack_forget()
-                preview_image.configure(text=t("preview_loading"))
-                preview_canvas.pack(fill="both", expand=True, pady=4)
+                if kind == "text":
+                    set_preview_text(t("preview_loading"))
+                else:
+                    preview_text.pack_forget()
+                    preview_scroll.pack_forget()
+                    preview_image.configure(text=t("preview_loading"))
+                    preview_canvas.pack(fill="both", expand=True, pady=4)
                 generation = preview_generation
                 space = loaded_source if is_server else None
-                preview_pending = (generation, target, is_server, space, dict(config))
+                preview_pending = (generation, target, is_server, space, dict(config), kind)
                 preview_job = root.after(120, start_preview)
+            elif kind == "text":
+                set_preview_text(t("preview_unavailable"))
 
     def start_preview():
         nonlocal preview_job, preview_pending, preview_running
@@ -3437,18 +3469,21 @@ def open_history_window(icon=None, item=None):
             return
         request = preview_pending
         preview_pending = None
-        generation, target, is_server, space, settings = request
-        key = (space, target)
+        generation, target, is_server, space, settings, kind = request
+        key = (space, kind, target)
 
-        def deliver(image=None):
+        def deliver(payload=None):
             nonlocal preview_running
             preview_running = False
             if generation == preview_generation and preview_visible.get():
                 if is_server and space != _connection_ticket():
                     refresh(reset=True)
-                elif image is None:
+                elif kind == "text":
+                    set_preview_text(payload if isinstance(payload, str) else t("preview_unavailable"))
+                elif payload is None:
                     preview_image.configure(text=t("preview_unavailable"))
                 else:
+                    image = payload
                     if is_server:
                         if len(preview_cache) >= 4:
                             preview_cache.pop(next(iter(preview_cache)))
@@ -3465,17 +3500,24 @@ def open_history_window(icon=None, item=None):
         if is_server and space != _connection_ticket():
             refresh(reset=True)
             return
-        if key in preview_cache:
+        if kind == "image" and key in preview_cache:
             deliver(preview_cache[key])
             return
         preview_running = True
 
         def work():
             try:
-                image = _load_image_preview(target, is_server, settings)
+                if kind == "text":
+                    with _remote_operation(expected=space):
+                        entry = fetch_item(target)
+                    payload = entry.get("text") if entry.get("type") == "text" else None
+                    if not isinstance(payload, str):
+                        raise ValueError("Text content is unavailable")
+                else:
+                    payload = _load_image_preview(target, is_server, settings)
             except Exception:
-                image = None
-            ui_q.put(lambda: deliver(image))
+                payload = None
+            ui_q.put(lambda: deliver(payload))
         threading.Thread(target=work, daemon=True).start()
 
     def show_preview():
@@ -3706,7 +3748,7 @@ def open_history_window(icon=None, item=None):
         preview_cache.clear()
         preview_image.image = None
         history_progress.stop()
-        for job in (search_job, pump_job, preview_job, initial_refresh_job):
+        for job in (search_job, pump_job, preview_job, text_insert_job, initial_refresh_job):
             if job is not None:
                 root.after_cancel(job)
         root.destroy()

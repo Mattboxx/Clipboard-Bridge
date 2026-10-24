@@ -27,6 +27,9 @@ Use disposable example content, never personal clipboard data in screenshots.
 - [ ] Record a History hotkey, save, open/close/reopen three times; tray click only opens/focuses.
 - [ ] Text from Word/browser with accents, emoji, flags and joined emoji arrives without styling.
 - [ ] Image and PDF previews render; rapid selection/close does not freeze the window.
+- [ ] Preview a text item longer than 4,000 characters with emoji and multiple lines;
+      scroll to its final line and compare the complete content. Change selection,
+      hide Preview and switch accounts during loading; no obsolete content appears.
 - [ ] One file and three files restore to Explorer clipboard; group remains one history row.
 - [ ] With disposable downloaded files, remove one group member immediately before
       applying it to the clipboard. The previous clipboard remains unchanged; Receive

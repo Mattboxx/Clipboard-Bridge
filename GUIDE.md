@@ -105,7 +105,7 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.18` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.19` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
@@ -153,7 +153,7 @@ and abandoned downloads are cleaned after seven days. Unfinished helpers are kep
 When Windows is hosting, the updater waits for graceful shutdown of active requests;
 it never force-closes the app. A failed handoff leaves the existing app available.
 
-> **Windows 11 security:** version 2.0.18 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.19 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -220,7 +220,10 @@ mode, or the embedded Windows host in Server mode. Changing the host/account in 
 refreshes the list; there is no separate Local/Server selector. Double-click an item
 or press **Copy**. Send, Receive and Add files are together above the list; type filters
 and search narrow the results without changing the clipboard.
-The **Preview** checkbox opens or closes the optional preview pane. Selected images
+The **Preview** checkbox opens or closes the optional preview pane. From 2.0.19,
+selected text loads in full, with vertical scrolling and no 4,000-character cutoff.
+Long text is inserted incrementally; loading never changes the clipboard.
+Selected images
 are shown as thumbnails, with proportions and camera orientation preserved. PDFs
 show their first page and page count, without requiring an installed PDF reader.
 This also works for the first supported member in a file group. The preview moves
@@ -294,10 +297,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.18 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.18):
+[Clipboard Bridge 2.0.19 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.19):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.18/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
