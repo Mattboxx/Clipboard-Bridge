@@ -6,6 +6,21 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Windows 2.0.20 - 2026-10-24
+
+- Add Open file and Open folder to selected images/files in History and its context
+  menu, including a member selector for groups. Download on demand in a background
+  task, reuse saved files and leave the clipboard unchanged. Discard obsolete open
+  requests after selection/account changes or window closure; confirm common
+  executable/script and macro-enabled document types before opening.
+- Reserve space for the text preview's vertical scrollbar in narrow and wide
+  windows. Support middle-click autoscroll with direction/speed controlled by pointer
+  distance, middle-drag scrolling, and cancellation on another click, keyboard input,
+  focus loss, hiding or closing the preview. Keep full Unicode text read-only.
+- Keep the lightweight Python/Tk interface, existing settings, automatic sync,
+  updater and host mode. No Rust rewrite or new runtime dependency is introduced.
+  Server 1.0.10, Android beta.12, store image tags and signed Apple exports are unchanged.
+
 ## Server 1.0.10 - 2026-10-24
 
 - Localize the web interface, login, confirmations and device setup in English,

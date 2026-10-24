@@ -1903,6 +1903,21 @@ def test_text_preview_fetches_all_content_and_scrolls_without_copying(tmp_path, 
         preview.yview_moveto(1)
         tk_test_root.update()
         assert preview.yview()[0] > 0 and preview.yview()[1] == 1
+        scrollbar = next(child for child in controls if child.winfo_name() == "text_scroll")
+        for size in ("1120x720", "760x480"):
+            window.geometry(size)
+            tk_test_root.update()
+            assert scrollbar.winfo_ismapped()
+            assert scrollbar.winfo_width() >= 6
+            assert preview.winfo_rootx() + preview.winfo_width() <= scrollbar.winfo_rootx()
+            assert scrollbar.winfo_rootx() + scrollbar.winfo_width() <= window.winfo_rootx() + window.winfo_width()
+        preview.yview_moveto(0)
+        tk_test_root.update()
+        scrollbar.event_generate("<ButtonPress-1>", x=4, y=12)
+        scrollbar.event_generate("<B1-Motion>", x=4, y=80)
+        scrollbar.event_generate("<ButtonRelease-1>", x=4, y=80)
+        tk_test_root.update()
+        assert preview.yview()[0] > 0
         assert not errors
     finally:
         release.set()
@@ -3275,6 +3290,191 @@ def test_empty_file_download_is_valid_and_reused(tmp_path, monkeypatch):
     assert len(list(Path(client.RECEIVED_DIR).iterdir())) == 1
 
 
+def test_opening_image_download_preserves_bytes_and_reuses_saved_path(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    payload = b"original-image-bytes"
+    item = {"id": "photo", "type": "image", "filename": "photo.jpg",
+            "data": base64.b64encode(payload).decode("ascii")}
+    monkeypatch.setattr(client, "set_clipboard_image", lambda *_: pytest.fail("Opening must not copy"))
+    paths = client.save_remote_files(item)
+    assert Path(paths[0]).name == "photo.jpg"
+    assert Path(paths[0]).read_bytes() == payload
+    assert client.save_remote_files(item) == paths
+    assert len(list(Path(client.RECEIVED_DIR).iterdir())) == 1
+
+
+@pytest.mark.parametrize("extension,approve", [(".pdf", False), (".EXE", False), (".cmd", True)])
+def test_open_downloaded_file_requires_confirmation_for_active_content(tmp_path, monkeypatch, extension, approve):
+    client = load_client(tmp_path, monkeypatch)
+    path = tmp_path / ("example" + extension)
+    path.write_bytes(b"public test fixture")
+    opened, asked = [], []
+    monkeypatch.setattr(client.os, "startfile", lambda *args: opened.append(args))
+    monkeypatch.setattr(client.messagebox, "askyesno", lambda *args, **kw: asked.append(args) or approve)
+    client._open_downloaded_file(str(path), None)
+    assert bool(asked) == (extension != ".pdf")
+    assert opened == ([(str(path), "open")] if extension == ".pdf" or approve else [])
+    with pytest.raises(FileNotFoundError):
+        client._open_downloaded_file(str(path) + ".missing", None)
+
+
+def test_middle_click_autoscroll_direction_speed_and_cleanup(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+
+    class Text:
+        def __init__(self):
+            self.events, self.jobs, self.lines = {}, {}, []
+            self.cursor, self.pointer, self.visible = "xterm", 100, (0.0, 0.1)
+            self.serial = 0
+
+        def bind(self, event, handler, **_):
+            self.events[event] = handler
+
+        def yview(self):
+            return self.visible
+
+        def cget(self, _):
+            return self.cursor
+
+        def configure(self, **kwargs):
+            self.cursor = kwargs["cursor"]
+
+        def focus_set(self):
+            pass
+
+        def winfo_pointery(self):
+            return self.pointer
+
+        def yview_scroll(self, lines, units):
+            assert units == "units"
+            self.lines.append(lines)
+
+        def after(self, delay, callback):
+            assert delay == 30
+            self.serial += 1
+            self.jobs[self.serial] = callback
+            return self.serial
+
+        def after_cancel(self, job):
+            self.jobs.pop(job)
+
+        def tick(self):
+            job = next(iter(self.jobs))
+            self.jobs.pop(job)()
+
+    widget = Text()
+    scroll = client._TextAutoscroll(widget)
+    assert widget.events["<B2-Motion>"](None) == "break"
+    event = SimpleNamespace(y_root=100)
+    assert scroll.start(event) == "break"
+    scroll.release(event)
+    assert widget.jobs and not widget.lines
+    widget.pointer = 380
+    widget.tick()
+    assert widget.lines[-1] > 0
+    widget.pointer = -180
+    widget.tick()
+    assert widget.lines[-1] < 0
+    assert scroll.start(event) == "break"
+    assert not widget.jobs and widget.cursor == "xterm"
+    for cancel in ("<KeyPress>", "<ButtonPress-1>", "<MouseWheel>", "<FocusOut>", "<Unmap>", "<Destroy>"):
+        widget.pointer = 100
+        scroll.start(event)
+        widget.events[cancel](None)
+        assert not widget.jobs and scroll._anchor is None
+    scroll.start(event)
+    scroll.release(SimpleNamespace(y_root=160))
+    assert not widget.jobs
+    widget.visible = (0.0, 1.0)
+    scroll.start(event)
+    assert not widget.jobs
+
+
+@pytest.mark.parametrize("lang", ["en", "it"])
+@pytest.mark.parametrize("kind", ["file", "image", "bundle"])
+def test_history_file_actions_are_async_and_do_not_change_clipboard(tmp_path, monkeypatch, tk_test_root, kind, lang):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(lang=lang, appearance="dark" if lang == "en" else "light")
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    entry = {"id": "attachment", "type": kind, "filename": "sample.pdf", "preview": "sample.pdf"}
+    if kind == "bundle":
+        entry["files"] = [{"filename": "one.pdf"}, {"filename": "two.pdf"}]
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_: {"items": [entry], "total": 235})
+    monkeypatch.setattr(client, "set_clipboard_files", lambda *_: pytest.fail("Opening must not copy"))
+    monkeypatch.setattr(client, "fetch_item", lambda *_: pytest.fail("Use metadata/raw download, not Base64 JSON"))
+    monkeypatch.setattr(client, "_load_image_preview", lambda *_: None)
+    paths = [str(tmp_path / name) for name in ("one.pdf", "two.pdf")][:2 if kind == "bundle" else 1]
+    for path in paths:
+        Path(path).write_bytes(b"test")
+    started, release = threading.Event(), threading.Event()
+    opened, revealed, calls, heartbeat, errors = [], [], [], [], []
+    ui_thread = threading.get_ident()
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+    monkeypatch.setattr(client, "_open_downloaded_file", lambda path, parent: opened.append((path, threading.get_ident())))
+    monkeypatch.setattr(client, "reveal_received_file", revealed.append)
+
+    def download(item):
+        assert threading.get_ident() != ui_thread
+        calls.append(item)
+        started.set()
+        assert release.wait(5)
+        return paths
+    monkeypatch.setattr(client, "save_remote_files", download)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 6
+        while not predicate():
+            assert time.monotonic() < deadline
+            tk_test_root.update()
+            time.sleep(.01)
+
+    window = None
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children() if getattr(child, "_view_name", None) == "history")
+        controls = list(descendants(window))
+        tree = next(child for child in controls if isinstance(child, client.ttk.Treeview))
+        until(lambda: bool(tree.get_children()))
+        tk_test_root.update()
+        button = next(child for child in controls if child.winfo_name() == "open_file")
+        folder = next(child for child in controls if child.winfo_name() == "open_folder")
+        chooser = next(child for child in controls if child.winfo_name() == "group_file")
+        if kind == "bundle":
+            chooser.current(1)
+            toggle = next(child for child in controls if child.winfo_name() == "preview")
+            toggle.invoke()
+            tk_test_root.update()
+            assert chooser.current() == 1
+        window.geometry("760x480")
+        tk_test_root.update()
+        if kind == "bundle":
+            assert chooser.current() == 1
+        for action in (button, folder):
+            assert action.winfo_ismapped() and action.winfo_width() >= action.winfo_reqwidth()
+            assert action.winfo_rootx() + action.winfo_width() <= window.winfo_rootx() + window.winfo_width()
+        button.invoke()
+        until(started.is_set)
+        assert button.instate(["disabled"]) and folder.instate(["disabled"])
+        tk_test_root.after(0, lambda: heartbeat.append(True))
+        until(lambda: heartbeat)
+        release.set()
+        until(lambda: opened)
+        assert opened == [(paths[-1], ui_thread)]
+        folder.invoke()
+        until(lambda: revealed)
+        assert revealed == [paths[-1]] and calls == [entry, entry]
+        assert not errors
+    finally:
+        release.set()
+        if window is not None and window.winfo_exists():
+            window._close_history()
+
+
 def test_old_file_download_does_not_replace_newer_text(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     history = []
@@ -3291,6 +3491,66 @@ def test_old_file_download_does_not_replace_newer_text(tmp_path, monkeypatch):
     assert copied == []
     assert client._last_remembered_item() is None
     assert (Path(client.RECEIVED_DIR) / "old.pdf").read_bytes() == b"pdf"
+
+
+@pytest.mark.parametrize("change", ["selection", "connection", "close"])
+def test_history_file_open_discards_stale_downloads(tmp_path, monkeypatch, tk_test_root, change):
+    client = load_client(tmp_path, monkeypatch)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "fetch_history_page", lambda *_: {"items": [
+        {"id": "attachment", "type": "file", "filename": "sample.pdf"},
+        {"id": "note", "type": "text", "text": "Another selection"}], "total": 2})
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    opened, errors = [], []
+    monkeypatch.setattr(client, "_open_downloaded_file", lambda *_: opened.append(True))
+    monkeypatch.setattr(tk_test_root, "report_callback_exception", lambda *args: errors.append(args))
+
+    def download(_):
+        started.set()
+        release.wait(5)
+        finished.set()
+        return [str(tmp_path / "sample.pdf")]
+    monkeypatch.setattr(client, "save_remote_files", download)
+
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    def until(predicate):
+        deadline = time.monotonic() + 6
+        while not predicate():
+            assert time.monotonic() < deadline
+            tk_test_root.update()
+            time.sleep(.01)
+
+    window = None
+    try:
+        client.open_history_window()
+        window = next(child for child in tk_test_root.winfo_children() if getattr(child, "_view_name", None) == "history")
+        controls = list(descendants(window))
+        tree = next(child for child in controls if isinstance(child, client.ttk.Treeview))
+        until(lambda: bool(tree.get_children()))
+        next(child for child in controls if child.winfo_name() == "open_file").invoke()
+        until(started.is_set)
+        if change == "selection":
+            tree.selection_set("1")
+            tk_test_root.update()
+        elif change == "connection":
+            client._apply_config(dict(client.config, username="another-public-example"))
+        else:
+            window._close_history()
+        release.set()
+        until(finished.is_set)
+        deadline = time.monotonic() + .3
+        while time.monotonic() < deadline:
+            tk_test_root.update()
+            time.sleep(.01)
+        assert not opened and not errors
+    finally:
+        release.set()
+        if window is not None and window.winfo_exists():
+            window._close_history()
 
 
 def test_busy_file_clipboard_retries_without_duplicate_download(tmp_path, monkeypatch):
@@ -3313,9 +3573,50 @@ def test_busy_file_clipboard_retries_without_duplicate_download(tmp_path, monkey
     with pytest.raises(OSError):
         client._auto_receive_remote_files()
     assert client._last_remembered_item() is None
+    assert client._load_sync_state()["pending_file_clipboards"][client._sync_source_key()] == "new"
     assert client._auto_receive_remote_files() == copies[-1]
     assert len(downloads) == len(notifications) == 1
     assert client._last_remembered_item() == "new"
+    assert not client._load_sync_state()["pending_file_clipboards"]
+
+
+@pytest.mark.parametrize("kind", ["file", "bundle"])
+def test_open_only_cached_download_is_not_an_automatic_clipboard_retry(tmp_path, monkeypatch, kind):
+    client = load_client(tmp_path, monkeypatch)
+    entry = {"id": "existing", "type": kind, "filename": "report.pdf",
+             "files": [{"index": 0, "filename": "report.pdf"}]}
+    client.config.update(auto_sync=False, auto_receive_files=True)
+    monkeypatch.setattr(client, "fetch_history", lambda _: [entry])
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"public sample", raise_for_status=lambda: None))
+    monkeypatch.setattr(client, "fetch_bundle_member", lambda *_: ("report.pdf", b"public sample"))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda *_: pytest.fail("Open-only download must not be copied by polling"))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: pytest.fail("Open-only download must not notify as incoming"))
+    assert client._auto_receive_remote_files() == []
+    paths = client.save_remote_files(entry)
+    assert Path(paths[0]).is_file()
+    for _ in range(2):
+        assert client._auto_receive_remote_files() == []
+    assert client._last_remembered_item() is None
+
+
+def test_pending_file_clipboard_is_discarded_when_a_newer_text_arrives(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    history = []
+    monkeypatch.setattr(client, "fetch_history", lambda _: history)
+    monkeypatch.setattr(client.requests, "get", lambda *a, **kw: SimpleNamespace(
+        content=b"public sample", raise_for_status=lambda: None))
+    monkeypatch.setattr(client, "set_clipboard_files", lambda *_: (_ for _ in ()).throw(OSError("busy")))
+    monkeypatch.setattr(client, "notify", lambda *a, **kw: None)
+    client._auto_receive_remote_files()
+    history.append({"id": "file", "type": "file", "filename": "report.pdf"})
+    with pytest.raises(OSError):
+        client._auto_receive_remote_files()
+    history.insert(0, {"id": "new-text", "type": "text"})
+    assert client._auto_receive_remote_files() == []
+    assert not client._load_sync_state()["pending_file_clipboards"]
+    history.pop(0)
+    assert client._auto_receive_remote_files() == []
 
 
 def test_interrupted_bundle_removes_partial_downloads(tmp_path, monkeypatch):

@@ -45,7 +45,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 24 October 2026 &middot; Windows 2.0.19 &middot; Android beta.12 &middot; server 1.0.10</div>
+    <div class="tutorial-meta">Updated 24 October 2026 &middot; Windows 2.0.20 &middot; Android beta.12 &middot; server 1.0.10</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -75,7 +75,7 @@
         <h2>3. Connect an iPhone or iPad</h2>
         <p>Apple devices use two user-triggered Shortcuts: one sends the current item, the other receives the newest item. There is no native iOS app or continuous background clipboard synchronization.</p>
         <ol>
-          <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
+          <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Load.Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Download.Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
           <li>Edit <strong>Load Clipboard</strong>. In <strong>Get Contents of URL</strong>, replace the entire example URL with your host's address followed by <code>/clipboard</code>. Keep the method <strong>POST</strong>.</li>
           <li>Edit <strong>Download Clipboard</strong>. Replace its URL with the same host followed by <code>/clipboard/latest/raw</code>. Keep the method <strong>GET</strong>.</li>
           <li>Leave accounts and tokens empty for an unprotected shared clipboard on a trusted network. If your administrator enabled them, use the <a href="#accounts">account instructions</a> below in both Shortcuts.</li>

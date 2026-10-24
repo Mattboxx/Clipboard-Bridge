@@ -333,6 +333,9 @@ STRINGS = {
         "no_results": "No matching items", "show_preview": "Preview",
         "preview_loading": "Loading preview...", "preview_unavailable": "Preview unavailable",
         "preview_pdf_page": "PDF - page 1 of {n}",
+        "open_file": "Open file", "open_folder": "Open folder",
+        "opening_file": "Preparing file...", "open_file_error": "Cannot open this file: {e}",
+        "open_active_file": "This file can run programs or active content:\n{name}\n\nOpen it only if you trust its sender. Continue?",
         "send_short": "Send", "receive_short": "Receive",
         "lbl_appearance": "Appearance", "light_theme": "Light", "dark_theme": "Dark",
         "support": "Support on Ko-fi",
@@ -484,6 +487,9 @@ STRINGS = {
         "no_results": "Nessun risultato", "show_preview": "Anteprima",
         "preview_loading": "Caricamento anteprima...", "preview_unavailable": "Anteprima non disponibile",
         "preview_pdf_page": "PDF - pagina 1 di {n}",
+        "open_file": "Apri file", "open_folder": "Apri cartella",
+        "opening_file": "Preparazione file...", "open_file_error": "Impossibile aprire il file: {e}",
+        "open_active_file": "Questo file puo eseguire programmi o contenuti attivi:\n{name}\n\nAprilo solo se conosci e ritieni affidabile il mittente. Continuare?",
         "send_short": "Invia", "receive_short": "Ricevi",
         "lbl_appearance": "Aspetto", "light_theme": "Chiaro", "dark_theme": "Scuro",
         "support": "Supporta su Ko-fi",
@@ -1323,7 +1329,7 @@ def save_remote_files(item):
                 for member in item.get("files", []):
                     filename, raw = fetch_bundle_member(item_id, member.get("index", 0))
                     paths.append(save_received(member.get("filename") or filename, raw))
-            elif item.get("type") == "file":
+            elif item.get("type") in ("file", "image"):
                 if "data" in item:
                     raw = base64.b64decode(item["data"])
                 else:
@@ -1331,7 +1337,8 @@ def save_remote_files(item):
                                      headers=auth_headers(), params=auth_params(), timeout=60)
                     r.raise_for_status()
                     raw = r.content
-                paths.append(save_received(item.get("filename", "file.bin"), raw))
+                fallback = "image.png" if item.get("type") == "image" else "file.bin"
+                paths.append(save_received(item.get("filename") or fallback, raw))
             if paths and item_id:
                 with _sync_state_lock:
                     state = _load_sync_state()
@@ -1389,6 +1396,8 @@ def _remember_item(item_id, *, file_seen=False, suppress_notification=False, upd
         key = _sync_source_key()
         if update_latest:
             state.setdefault("latest_items", {})[key] = item_id
+        if state.get("pending_file_clipboards", {}).get(key) == item_id:
+            state["pending_file_clipboards"].pop(key)
         if file_seen:
             sources = state.setdefault("sources", {})
             seen = sources.setdefault(key, [])
@@ -1460,6 +1469,12 @@ def _auto_receive_remote_files():
 
     new_items = [item for item in reversed(remote_files) if item["id"] not in seen]
     latest = items[0] if items else {}
+    with _remote_commit(), _sync_state_lock:
+        state = _load_sync_state()
+        pending = state.get("pending_file_clipboards", {})
+        if key in pending and pending[key] != latest.get("id"):
+            pending.pop(key)
+            _save_sync_state(state)
     clipboard_paths = []
     for item in new_items:
         with _remote_commit():
@@ -1473,6 +1488,10 @@ def _auto_receive_remote_files():
             _mark_remote_file_seen(item["id"])
             if item["id"] == latest.get("id"):
                 clipboard_paths = paths
+                with _sync_state_lock:
+                    state = _load_sync_state()
+                    state.setdefault("pending_file_clipboards", {})[key] = item["id"]
+                    _save_sync_state(state)
             message = (t("files_arrived", n=len(paths)) if len(paths) > 1
                        else t("file_arrived", name=os.path.basename(paths[0])))
             notify_received("file", message,
@@ -1481,7 +1500,9 @@ def _auto_receive_remote_files():
     # Retry a busy clipboard using the saved files, without downloading/notifying twice.
     if latest.get("type") in ("file", "bundle") and latest.get("id") != _last_remembered_item():
         with _sync_state_lock:
-            saved = _load_sync_state().get("downloads", {}).get(key, {}).get(latest["id"], [])
+            state = _load_sync_state()
+            pending = state.get("pending_file_clipboards", {}).get(key)
+            saved = state.get("downloads", {}).get(key, {}).get(latest["id"], []) if pending == latest["id"] else []
         if saved and all(os.path.isfile(path) for path in saved):
             clipboard_paths = saved
     if clipboard_paths:
@@ -3141,6 +3162,84 @@ def _scroll_set(scrollbar, first, last):
         scrollbar.state(["disabled"] if inactive else ["!disabled"])
 
 
+class _TextAutoscroll:
+    """Middle-click toggles vertical scrolling; middle-drag stops on release."""
+
+    def __init__(self, widget):
+        self.widget = widget
+        self._anchor = self._job = None
+        self._remainder = 0.0
+        self._cursor = ""
+        widget.bind("<ButtonPress-2>", self.start, add="+")
+        widget.bind("<ButtonRelease-2>", self.release, add="+")
+        # Suppress Text's native scan drag: our press does not initialize its anchor.
+        widget.bind("<B2-Motion>", lambda _event: "break", add="+")
+        for event in ("<ButtonPress-1>", "<ButtonPress-3>", "<MouseWheel>",
+                      "<KeyPress>", "<FocusOut>", "<Unmap>", "<Destroy>"):
+            widget.bind(event, self.stop, add="+")
+
+    def start(self, event):
+        if self._anchor is not None:
+            self.stop()
+        elif self.widget.yview() != (0.0, 1.0):
+            self.widget.focus_set()
+            self._anchor = event.y_root
+            self._cursor = self.widget.cget("cursor")
+            self.widget.configure(cursor="sb_v_double_arrow")
+            self._tick()
+        return "break"
+
+    def release(self, event):
+        if self._anchor is not None and abs(event.y_root - self._anchor) > 5:
+            self.stop()
+        return "break"
+
+    def _tick(self):
+        self._job = None
+        if self._anchor is None:
+            return
+        distance = self.widget.winfo_pointery() - self._anchor
+        if abs(distance) > 12:
+            speed = min(20, ((abs(distance) - 12) / 70) ** 1.4)
+            self._remainder += speed if distance > 0 else -speed
+            lines = int(self._remainder)
+            self._remainder -= lines
+            if lines:
+                self.widget.yview_scroll(lines, "units")
+        else:
+            self._remainder = 0.0
+        self._job = self.widget.after(30, self._tick)
+
+    def stop(self, _event=None):
+        if self._job is not None:
+            self.widget.after_cancel(self._job)
+            self._job = None
+        if self._anchor is not None:
+            self._anchor = None
+            self._remainder = 0.0
+            try:
+                self.widget.configure(cursor=self._cursor)
+            except tk.TclError:
+                pass
+
+
+_ACTIVE_FILE_EXTENSIONS = frozenset((
+    ".exe", ".com", ".scr", ".msi", ".msp", ".msix", ".msixbundle", ".appx",
+    ".appxbundle", ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js",
+    ".jse", ".wsf", ".wsh", ".hta", ".lnk", ".url", ".pif", ".reg", ".cpl",
+    ".msc", ".jar", ".application", ".appref-ms", ".gadget", ".docm", ".xlsm", ".pptm",
+))
+
+
+def _open_downloaded_file(path, parent):
+    if not os.path.isfile(path):
+        raise FileNotFoundError(t("unavailable"))
+    if os.path.splitext(path)[1].lower() in _ACTIVE_FILE_EXTENSIONS:
+        if not messagebox.askyesno(t("open_file"), t("open_active_file", name=os.path.basename(path)), parent=parent):
+            return
+    os.startfile(os.path.abspath(path), "open")
+
+
 def _history_table(parent):
     frame = ttk.Frame(parent)
     frame.pack(fill="both", expand=True, padx=16)
@@ -3311,9 +3410,12 @@ def open_history_window(icon=None, item=None):
     preview_running = False
     preview_pending = None
     preview_cache = {}
+    file_action_running = False
+    selected_file_key = None
     request_generation = 0
     offset = 0
     page_size = 100
+    page_total = 0
     items = []
     loaded_source = None
     kind_filter = tk.StringVar(master=root, value="")
@@ -3360,7 +3462,10 @@ def open_history_window(icon=None, item=None):
     search_entry.pack(side="left", fill="x", expand=True)
     _tooltip(search_entry, t("history_search"))
 
-    footer = ttk.Frame(main, padding=(16, 6))
+    footer_shell = ttk.Frame(main)
+    footer_shell.pack(side="bottom", fill="x")
+    file_actions = ttk.Frame(footer_shell, padding=(16, 0, 16, 6))
+    footer = ttk.Frame(footer_shell, padding=(16, 6))
     footer.pack(side="bottom", fill="x")
     workspace = ttk.Frame(main)
     workspace.pack(fill="both", expand=True)
@@ -3372,15 +3477,20 @@ def open_history_window(icon=None, item=None):
     preview_bar.pack_propagate(False)
     preview_heading = ttk.Label(preview_bar, text=t("preview"), style="Muted.TLabel")
     preview_heading.pack(anchor="w", pady=(0, 8))
-    preview_text = _paint(tk.Text(preview_bar, height=3, wrap="word", state="disabled",
+    preview_body = ttk.Frame(preview_bar)
+    preview_body.pack(fill="both", expand=True)
+    preview_body.rowconfigure(0, weight=1)
+    preview_body.columnconfigure(0, weight=1, minsize=0)
+    preview_text = _paint(tk.Text(preview_body, height=3, width=1, wrap="word", state="disabled",
                            font=("Segoe UI", -13), borderwidth=0,
                            highlightthickness=0, padx=8, pady=6), background="soft", foreground="text",
                            selectbackground="selected", selectforeground="text", insertbackground="text")
-    preview_scroll = ttk.Scrollbar(preview_bar, orient="vertical", command=preview_text.yview,
+    preview_scroll = ttk.Scrollbar(preview_body, name="text_scroll", orient="vertical", command=preview_text.yview,
                                    style="Slim.Vertical.TScrollbar")
     preview_text.configure(yscrollcommand=lambda first, last: _scroll_set(preview_scroll, first, last))
-    preview_text.pack(side="left", fill="both", expand=True)
-    preview_scroll.pack(side="right", fill="y")
+    preview_text.grid(row=0, column=0, sticky="nsew")
+    preview_scroll.grid(row=0, column=1, sticky="ns")
+    text_autoscroll = _TextAutoscroll(preview_text)
     preview_canvas = ttk.Frame(preview_bar, height=180)
     preview_canvas.pack_propagate(False)
     preview_image = ttk.Label(preview_canvas, name="preview_image", anchor="center")
@@ -3394,6 +3504,7 @@ def open_history_window(icon=None, item=None):
 
     def set_preview_text(value):
         nonlocal text_insert_job
+        text_autoscroll.stop()
         if text_insert_job is not None:
             root.after_cancel(text_insert_job)
             text_insert_job = None
@@ -3418,7 +3529,7 @@ def open_history_window(icon=None, item=None):
         append_chunk()
 
     def update_selection(*_args):
-        nonlocal preview_generation, preview_job, preview_pending
+        nonlocal preview_generation, preview_job, preview_pending, selected_file_key
         preview_generation += 1
         preview_pending = None
         if preview_job is not None:
@@ -3428,11 +3539,27 @@ def open_history_window(icon=None, item=None):
         preview_image.configure(image="", text="")
         preview_image.image = None
         preview_heading.configure(text=t("preview"))
-        preview_text.pack(side="left", fill="both", expand=True)
-        preview_scroll.pack(side="right", fill="y")
+        preview_body.pack(fill="both", expand=True)
         entry = selected()
         copy_button.configure(state="normal" if entry else "disabled")
         delete_button.configure(state="normal" if entry else "disabled")
+        has_files = entry is not None and entry.get("type") in ("file", "image", "bundle")
+        file_key = (loaded_source, entry.get("id")) if has_files else None
+        if has_files:
+            file_actions.pack(side="top", fill="x")
+            members = entry.get("files", [])
+            if entry.get("type") == "bundle" and members:
+                member_index = max(0, file_choice.current()) if file_key == selected_file_key else 0
+                file_choice.configure(values=[member.get("filename") or t("file_type") for member in members])
+                file_choice.current(min(member_index, len(members) - 1))
+                file_choice.pack(side="left", fill="x", expand=True, padx=(8, 0))
+            else:
+                file_choice.pack_forget()
+        else:
+            file_actions.pack_forget()
+        selected_file_key = file_key
+        for button in (open_file_button, open_folder_button):
+            button.configure(state="normal" if has_files and not file_action_running else "disabled")
         value = t("preview_empty")
         if entry:
             members = entry.get("files", [])
@@ -3451,8 +3578,7 @@ def open_history_window(icon=None, item=None):
                 if kind == "text":
                     set_preview_text(t("preview_loading"))
                 else:
-                    preview_text.pack_forget()
-                    preview_scroll.pack_forget()
+                    preview_body.pack_forget()
                     preview_image.configure(text=t("preview_loading"))
                     preview_canvas.pack(fill="both", expand=True, pady=4)
                 generation = preview_generation
@@ -3539,7 +3665,9 @@ def open_history_window(icon=None, item=None):
     root.bind("<Configure>", resize_preview, add="+")
 
     def fill(page):
+        nonlocal page_total
         items[:] = page.get("items", [])
+        page_total = page.get("total", len(items))
         _fill_history_table(listing, items)
         if items:
             listing.selection_set("0")
@@ -3547,7 +3675,7 @@ def open_history_window(icon=None, item=None):
             empty.place_forget()
         else:
             empty.place(relx=.5, rely=.5, anchor="center")
-        status.set(t("history_results", shown=len(items), total=page.get("total", len(items))))
+        status.set(t("history_results", shown=len(items), total=page_total))
         previous_button.configure(state="normal" if offset else "disabled")
         next_button.configure(state="normal" if page.get("has_more") else "disabled")
         update_selection()
@@ -3652,6 +3780,60 @@ def open_history_window(icon=None, item=None):
                 notify(t("recv_err", e=error))
         _run_bg(work)
 
+    def open_item_file(folder=False):
+        nonlocal file_action_running
+        entry, source_key = selected(), loaded_source
+        if file_action_running or not entry or entry.get("type") not in ("file", "image", "bundle"):
+            return
+        if source_key is None or source_key != _connection_ticket():
+            refresh(reset=True)
+            return
+        member_index = max(0, file_choice.current()) if entry.get("type") == "bundle" else 0
+        file_action_running = True
+        for button in (open_file_button, open_folder_button):
+            button.configure(state="disabled")
+        status.set(t("opening_file"))
+
+        def deliver(paths=None, error=None):
+            nonlocal file_action_running
+            file_action_running = False
+            current = selected()
+            if source_key != _connection_ticket() or loaded_source != source_key:
+                refresh(reset=True)
+                return
+            for button in (open_file_button, open_folder_button):
+                button.configure(state="normal" if current and current.get("type") in ("file", "image", "bundle") else "disabled")
+            status.set(t("history_results", shown=len(items), total=page_total))
+            if not current or current.get("id") != entry.get("id"):
+                return
+            try:
+                if error is not None:
+                    raise error
+                path = paths[member_index]
+                if folder:
+                    reveal_received_file(path)
+                else:
+                    _open_downloaded_file(path, root)
+            except Exception as problem:
+                messagebox.showerror(t("open_file"), t("open_file_error", e=problem), parent=root)
+
+        def work():
+            try:
+                with _remote_operation(expected=source_key):
+                    paths = save_remote_files(entry)
+                    if not paths or member_index >= len(paths):
+                        raise FileNotFoundError(t("unavailable"))
+                ui_q.put(lambda: deliver(paths))
+            except Exception as error:
+                ui_q.put(lambda problem=error: deliver(error=problem))
+        _run_bg(work)
+
+    open_file_button = _command_button(file_actions, "open_file", t("open_file"), "\ue8e5", open_item_file)
+    open_file_button.pack(side="left")
+    open_folder_button = _command_button(file_actions, "open_folder", t("open_folder"), "\ue8b7",
+                                         lambda: open_item_file(folder=True))
+    open_folder_button.pack(side="left", padx=(6, 0))
+    file_choice = ttk.Combobox(file_actions, name="group_file", state="readonly", width=20)
     copy_button = ttk.Button(footer, text=t("copy_selected"), style="Primary.TButton", command=copy_item)
     copy_button.pack(side="left")
     delete_button = _command_button(footer, "delete", t("delete"), "\ue74d", delete_item)
@@ -3683,6 +3865,9 @@ def open_history_window(icon=None, item=None):
         menu.delete(0, "end")
         menu.add_command(label=t("copy_selected"), command=copy_item)
         menu.add_command(label=t("preview"), command=lambda: (preview_visible.set(True), show_preview()))
+        if selected() and selected().get("type") in ("file", "image", "bundle"):
+            menu.add_command(label=t("open_file"), command=open_item_file)
+            menu.add_command(label=t("open_folder"), command=lambda: open_item_file(folder=True))
         menu.add_command(label=t("delete"), command=delete_item)
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -3746,6 +3931,7 @@ def open_history_window(icon=None, item=None):
         preview_generation += 1
         preview_pending = None
         preview_cache.clear()
+        text_autoscroll.stop()
         preview_image.image = None
         history_progress.stop()
         for job in (search_job, pump_job, preview_job, text_insert_job, initial_refresh_job):
