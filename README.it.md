@@ -81,14 +81,14 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.19 | Android 1.0.0-beta.12 | Server 1.0.10
+**Versioni attuali:** Windows 2.0.20 | Android 1.0.0-beta.12 | Server 1.0.10
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
-| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.19.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/Clipboard.Bridge.Portable.Windows.x64.V2.0.19.exe) |
-| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.19.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/Clipboard.Bridge.Portable.Windows.arm64.V2.0.19.exe) |
+| **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.20.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge.Portable.Windows.x64.V2.0.20.exe) |
+| **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.20.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge.Portable.Windows.arm64.V2.0.20.exe) |
 | **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.19/iPhone.Download.Clipboard.shortcut) |
+| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
@@ -111,7 +111,7 @@ le due architetture condividono le impostazioni.
 > Defender o Smart App Control potrebbero bloccarli. Leggi [CODE_SIGNING.md](CODE_SIGNING.md);
 > non disattivare la protezione Windows per aggirare un avviso.
 
-File, checksum e note sono nella [release 2.0.19](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.19).
+File, checksum e note sono nella [release 2.0.20](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.20).
 Sono incluse anteprime immagini/PDF e versioni ARM64 native. Le modifiche complete
 sono nel [CHANGELOG.md](CHANGELOG.md); Android e server hanno versioni indipendenti.
 
@@ -207,10 +207,17 @@ Vedi le [schermate desktop e la GIF dell'area di notifica](#desktop-in-azione).
   le impostazioni esistenti sono conservate durante gli aggiornamenti.
 - I file ricevuti sono salvati in `Downloads/Clipboard Bridge` e inseriti nella
   clipboard Windows. Cliccando una notifica file si apre la cartella dei file ricevuti.
+- Seleziona un file/immagine per **Apri file** e **Apri cartella**, disponibili anche
+  nel menu destro. Per un gruppo scegli il membro dalla lista dei nomi. I download
+  avvengono in background e sono riutilizzati; l'apertura non modifica la clipboard.
+  Eseguibili e script comuni richiedono conferma: apri solo file di cui ti fidi.
 - Attiva **Anteprima** nella cronologia per l'immagine selezionata o la prima pagina
   del PDF, anche per il primo membro visualizzabile di un gruppo.
   Per il testo mostra il contenuto integrale in un riquadro scorrevole di sola lettura,
   inclusi testi lunghi ed emoji, non soltanto il breve estratto della cronologia.
+  Usa la barra verticale visibile, la rotellina oppure clicca il tasto centrale e
+  muovi il mouse su/giu per scorrere rapidamente. Un altro clic o un tasto interrompe;
+  tenendo premuta la rotella, lo scorrimento termina al rilascio.
   Le miniature si caricano in background senza modificare la clipboard o salvare download.
 - La cronologia segue automaticamente il server scelto nelle impostazioni: quello
   esterno in modalità Client o quello integrato nel PC in modalità Server. Non serve
@@ -542,7 +549,7 @@ rimuovono le voci vecchie.
 | Test server/metadati | Installa `requirements-server.txt` e `pytest`, poi `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
 | Test Windows | Installa `requirements-client.txt` e `pytest`, poi `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` su Windows |
 | Coerenza della versione | `python scripts/release_metadata.py --check` |
-| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.19`; richiede Python x64 e Inno Setup |
+| Pacchetti Windows x64 | Workflow Actions **Build Windows x64**, oppure `scripts\windows\build_release.bat 2.0.20`; richiede Python x64 e Inno Setup |
 | Pacchetti Windows ARM64 | Workflow Actions **Build Windows ARM64**; runner nativo, test e verifica di eseguibile e installer |
 | Build Android | Java 17, Android SDK 35; [istruzioni Gradle e firma privata](android/README.md#build-from-source) |
 | Build Docker dai sorgenti | `docker build -t clipboard-bridge-server:dev .` |

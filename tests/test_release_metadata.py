@@ -43,7 +43,7 @@ def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
 
-    assert version == "2.0.19"
+    assert version == "2.0.20"
     metadata.validate(version)
 
 
