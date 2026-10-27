@@ -103,6 +103,12 @@ def main():
     schema = json.loads((ROOT / "validation/big-bear-app-schema-v1.json").read_text())
     jsonschema.Draft7Validator(schema, format_checker=jsonschema.FormatChecker()).validate(app)
     assert app["metadata"]["version"] == IMAGE.rsplit(":", 1)[1]
+    tip = app["ui"]["tips"]["before_install"]["en_us"]
+    assert "adding accounts does not protect the general shared clipboard" in tip
+    assert "set both CLIPBOARD_PASSWORD and CLIPBOARD_TOKEN" in tip
+    readme = (ROOT / "big-bear/universal/apps/clipboard-bridge/README.md").read_text()
+    assert "Isolated accounts protect only their own spaces" in readme
+    assert "**both** `CLIPBOARD_PASSWORD` and" in readme and "`CLIPBOARD_TOKEN`" in readme
     print("PASS actual Big Bear universal JSON Schema")
     models = [validate_compose(relative) for relative in COMPOSES]
     for name in ("icon.png", "screenshot-1.png", "screenshot-2.png"):
