@@ -142,6 +142,32 @@ def test_container_ships_translations_and_device_guide(container_host, lang):
     assert 'id="connect"' in html and 'class="setup-section"' in html
     assert "https://mattboxx.github.io/Clipboard-Bridge/" in html
     assert headers["Referrer-Policy"] == "no-referrer"
+    assert html.index('id="project-links"') < html.index('id="connect"')
+    assert html.index('class="support-link"') < html.index('id="txt"')
+    assert 'class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge"' in html
+
+
+def test_container_numeric_user_with_preowned_data_volume():
+    name = "clipboard-uid-test-" + uuid.uuid4().hex
+    volume = name + "-data"
+    docker("volume", "create", "--label", "io.clipboard-bridge.test=uid", volume)
+    host = ContainerHost(name, volume)
+    try:
+        docker("run", "--rm", "--mount", f"type=volume,source={volume},target=/data",
+               "--entrypoint", "python", IMAGE, "-c", "import os; os.chown('/data', 1000, 1000)")
+        docker("run", "--detach", "--name", name, "--user", "1000:1000",
+               "--publish", "127.0.0.1::5088", "--env", "TZ=Etc/UTC",
+               "--mount", f"type=volume,source={volume},target=/data", IMAGE)
+        host.wait_ready()
+        text = "Clipboard example \U0001f680".encode()
+        assert host.request("POST", "/clipboard", text)[0] == 200
+        host.restart()
+        assert host.request("GET", "/clipboard/latest/raw")[2] == text
+        identity = docker("exec", name, "python", "-c", "import os; print(os.getuid(), os.getgid())")
+        assert identity == "1000 1000"
+    finally:
+        docker("rm", "--force", name, check=False)
+        docker("volume", "rm", volume, check=False)
 
 
 @pytest.mark.skipif(not PREVIOUS_IMAGE, reason="No previous release image configured")

@@ -39,6 +39,10 @@ def test_support_link_is_localized_and_does_not_leak_account_credentials(server,
     assert set(parser.support[0]["rel"].split()) == {"noopener", "noreferrer"}
     assert server.WEB_STRINGS[lang]["support_note"] in html
     assert server.WEB_STRINGS[lang]["support"] in html
+    assert parser.support[0]["title"] == server.WEB_STRINGS[lang]["support_note"]
+    assert html.index('id="project-links"') < html.index('id="connect"')
+    assert html.index('class="support-link"') < html.index('id="txt"')
+    assert 'class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge"' in html
 
 
 def test_web_translations_have_complete_keys_and_matching_placeholders(server):
@@ -84,7 +88,7 @@ def test_localized_device_guide_login_and_external_links(server, lang):
     public = [link for link in parser.links if urlsplit(link.get("href", "")).scheme == "https"]
     assert any(link["href"] == server.PROJECT_SITE for link in public)
     for link in public:
-        assert urlsplit(link["href"]).hostname in {"mattboxx.github.io", "ko-fi.com"}
+        assert urlsplit(link["href"]).hostname in {"mattboxx.github.io", "ko-fi.com", "github.com"}
         assert not urlsplit(link["href"]).query
         assert "alice" not in link["href"] and "password" not in link["href"]
         assert set(link["rel"].split()) == {"noopener", "noreferrer"}
@@ -830,7 +834,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.10"
+    assert response.get_json()["version"] == "1.0.11"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):

@@ -28,7 +28,7 @@
   <meta name="twitter:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png">
   <meta name="twitter:image:alt" content="Clipboard Bridge: text, photos and files across Windows, Android and Apple devices.">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-10-24","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-10-27","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
   </script>
 </head>
 <body>
@@ -45,7 +45,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 24 October 2026 &middot; Windows 2.0.20 &middot; Android beta.12 &middot; server 1.0.10</div>
+    <div class="tutorial-meta">Updated 27 October 2026 &middot; Windows 2.0.20 &middot; Android beta.12 &middot; server 1.0.11</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -134,7 +134,7 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
         <p>With Docker and Compose already installed, save this as <code>compose.yaml</code> in an empty project folder:</p>
         <pre><code>services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
     restart: unless-stopped
     ports:
       - "5088:5088"

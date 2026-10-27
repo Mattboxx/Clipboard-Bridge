@@ -81,7 +81,7 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.20 | Android 1.0.0-beta.12 | Server 1.0.10
+**Versioni attuali:** Windows 2.0.20 | Android 1.0.0-beta.12 | Server 1.0.11
 
 | Il tuo dispositivo | Download pronti all'uso |
 |---|---|
@@ -336,7 +336,7 @@ ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`
 
 La pagina web e l'accesso supportano **inglese, italiano, spagnolo, francese,
 tedesco, portoghese e cinese semplificato**. Scegli la lingua nell'intestazione:

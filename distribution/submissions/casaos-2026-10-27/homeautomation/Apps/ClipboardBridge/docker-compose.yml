@@ -1,0 +1,108 @@
+name: clipboard-bridge
+services:
+  clipboard-bridge:
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+    restart: unless-stopped
+    ports:
+      - target: 5088
+        published: "5088"
+        protocol: tcp
+    environment:
+      CLIPBOARD_PORT: "5088"
+      CLIPBOARD_DATA_DIR: /data
+      CLIPBOARD_MAX_HISTORY: "200"
+      CLIPBOARD_MAX_UPLOAD_MB: "64"
+      CLIPBOARD_TOKEN: ""
+      CLIPBOARD_PASSWORD: ""
+      CLIPBOARD_ACCOUNTS: ""
+      CLIPBOARD_ACCOUNTS_FILE: ""
+      CLIPBOARD_SESSION_DAYS: "3650"
+    volumes:
+      - type: bind
+        source: /DATA/AppData/clipboard-bridge/data
+        target: /data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3).read()"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    x-casaos:
+      ports:
+        - container: "5088"
+          description:
+            en_US: Web interface and clipboard API
+      volumes:
+        - container: /data
+          description:
+            en_US: Persistent clipboard history, files and session key
+      envs:
+        - container: CLIPBOARD_TOKEN
+          description:
+            en_US: Optional general API token; empty leaves the shared API open
+        - container: CLIPBOARD_PASSWORD
+          description:
+            en_US: Optional general web password; does not protect the API on its own
+        - container: CLIPBOARD_ACCOUNTS
+          description:
+            en_US: Optional isolated accounts, comma-separated user:password pairs
+        - container: CLIPBOARD_ACCOUNTS_FILE
+          description:
+            en_US: Optional account file inside the container, e.g. /data/accounts.txt
+        - container: CLIPBOARD_MAX_HISTORY
+          description:
+            en_US: Retained entries per clipboard space
+        - container: CLIPBOARD_MAX_UPLOAD_MB
+          description:
+            en_US: Maximum complete upload request in MB
+        - container: CLIPBOARD_SESSION_DAYS
+          description:
+            en_US: Remembered web login duration, from 1 to 3650 days
+x-casaos:
+  id: io.github.mattbox03.clipboard-bridge
+  architectures:
+    - amd64
+    - arm64
+  main: clipboard-bridge
+  author: Mattboxx
+  developer: Mattboxx
+  category: HomeAutomation
+  version: "1.0.11"
+  store_app_id: clipboard-bridge
+  title:
+    en_US: Clipboard Bridge
+    it_IT: Clipboard Bridge
+  description:
+    en_US: >-
+      Share text, photos and files between Windows, Android and Apple Shortcuts
+      over a trusted LAN or private VPN. Includes a browser interface, persistent
+      history, grouped files and optional isolated accounts. A home-server
+      companion utility, not an MQTT broker or a home-device control integration.
+    it_IT: >-
+      Condividi testo, foto e file tra Windows, Android e Comandi Rapidi Apple
+      tramite LAN fidata o VPN privata, con pagina web, cronologia e account
+      facoltativi. Un servizio complementare per il server di casa, non un sistema
+      di controllo dei dispositivi domotici.
+  tagline:
+    en_US: Share your clipboard across your home devices
+    it_IT: Condividi gli appunti tra i tuoi dispositivi
+  icon: https://mattboxx.github.io/Clipboard-Bridge/icon.svg
+  thumbnail: https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png
+  screenshot_link:
+    - https://mattboxx.github.io/Clipboard-Bridge/assets/server-web.png
+    - https://mattboxx.github.io/Clipboard-Bridge/assets/server-history.png
+  scheme: http
+  port_map: "5088"
+  index: /
+  project_url: https://github.com/Mattboxx/Clipboard-Bridge
+  tips:
+    before_install:
+      en_US: >-
+        Optional authentication is disabled initially. Use a trusted LAN or private
+        VPN. Configure the web password and API token separately if protection is
+        needed. URL credentials are readable and HTTP is not encrypted. Do not
+        expose port 5088 directly to the internet. Preserve /data during updates.

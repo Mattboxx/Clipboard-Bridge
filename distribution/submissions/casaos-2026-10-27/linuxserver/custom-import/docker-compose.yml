@@ -1,0 +1,87 @@
+# Manual import/reference only. Not a LinuxServer.io image or an accepted catalog PR.
+# PUID/PGID below are Compose substitutions for Docker's user field, NOT image envs.
+name: clipboard-bridge-uid-example
+services:
+  clipboard-bridge:
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+    user: "${PUID:-1000}:${PGID:-1000}"
+    restart: unless-stopped
+    ports:
+      - target: 5088
+        published: "${APP_PORT:-5088}"
+        protocol: tcp
+    environment:
+      TZ: "${TZ:-Etc/UTC}"
+      CLIPBOARD_PORT: "5088"
+      CLIPBOARD_DATA_DIR: /data
+      CLIPBOARD_MAX_HISTORY: "200"
+      CLIPBOARD_MAX_UPLOAD_MB: "64"
+      CLIPBOARD_TOKEN: ""
+      CLIPBOARD_PASSWORD: ""
+      CLIPBOARD_ACCOUNTS: ""
+      CLIPBOARD_ACCOUNTS_FILE: ""
+      CLIPBOARD_SESSION_DAYS: "3650"
+    volumes:
+      - type: bind
+        source: "${DATA_ROOT:-/DATA/AppData/clipboard-bridge-uid-example/data}"
+        target: /data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3).read()"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    x-casaos:
+      ports:
+        - container: "5088"
+          description:
+            en_US: Web interface and clipboard API
+      volumes:
+        - container: /data
+          description:
+            en_US: Must already be writable by the numeric Docker user
+      envs:
+        - container: TZ
+          description:
+            en_US: Container timezone; this reference uses Etc/UTC
+        - container: CLIPBOARD_TOKEN
+          description:
+            en_US: Optional shared API token
+        - container: CLIPBOARD_PASSWORD
+          description:
+            en_US: Optional general web password, separate from API protection
+        - container: CLIPBOARD_ACCOUNTS
+          description:
+            en_US: Optional isolated accounts, comma-separated user:password pairs
+x-casaos:
+  id: io.github.mattbox03.clipboard-bridge-uid-example
+  architectures: [amd64, arm64]
+  main: clipboard-bridge
+  author: Mattboxx
+  developer: Mattboxx
+  category: Utilities
+  title:
+    en_US: Clipboard Bridge - manual UID example
+  description:
+    en_US: >-
+      Independent Clipboard Bridge image with a numeric Docker user override.
+      This is not a LinuxServer.io container and does not implement their s6
+      initialization or automatic PUID/PGID ownership changes.
+  tagline:
+    en_US: Manual non-root deployment reference, not a LinuxServer catalog submission
+  icon: https://mattboxx.github.io/Clipboard-Bridge/icon.svg
+  scheme: http
+  port_map: "5088"
+  index: /
+  tips:
+    before_install:
+      en_US: >-
+        Not submission-ready for the LinuxServer catalog. Create the host data
+        folder with ownership matching the numeric user before starting. For a
+        CasaOS YAML import, edit user and the host data path directly; a sibling
+        .env file is not automatically imported by the web UI. Authentication is
+        optional; use a trusted LAN or private VPN, not direct internet exposure.

@@ -149,7 +149,7 @@ downloaded values; do not paste it into the terminal:
 ```dotenv
 APP_PORT=5088
 DATA_ROOT=./data
-APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
+APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
 MAX_HISTORY=200
 MAX_UPLOAD_MB=64
 API_TOKEN=
@@ -168,7 +168,7 @@ service can read, upload or delete shared content when protection is empty.
 |---|---|
 | `APP_PORT` | Keep `5088`. If occupied, use e.g. `5089`; all device URLs then use `5089`. The container still listens on `5088`. |
 | `DATA_ROOT` | Keep `./data` for a new install. This becomes the `data` folder beside `compose.yaml`, mounted as `/data` inside Docker. For NAS/Portainer use an existing, writable absolute host path. Never change an existing data path casually. |
-| `APP_IMAGE` | The example pins server `1.0.10`. Docker picks the supported CPU architecture automatically. |
+| `APP_IMAGE` | The example pins server `1.0.11`. Docker picks the supported CPU architecture automatically. |
 | `MAX_HISTORY` | Retained history entries per shared space/account. Older entries are removed when the limit is exceeded. |
 | `MAX_UPLOAD_MB` | Maximum upload **request** size in MB, including a whole file group. `64` is the default. |
 | `API_TOKEN` | Optional protection for the shared API used by apps and Shortcuts. |
@@ -423,7 +423,7 @@ restart the existing service with `docker compose start` while investigating.
    and choose a **published server** version (Windows/Android numbers are separate).
 2. Open `.env` as in step 3. Change **only** `APP_IMAGE` to the desired full image
    tag, keeping the same `DATA_ROOT`, credentials and port. Current stable:
-   `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`.
+   `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`.
 3. Save, then run these commands in order (with `sudo` on Linux if needed):
 
 ```text
@@ -437,7 +437,7 @@ Wait for `healthy`, reopen `/health`, check your version and history, then try a
 send/receive. If downloading fails after the backup, `docker compose start` can
 start the existing stopped container; investigate before recreating it.
 
-**A pinned `1.0.10` tag does not advance to the next release when you run `pull`.**
+**A pinned `1.0.11` tag does not advance to the next release when you run `pull`.**
 Change it first. `latest` follows stable releases when pulled but does not update
 a running container by itself; pinning makes upgrades deliberate. Do not use
 `edge` for a beginner's stable installation.

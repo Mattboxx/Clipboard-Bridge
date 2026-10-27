@@ -28,7 +28,7 @@
   <meta name="twitter:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png">
   <meta name="twitter:image:alt" content="Clipboard Bridge: testo, foto e file tra Windows, Android e dispositivi Apple.">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"TechArticle","headline":"Condividere clipboard tra Windows, iPhone e Android","description":"Configura il tuo PC o Docker come host della clipboard e collega il telefono.","datePublished":"2026-10-14","dateModified":"2026-10-24","inLanguage":"it","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Condividere clipboard tra Windows, iPhone e Android","description":"Configura il tuo PC o Docker come host della clipboard e collega il telefono.","datePublished":"2026-10-14","dateModified":"2026-10-27","inLanguage":"it","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
   </script>
 </head>
 <body>
@@ -45,7 +45,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows e iPhone</a></div>
     <p><strong>Su iPhone, tieni Invia e Ricevi nel Centro di Controllo o invia dal menu Condividi di un'altra app.</strong> Dopo la configurazione, non serve riaprire l'editor a ogni trasferimento.</p>
     <p>Guide specifiche in inglese: <a href="windows-iphone-clipboard.html" lang="en">Windows e iPhone</a> e <a href="apple-android-clipboard.html" lang="en">Apple e Android</a>.</p>
-    <div class="tutorial-meta">Aggiornato il 24 ottobre 2026 &middot; Windows 2.0.20 &middot; Android beta.12 &middot; server 1.0.10</div>
+    <div class="tutorial-meta">Aggiornato il 27 ottobre 2026 &middot; Windows 2.0.20 &middot; Android beta.12 &middot; server 1.0.11</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Windows e iPhone</a><a href="#help">Problemi comuni</a></aside>
@@ -134,7 +134,7 @@ Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
         <p>Con Docker e Compose gi&agrave; installati, salva questo file come <code>compose.yaml</code> in una cartella di progetto vuota:</p>
         <pre><code>services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
     restart: unless-stopped
     ports:
       - "5088:5088"
