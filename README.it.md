@@ -598,4 +598,5 @@ Se Clipboard Bridge ti aiuta a condividere più facilmente tra i tuoi dispositiv
 una donazione contribuisce a mantenerlo e aggiornarlo. L'uso è gratuito e il sostegno
 è completamente facoltativo. Grazie di cuore se scegli di contribuire!
 
-[**Sostieni Clipboard Bridge su Ko-fi**](https://ko-fi.com/mattboxx)
+[**Sostieni su Ko-fi**](https://ko-fi.com/mattboxx) |
+[**Diventa uno sponsor su GitHub**](https://github.com/sponsors/Mattboxx)
