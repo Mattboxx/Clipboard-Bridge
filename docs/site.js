@@ -1,5 +1,99 @@
 "use strict";
 
+// Native dialog keeps keyboard focus inside; without JavaScript, links still work.
+if (typeof HTMLDialogElement !== "undefined" && HTMLDialogElement.prototype.showModal) {
+  const italian = document.documentElement.lang === "it";
+  const dialog = document.createElement("dialog");
+  dialog.id = "support-dialog";
+  dialog.className = "support-dialog";
+  dialog.setAttribute("aria-labelledby", "support-dialog-title");
+  dialog.setAttribute("aria-describedby", "support-dialog-description");
+
+  const head = document.createElement("div");
+  head.className = "support-dialog-head";
+  const title = document.createElement("h2");
+  title.id = "support-dialog-title";
+  title.textContent = italian ? "Sostieni Clipboard Bridge" : "Support Clipboard Bridge";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "support-dialog-close";
+  close.setAttribute("aria-label", italian ? "Chiudi" : "Close");
+  close.textContent = "\u00d7";
+  head.append(title, close);
+
+  const description = document.createElement("p");
+  description.id = "support-dialog-description";
+  description.textContent = italian
+    ? "Il tuo sostegno aiuta a mantenere e aggiornare il progetto. Grazie di cuore se scegli di contribuire! Scegli la piattaforma che preferisci."
+    : "Your support helps keep the project maintained and updated. Thank you for considering a contribution! Choose the platform you prefer.";
+  const providers = document.createElement("div");
+  providers.className = "support-providers";
+  for (const [name, url, detail] of [
+    ["Ko-fi", "https://ko-fi.com/mattboxx", italian ? "Lascia una donazione su Ko-fi" : "Leave a tip on Ko-fi"],
+    ["GitHub Sponsors", "https://github.com/sponsors/Mattboxx", italian ? "Sostieni il progetto su GitHub" : "Sponsor the project on GitHub"],
+  ]) {
+    const link = document.createElement("a");
+    link.className = "support-provider";
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    const text = document.createElement("span");
+    const label = document.createElement("strong");
+    label.textContent = name;
+    const note = document.createElement("span");
+    note.className = "support-provider-note";
+    note.textContent = detail;
+    text.append(label, note);
+    const arrow = document.createElement("img");
+    arrow.src = "assets/icons/arrow-up-right.svg";
+    arrow.className = "icon";
+    arrow.alt = "";
+    link.append(text, arrow);
+    providers.append(link);
+  }
+  const thanks = document.createElement("p");
+  thanks.className = "support-dialog-foot";
+  thanks.textContent = italian
+    ? "Il sostegno \u00e8 facoltativo. Clipboard Bridge resta gratuito e open source."
+    : "Support is entirely optional. Clipboard Bridge stays free and open source.";
+  dialog.append(head, description, providers, thanks);
+  document.body.append(dialog);
+
+  let previousFocus;
+  document.querySelectorAll('[data-support-open], .tutorial-end a[href="https://ko-fi.com/mattboxx"]').forEach((trigger) => {
+    trigger.setAttribute("aria-haspopup", "dialog");
+    trigger.setAttribute("aria-controls", dialog.id);
+    trigger.addEventListener("click", (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (dialog.open) return;
+      previousFocus = trigger;
+      dialog.showModal();
+      document.body.classList.add("support-dialog-open");
+      close.focus();
+    });
+  });
+  document.documentElement.classList.add("support-dialog-ready");
+  close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.ctrlKey || event.metaKey || event.altKey) return;
+    const stops = [...dialog.querySelectorAll('button:not([disabled]), a[href]')];
+    event.preventDefault();
+    const current = stops.indexOf(document.activeElement);
+    const next = (current + (event.shiftKey ? -1 : 1) + stops.length) % stops.length;
+    stops[next].focus();
+  });
+  dialog.addEventListener("click", (event) => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+  });
+  dialog.addEventListener("close", () => {
+    document.body.classList.remove("support-dialog-open");
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+  });
+}
+
 document.querySelectorAll("[data-apple-image]").forEach((image) => {
   const showFallback = () => {
     image.hidden = true;

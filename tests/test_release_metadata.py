@@ -167,7 +167,7 @@ def test_x64_build_provenance_uses_compiler_output_and_identifies_pr_source():
     assert "${{ github.event.pull_request.head.sha }}" in workflow
 
 
-def test_website_support_opens_donation_directly_and_stylesheet_exists():
+def test_website_support_opens_platform_choice_and_stylesheet_exists():
     class Links(HTMLParser):
         def __init__(self):
             super().__init__()
@@ -185,15 +185,30 @@ def test_website_support_opens_donation_directly_and_stylesheet_exists():
     links.feed((ROOT / "docs/index.html").read_text(encoding="utf-8"))
     assert len(links.support) == 1
     link = links.support[0]
-    assert link["href"] == "https://ko-fi.com/mattboxx"
-    assert link["target"] == "_blank"
-    assert {"noopener", "noreferrer"} <= set(link["rel"].split())
+    assert link["href"] == "#support"
+    assert "data-support-open" in link
+    script = (ROOT / "docs/site.js").read_text(encoding="utf-8")
+    assert 'trigger.setAttribute("aria-haspopup", "dialog")' in script
+    assert 'trigger.setAttribute("aria-controls", dialog.id)' in script
+    assert "https://ko-fi.com/mattboxx" in script
+    assert "https://github.com/sponsors/Mattboxx" in script
+    assert "dialog.showModal()" in script and "dialog.close()" in script
     assert links.stylesheets == ["site.css", "apple-shortcuts.css", "bridge-ui.css", "home-cover.css"]
     assert all((ROOT / "docs" / source).is_file() for source in links.stylesheets)
     design = (ROOT / "docs/bridge-ui.css").read_text(encoding="utf-8")
     assert "prefers-reduced-motion" in design
     assert 'url("assets/windows-history-wide.png")' in design
     assert (ROOT / "docs/assets/windows-history-wide.png").is_file()
+
+
+def test_sponsorship_links_are_available_in_both_readmes_and_github_funding():
+    for name in ("README.md", "README.it.md"):
+        source = (ROOT / name).read_text(encoding="utf-8")
+        assert "https://ko-fi.com/mattboxx" in source
+        assert "https://github.com/sponsors/Mattboxx" in source
+    funding = (ROOT / ".github/FUNDING.yml").read_text(encoding="utf-8")
+    assert "github: [Mattboxx]" in funding
+    assert "ko_fi: mattboxx" in funding
 
 
 def test_website_local_images_and_device_downloads_exist():

@@ -584,4 +584,5 @@ If Clipboard Bridge makes sharing between your devices easier, a donation helps
 keep the project maintained and updated. Using it is free; support is entirely optional.
 Thank you for choosing to contribute!
 
-[**Support Clipboard Bridge on Ko-fi**](https://ko-fi.com/mattboxx)
+[**Support on Ko-fi**](https://ko-fi.com/mattboxx) |
+[**Become a GitHub Sponsor**](https://github.com/sponsors/Mattboxx)
