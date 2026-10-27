@@ -149,7 +149,7 @@ i valori scaricati. **Non e un comando da incollare nel terminale**:
 ```dotenv
 APP_PORT=5088
 DATA_ROOT=./data
-APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
+APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
 MAX_HISTORY=200
 MAX_UPLOAD_MB=64
 API_TOKEN=
@@ -168,7 +168,7 @@ inviare o eliminare contenuti se lasci vuote le protezioni.
 |---|---|
 | `APP_PORT` | Porta dell'host: lascia `5088`. Se occupata usa ad esempio `5089` e cambia tutti gli URL dei dispositivi. La porta interna resta `5088`. |
 | `DATA_ROOT` | `./data` crea/conserva i dati nella cartella `data` accanto a `compose.yaml`, collegata a `/data` nel container. Su NAS/Portainer usa un percorso assoluto scrivibile. Non cambiare casualmente quello di un server esistente. |
-| `APP_IMAGE` | Blocca la versione server a `1.0.10`; Docker sceglie automaticamente l'architettura supportata. |
+| `APP_IMAGE` | Blocca la versione server a `1.0.11`; Docker sceglie automaticamente l'architettura supportata. |
 | `MAX_HISTORY` | Numero di elementi conservati per spazio/account; oltre il limite vengono rimosse le voci piu vecchie. |
 | `MAX_UPLOAD_MB` | Massimo in MB dell'intera richiesta di caricamento, anche quando contiene piu file. |
 | `API_TOKEN` | Protezione facoltativa dell'API generale, usata dalle app e dai Comandi Rapidi. |
@@ -348,7 +348,7 @@ Se la copia fallisce, non aggiornare: riavvia il vecchio container con
 1. Leggi le [release](https://github.com/Mattboxx/Clipboard-Bridge/releases): scegli
    una versione **server** pubblicata, non il numero dell'app Windows o Android.
 2. Modifica solo `APP_IMAGE` in `.env` con il tag desiderato. Oggi l'esempio stabile
-   e `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.10`. Mantieni percorso
+   e `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`. Mantieni percorso
    dati, porta e credenziali. Salva.
 3. Esegui nell'ordine, con `sudo` su Linux se necessario:
 
@@ -363,7 +363,7 @@ Attendi `healthy`, controlla `/health`, cronologia e un trasferimento. Se il dow
 fallisce dopo il backup, `docker compose start` puo riavviare il container vecchio
 ancora presente: risolvi l'errore prima di ricrearlo.
 
-**Con un tag fisso `1.0.10`, `pull` non passa da solo alla versione successiva:**
+**Con un tag fisso `1.0.11`, `pull` non passa da solo alla versione successiva:**
 prima devi cambiarlo. `latest` segue le versioni stabili quando scaricato, ma
 non aggiorna da solo un container in esecuzione. `edge` non e consigliato per
 un'installazione stabile da principianti.

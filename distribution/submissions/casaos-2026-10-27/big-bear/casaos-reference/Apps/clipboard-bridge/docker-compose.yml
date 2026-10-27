@@ -1,0 +1,106 @@
+name: big-bear-clipboard-bridge
+services:
+  app:
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+    restart: unless-stopped
+    ports:
+      - target: 5088
+        published: "5088"
+        protocol: tcp
+    environment:
+      CLIPBOARD_PORT: "5088"
+      CLIPBOARD_DATA_DIR: /data
+      CLIPBOARD_MAX_HISTORY: "200"
+      CLIPBOARD_MAX_UPLOAD_MB: "64"
+      CLIPBOARD_TOKEN: ""
+      CLIPBOARD_PASSWORD: ""
+      CLIPBOARD_ACCOUNTS: ""
+      CLIPBOARD_ACCOUNTS_FILE: ""
+      CLIPBOARD_SESSION_DAYS: "3650"
+    volumes:
+      - /DATA/AppData/$AppID/data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5088/health', timeout=3).read()"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    x-casaos:
+      envs:
+        - container: CLIPBOARD_PORT
+          description:
+            en_US: 'Container Variable: CLIPBOARD_PORT'
+        - container: CLIPBOARD_DATA_DIR
+          description:
+            en_US: 'Container Variable: CLIPBOARD_DATA_DIR'
+        - container: CLIPBOARD_MAX_HISTORY
+          description:
+            en_US: 'Container Variable: CLIPBOARD_MAX_HISTORY'
+        - container: CLIPBOARD_MAX_UPLOAD_MB
+          description:
+            en_US: 'Container Variable: CLIPBOARD_MAX_UPLOAD_MB'
+        - container: CLIPBOARD_TOKEN
+          description:
+            en_US: 'Container Variable: CLIPBOARD_TOKEN'
+        - container: CLIPBOARD_PASSWORD
+          description:
+            en_US: 'Container Variable: CLIPBOARD_PASSWORD'
+        - container: CLIPBOARD_ACCOUNTS
+          description:
+            en_US: 'Container Variable: CLIPBOARD_ACCOUNTS'
+        - container: CLIPBOARD_ACCOUNTS_FILE
+          description:
+            en_US: 'Container Variable: CLIPBOARD_ACCOUNTS_FILE'
+        - container: CLIPBOARD_SESSION_DAYS
+          description:
+            en_US: 'Container Variable: CLIPBOARD_SESSION_DAYS'
+      volumes:
+        - container: /data
+          description:
+            en_US: 'Container Path: /data'
+      ports:
+        - container: "5088"
+          description:
+            en_US: 'Container Port: 5088'
+x-casaos:
+  # Supported CPU architectures for this application
+  architectures:
+    - amd64
+    - arm64
+  # Stable reverse-domain app identifier
+  id: com.bigbeartechworld.clipboard-bridge
+  # Main service for this application
+  main: app
+  # Detailed description for the application
+  description:
+    en_US: Share text, photos and files between Windows, Android and Apple Shortcuts over a trusted local network or private VPN. The standalone server provides a browser interface, persistent shared history, grouped files and optional isolated accounts. No mandatory cloud account is required. Optional token/account URL values are readable and HTTP is not encrypted; do not publish this service directly to the internet.
+  # Screenshot links for the application
+  screenshot_link:
+    - https://mattboxx.github.io/Clipboard-Bridge/assets/server-web.png
+    - https://mattboxx.github.io/Clipboard-Bridge/assets/server-history.png
+  # Brief tagline for the application
+  tagline:
+    en_US: A private clipboard and file bridge across your devices
+  # Developer's information
+  developer: Mattboxx
+  # Author of this particular configuration
+  author: Mattboxx
+  # Icon URL for the application
+  icon: https://mattboxx.github.io/Clipboard-Bridge/icon.svg
+  # Thumbnail image for the application (if any)
+  thumbnail: https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png
+  # Installation tips
+  tips:
+    before_install:
+      en_US: 'Use a trusted LAN or private VPN. Authentication is optional: empty settings leave the shared clipboard open. Set both CLIPBOARD_PASSWORD and CLIPBOARD_TOKEN to protect the general web page and API separately, or configure isolated accounts. URL credentials are readable; HTTP is not encrypted. Do not forward port 5088 on your router. Keep the /data volume when updating.'
+  # Title for the application
+  title:
+    en_US: Clipboard Bridge
+  # Category under which the application falls
+  category: Productivity
+  # Default port mapping for the application
+  port_map: "5088"

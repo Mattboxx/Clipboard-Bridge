@@ -42,7 +42,7 @@ jobs:
           print("ZimaOS metadata: OK")
           PY
       - name: Verify public multi-architecture image
-        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.10 >/dev/null
+        run: docker manifest inspect ghcr.io/mattboxx/clipboard-bridge-server:1.0.11 >/dev/null
       - name: Build ZimaOS v2 catalog
         uses: IceWhaleTech/build-appstore-action@407bf02f7ca1d3d610c88c895dc28b016bdace48 # v1.1.2
         with:

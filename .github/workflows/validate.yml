@@ -50,16 +50,21 @@ jobs:
           docker compose -f compose.yaml config --quiet
           docker compose -f docker-compose.yml config --quiet
 
+      - name: Validate third-party CasaOS submission package
+        run: |
+          python -m pip install -r distribution/submissions/casaos-2026-10-27/validation/requirements.txt
+          python distribution/submissions/casaos-2026-10-27/validation/validate.py
+
       - name: Build server image
         run: docker build --tag clipboard-bridge-server:test .
 
       - name: Fetch previous stable server for upgrade verification
-        run: docker pull ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+        run: docker pull ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
 
       - name: Verify container persistence and transfer contracts
         env:
           CLIPBOARD_TEST_IMAGE: clipboard-bridge-server:test
-          CLIPBOARD_TEST_PREVIOUS_IMAGE: ghcr.io/mattboxx/clipboard-bridge-server:1.0.9
+          CLIPBOARD_TEST_PREVIOUS_IMAGE: ghcr.io/mattboxx/clipboard-bridge-server:1.0.10
         run: python -m pytest -q tests/test_container.py
 
   windows-client:

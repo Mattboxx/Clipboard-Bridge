@@ -6,6 +6,17 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Server 1.0.11 - 2026-10-27
+
+- Move optional Ko-fi support above the clipboard controls, alongside a direct
+  GitHub repository link. Keep the support label and explanatory tooltip localized
+  in all seven existing languages, with keyboard focus and narrow-screen wrapping.
+- Keep API URLs, optional authentication, sessions, storage paths and image
+  architectures unchanged. Windows 2.0.20, Android beta.12 and Apple exports are unchanged.
+- Add researched CasaOS submission files: Big Bear universal source and generated
+  Compose, a HomeAutomation scope candidate, and a LinuxServer eligibility inquiry
+  with a separate numeric-user deployment example. These do not imply acceptance.
+
 ## Windows 2.0.20 - 2026-10-24
 
 - Add Open file and Open folder to selected images/files in History and its context

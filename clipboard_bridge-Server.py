@@ -54,7 +54,7 @@ from clipboard_storage import HistoryStoreError, read_history, write_history
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.10"
+SERVER_VERSION = "1.0.11"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -1244,6 +1244,12 @@ code{background:#eef2ff;padding:2px 6px;border-radius:5px;font-size:13px}
 .support-link:hover,.support-link:focus-visible{background:#fff1f5;border-color:#f0b8ce}
 .support-link span{font-size:17px;line-height:1}
 .support-note{max-width:490px;margin:5px 0 0;line-height:1.5}
+.project-nav{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;
+ padding:0 0 14px;border-bottom:1px solid #e2e8f0;margin-bottom:16px}
+.repo-link{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid #cbd5e1;
+ border-radius:6px;background:#fff;color:#334155;font-size:12px;font-weight:600;text-decoration:none}
+.repo-link:hover,.repo-link:focus-visible{background:#f1f5f9;border-color:#94a3b8}
+.project-nav a:focus-visible{outline:2px solid #4f46e5;outline-offset:3px}
 .lang{margin-top:6px;font-size:12px}
 .lang a{color:#94a3b8;text-decoration:none;padding:0 3px}
 .lang a.on{color:#4f46e5;font-weight:700}
@@ -1465,6 +1471,11 @@ def render_home():
 <div><h1>Clipboard Bridge</h1><p>{S["subtitle"]}</p></div>
 <div style="margin-left:auto;text-align:right"><span class="badge">&#9679; {S["online"].format(n=len(items))}</span>{lang_toggle}{account_bar}</div></div>
 
+<nav class="project-nav" id="project-links" aria-label="{S['project_site']}">
+<a class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge" target="_blank" rel="noopener noreferrer">GitHub</a>
+<a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer" title="{escape(S['support_note'])}"><span aria-hidden="true">&#9825;</span>{S["support"]}</a>
+</nav>
+
 {_connection_guide(lang, base)}
 
 <div class="card">
@@ -1516,8 +1527,7 @@ def render_home():
 </details>
 </div>
 
-<footer class="foot"><div><span>{S["foot"]}</span><div class="resource-links">{_public_link(PROJECT_SITE, S["project_site"])}{_public_link(tutorial, guide_label)}</div><p class="support-note">{S["support_note"]}</p></div>
-<a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">&#9825;</span>{S["support"]}</a></footer>
+<footer class="foot"><div><span>{S["foot"]}</span><div class="resource-links">{_public_link(PROJECT_SITE, S["project_site"])}{_public_link(tutorial, guide_label)}</div><p class="support-note">{S["support_note"]}</p></div></footer>
 </div>
 <div id="toast" class="toast"></div>
 <script>{js_consts}{_HOME_JS}</script>
