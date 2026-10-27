@@ -6,13 +6,13 @@ version: "1.0.11"
 tagline: Share clipboard text and files across your devices
 description: >-
   A private clipboard and file bridge with history, multiple accounts,
-  a Windows client and iPhone Shortcuts support.
+  Windows and Android clients and Apple Shortcuts support.
 developer: Mattboxx
 website: https://github.com/Mattboxx/Clipboard-Bridge
 repo: https://github.com/Mattboxx/Clipboard-Bridge
 support: https://github.com/Mattboxx/Clipboard-Bridge/issues
 port: 5088
 defaultPassword: $APP_PASSWORD
-releaseNotes: Preserve damaged history and existing files on storage failures, reject ambiguous account directories, and update Flask. Existing data mounts, accounts and Apple Shortcut URLs stay compatible.
+releaseNotes: GitHub and localized optional Ko-fi support are now visible at the top of the web page. Existing data mounts, accounts and Apple Shortcut URLs stay compatible.
 submitter: Mattboxx
 submission: https://github.com/Mattboxx/Clipboard-Bridge-AppStore
