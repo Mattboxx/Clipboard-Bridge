@@ -2,8 +2,8 @@
 
 Prepared on **2026-10-27** for server **1.0.11**:
 `ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`.
-This is a local preparation package, not evidence that any store accepted the app.
-No upstream PR or issue has been submitted by preparing these files.
+This is a preparation package, not evidence that any store accepted the app.
+Publication requests have been submitted; acceptance remains the store owners' decision.
 Version 1.0.11 adds visible top-of-page GitHub and localized optional Ko-fi links;
 never submit these proposals before that exact image has been published and checked.
 
@@ -14,6 +14,13 @@ never submit these proposals before that exact image has been published and chec
 | Big Bear CasaOS | PR to `bigbeartechworld/big-bear-universal-apps`, branch `main` | Submit `big-bear/universal/apps/clipboard-bridge/`. The CasaOS YAML is generated, not the canonical source. |
 | LinuxServer AppStore | Maintainer inquiry **only if needed** | Its README explicitly asks for no PRs; generated catalog of LinuxServer.io images. Our image is independent. See `linuxserver/ISSUE_DESCRIPTION.md`. |
 | mr-manuel HomeAutomation | Scope check, then candidate PR to `master` if welcomed | Copy `homeautomation/Apps/ClipboardBridge/`. This is a companion homelab utility, not device automation; acceptance is the maintainer's decision. |
+
+Submitted requests: [Big Bear PR #4817](https://github.com/bigbeartechworld/big-bear-universal-apps/pull/4817),
+[LinuxServer issue #29](https://github.com/WisdomSky/LinuxServer-AppStore/issues/29),
+[HomeAutomation issue #8](https://github.com/mr-manuel/CasaOS-HomeAutomation-AppStore/issues/8).
+The Big Bear installation guidance explicitly distinguishes account-only spaces
+from the general clipboard: accounts do not protect the general space; protect
+its web page and API by setting both `CLIPBOARD_PASSWORD` and `CLIPBOARD_TOKEN`.
 
 Sources and immutable research references: [UPSTREAMS.md](UPSTREAMS.md).
 Do not submit three identical Compose files or claim LinuxServer.io affiliation.

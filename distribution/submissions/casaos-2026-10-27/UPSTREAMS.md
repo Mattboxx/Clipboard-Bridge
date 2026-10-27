@@ -1,7 +1,8 @@
 # Upstream research, 27 October 2026
 
 These are observed submission routes, not a promise of acceptance. Recheck the
-owners' latest instructions before opening a PR. No issue or PR has been sent.
+owners' latest instructions before opening a PR. Submitted request links are
+tracked in this package's README; none implies store acceptance.
 
 ## Big Bear
 
