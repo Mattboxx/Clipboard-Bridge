@@ -34,7 +34,7 @@ from ctypes import wintypes
 from email.message import Message
 from email.parser import BytesParser
 from email.policy import default as email_policy
-from urllib.parse import parse_qs, quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import clipboard_updates as updates
 
@@ -54,6 +54,8 @@ from tkinter import ttk, messagebox, filedialog
 from tkinter import font as tkfont
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
 from clipboard_storage import HistoryStoreError, read_history, write_history
+from clipboard_setup import DOWNLOAD_URL, base_address
+import qrcode
 import clipboard_design as design
 
 try:
@@ -172,6 +174,7 @@ DEFAULT_CONFIG = {
     "mode": "client",          # "client" = connect to an external server; "server" = be the server
     "server_ip": "127.0.0.1",  # external server address (client mode)
     "server_port": 5088,
+    "server_address": "",
     "host_port": 5088,         # port this PC listens on in server mode
     "host_max_upload_mb": 256, # compressed and expanded limit for local server uploads
     "token": "",
@@ -712,7 +715,7 @@ def server_url(settings=None):
     values = settings or _request_settings()
     if values.get("mode") == "server":
         return f"http://127.0.0.1:{values.get('host_port', 5088)}"
-    return f"http://{values['server_ip']}:{values['server_port']}"
+    return values.get("server_address") or f"http://{values.get('server_ip', '127.0.0.1')}:{values.get('server_port', 5088)}"
 
 
 def auth_headers(settings=None):
@@ -787,10 +790,7 @@ def check_connection(settings=None, *, on_status=None):
     global _connection_check_generation
     values = dict(settings or config)
     active_ticket = _connection_ticket()
-    if values.get("mode") == "server":
-        target = f"http://127.0.0.1:{values.get('host_port', 5088)}"
-    else:
-        target = f"http://{values.get('server_ip', '127.0.0.1')}:{values.get('server_port', 5088)}"
+    target = server_url(values)
 
     params = auth_params({"limit": 1}, values)
     headers = auth_headers(values)
@@ -4243,9 +4243,33 @@ def open_settings(icon=None, item=None):
         style="Settings.Section.TLabelframe",
     )
     server_box.pack(fill="x", pady=(0, 12))
-    add_field(server_box, 0, t("lbl_ip"), "server_ip")
-    add_field(server_box, 1, t("lbl_port"), "server_port")
-    add_field(server_box, 2, t("lbl_host_port"), "host_port")
+    italian = config.get("lang") == "it"
+    add_field(server_box, 0, "Indirizzo completo" if italian else "Full server address", "server_address")
+    entries["server_address"].set(server_url(dict(config, mode="client")))
+    add_field(server_box, 1, t("lbl_host_port"), "host_port")
+
+    def show_setup():
+        try:
+            address = (base_address(f"http://{_lan_ip()}:{int(entries['host_port'].get())}")
+                       if mode.get() == "server" else base_address(entries["server_address"].get()))
+        except ValueError as error:
+            messagebox.showerror("Clipboard Bridge", str(error), parent=root)
+            return
+        window = tk.Toplevel(root)
+        window.title("Collega un dispositivo" if italian else "Connect a device")
+        panel = ttk.Frame(window, padding=18)
+        panel.pack(fill="both", expand=True)
+        ttk.Label(panel, text=address).pack(pady=(0, 8))
+        ttk.Button(panel, text="Copia indirizzo" if italian else "Copy address",
+                   command=lambda: set_clipboard_text(address)).pack()
+        bitmap = qrcode.make(DOWNLOAD_URL, box_size=5).get_image().convert("RGB")
+        window.setup_qr = ImageTk.PhotoImage(bitmap, master=window)
+        ttk.Label(panel, image=window.setup_qr).pack(pady=12)
+        ttk.Button(panel, text="Apri download" if italian else "Open downloads",
+                   command=lambda: webbrowser.open(DOWNLOAD_URL)).pack()
+
+    ttk.Button(server_box, text="Collega dispositivo" if italian else "Connect device",
+               command=show_setup).grid(row=2, column=1, sticky="w", pady=(8, 0))
 
     account_box = ttk.LabelFrame(
         connection_tab,
@@ -4368,13 +4392,12 @@ def open_settings(icon=None, item=None):
 
     def pending_connection_values(validate_interval=True):
         try:
-            port = int(entries["server_port"].get())
             host_port = int(entries["host_port"].get())
         except ValueError:
             msg.config(text=t("err_numbers"))
             notebook.select(connection_page)
             return None
-        if not (1 <= port <= 65535 and 1 <= host_port <= 65535):
+        if not 1 <= host_port <= 65535:
             msg.config(text=t("err_ports"))
             notebook.select(connection_page)
             return None
@@ -4395,12 +4418,18 @@ def open_settings(icon=None, item=None):
             interval = config.get("poll_interval", 3)
             max_history = config.get("max_local_history", 100)
         values = dict(config)
+        try:
+            address = (base_address(entries["server_address"].get())
+                       if mode.get() == "client" else config.get("server_address", ""))
+        except ValueError as error:
+            msg.config(text=str(error))
+            notebook.select(connection_page)
+            return None
         values.update({
             "lang": "it" if language.get() == "Italiano" else "en",
             "appearance": appearance.get(),
             "mode": mode.get() if mode.get() in ("client", "server") else "client",
-            "server_ip": entries["server_ip"].get().strip(),
-            "server_port": port,
+            "server_address": address,
             "host_port": host_port,
             "token": entries["token"].get().strip(),
             "username": entries["username"].get().strip(),
@@ -4408,13 +4437,17 @@ def open_settings(icon=None, item=None):
             "poll_interval": interval if interval > 0 else 3,
             "max_local_history": min(1000, max(10, max_history)),
         })
+        if address:
+            parsed = urlsplit(address)
+            values["server_ip"] = parsed.hostname
+            values["server_port"] = parsed.port or (443 if parsed.scheme == "https" else 80)
         return values
 
     probe_generation = 0
 
     def probe_identity(values):
         return tuple(values.get(key) for key in (
-            "mode", "server_ip", "server_port", "host_port", "username", "password", "token"))
+            "mode", "server_address", "host_port", "username", "password", "token"))
 
     def show_connection_status(state=None, message=None):
         try:

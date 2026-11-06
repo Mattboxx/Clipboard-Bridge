@@ -50,3 +50,40 @@ risultato all'host con **POST > Corpo della richiesta: JSON > text (Testo)**, no
 File. L'URL della richiesta deve rimanere quello di Clipboard Bridge, non Reddit.
 Foto, documenti e gruppi di file mantengono i loro rami. La modifica va applicata e
 verificata sull'iPhone: le esportazioni firmate qui non sono state modificate.
+
+## Built-in Apple actions only
+
+The signed exports here require only Apple Shortcuts. Text and files are sent
+directly over HTTP; Base64 encoding and additional apps are not required.
+
+### Caricamento diretto con il tuo account
+
+Usa i due comandi esistenti, senza azioni Base64 o app aggiuntive. I file firmati
+non sono stati modificati: duplica i comandi importati prima di adattarli. Copia
+dalla pagina di configurazione l'indirizzo completo del server, porta inclusa.
+
+In ogni azione **Ottieni contenuti dell'URL** diretta al server Docker, aggiungi:
+
+| Intestazione | Valore |
+| --- | --- |
+| `X-Clipboard-User` | Nome del tuo account Clipboard Bridge |
+| `X-Clipboard-Password` | Password di quell'account |
+
+Rimuovi eventuali parametri `token`, `user` e `password` dai vecchi URL.
+Non codificare la password in Base64. Le intestazioni sono comunque leggibili
+sulla rete con HTTP: usa una
+LAN fidata o una VPN privata. Tieni le credenziali in un file locale o richiedile
+al momento; non condividere un'esportazione che le contiene. L'host Windows
+integrato non gestisce gli account del server Docker.
+
+**Invia:** mantieni `POST /clipboard`. Per testo o link usa **Corpo della
+richiesta: JSON** con un campo **Testo** `text`; per una foto o un file usa
+**Corpo della richiesta: File** e passa l'originale. Per conservare il nome,
+aggiungi `X-Clipboard-Filename` con il nome codificato per URL. I gruppi usano
+la [procedura ZIP esistente](../GUIDE.md#51-send-clipboard-to-server).
+
+**Ricevi:** mantieni `GET /clipboard/latest/raw` con le stesse intestazioni.
+La risposta contiene direttamente il testo o i byte del file: passala a
+**Copia negli appunti** oppure **Salva file**, senza decodificarla. Per
+gestire anche gruppi ed evitare di sovrascrivere la clipboard quando non
+ci sono elementi, segui la [variante con metadati](../GUIDE.md#52-receive-server-to-clipboard).

@@ -6,6 +6,29 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Server 1.0.12 - 2026-11-06
+
+- Simplify the browser workspace with separate Text/File tabs, a compact history,
+  readable mobile filters and a dedicated device connection page at `/setup`.
+- Add Light, Dark and System themes with visible, localized controls in Settings.
+  Remember the choice across the clipboard, login and setup pages.
+- Use original offline Lucide icons with consistent square sizing. Keep project
+  links and optional support available without crowding the clipboard controls.
+- Clarify native Apple Shortcuts setup and optional account headers, with quick
+  Windows, Android and Docker instructions. Setup QR codes link only to public
+  downloads and do not pair devices or include credentials.
+- Preserve the existing HTTP API, account URL compatibility, sessions, port and
+  persistent data. No AES mode, Base64 requirement or additional Apple app is added.
+
+## Windows 2.0.21 - 2026-11-06
+
+- Configure an external host using one complete server address instead of separate
+  address and port fields. Retain legacy settings for upgrade/downgrade compatibility.
+- Add Connect device in Settings with a copyable address and locally generated
+  download QR. Existing accounts, hotkeys, updater and host mode are preserved.
+- Android beta.12 and the signed Apple Shortcuts are unchanged and remain compatible.
+  Windows packages are still unsigned; no security protection is bypassed.
+
 ## Server 1.0.11 - 2026-10-27
 
 - Move optional Ko-fi support above the clipboard controls, alongside a direct

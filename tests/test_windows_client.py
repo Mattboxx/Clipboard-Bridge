@@ -1259,6 +1259,8 @@ def test_modern_settings_scroll_and_invalid_ports(tmp_path, monkeypatch, lang, t
             canvas.yview_moveto(1)
             app.update()
             assert canvas.winfo_width() > 450
+        next(child for child in widgets if isinstance(child, client.ttk.Radiobutton)
+             and child.cget("value") == "server").invoke()
         port = next(child for child in widgets if isinstance(child, client.ttk.Entry) and child.get() == "5088")
         port.delete(0, "end")
         port.insert(0, "-1")

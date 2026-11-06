@@ -6,3 +6,4 @@ pillow>=12.3.0,<13
 pypdfium2>=5.13,<6
 keyboard>=0.13,<1
 striprtf==0.0.33
+qrcode>=8,<9

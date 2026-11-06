@@ -43,7 +43,7 @@ def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
 
-    assert version == "2.0.20"
+    assert version == "2.0.21"
     metadata.validate(version)
 
 
@@ -116,6 +116,7 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
     assert set(rules[1:]) == {
         "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
         "!clipboard_text.py", "!clipboard_storage.py", "!server_web_strings.json", "!LICENSE",
+        "!clipboard_setup.py",
     }
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile
