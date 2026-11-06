@@ -47,6 +47,22 @@ def test_release_metadata_is_consistent():
     metadata.validate(version)
 
 
+def test_private_clipboard_worker_copies_all_local_client_modules():
+    import ast
+
+    tree = ast.parse((ROOT / "clipboard_bridge_windows.py").read_text(encoding="utf-8"))
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module.split(".")[0])
+    worker = (ROOT / "tests/windows_clipboard_worker.py").read_text(encoding="utf-8")
+    for module in modules:
+        if (ROOT / (module + ".py")).is_file():
+            assert '"' + module + '.py"' in worker
+
+
 @pytest.mark.parametrize("manifest,name,patched,obsolete,next_major", [
     ("requirements-server.txt", "flask", "3.1.3", ("3.1", "3.1.1", "3.1.2"), "4"),
     ("requirements-client.txt", "requests", "2.33.0", ("2.32", "2.32.4", "2.32.5"), "3"),
