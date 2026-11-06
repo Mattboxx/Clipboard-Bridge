@@ -149,7 +149,7 @@ i valori scaricati. **Non e un comando da incollare nel terminale**:
 ```dotenv
 APP_PORT=5088
 DATA_ROOT=./data
-APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.12
 MAX_HISTORY=200
 MAX_UPLOAD_MB=64
 API_TOKEN=
@@ -157,6 +157,7 @@ WEB_PASSWORD=
 ACCOUNTS=
 ACCOUNTS_FILE=
 SESSION_DAYS=3650
+PUBLIC_ADDRESS=
 ```
 
 **Salva prima dell'avvio.** Su Linux/Mac esegui `chmod 600 .env` per limitare
@@ -168,7 +169,7 @@ inviare o eliminare contenuti se lasci vuote le protezioni.
 |---|---|
 | `APP_PORT` | Porta dell'host: lascia `5088`. Se occupata usa ad esempio `5089` e cambia tutti gli URL dei dispositivi. La porta interna resta `5088`. |
 | `DATA_ROOT` | `./data` crea/conserva i dati nella cartella `data` accanto a `compose.yaml`, collegata a `/data` nel container. Su NAS/Portainer usa un percorso assoluto scrivibile. Non cambiare casualmente quello di un server esistente. |
-| `APP_IMAGE` | Blocca la versione server a `1.0.11`; Docker sceglie automaticamente l'architettura supportata. |
+| `APP_IMAGE` | Blocca la versione server a `1.0.12`; Docker sceglie automaticamente l'architettura supportata. |
 | `MAX_HISTORY` | Numero di elementi conservati per spazio/account; oltre il limite vengono rimosse le voci piu vecchie. |
 | `MAX_UPLOAD_MB` | Massimo in MB dell'intera richiesta di caricamento, anche quando contiene piu file. |
 | `API_TOKEN` | Protezione facoltativa dell'API generale, usata dalle app e dai Comandi Rapidi. |
@@ -176,6 +177,7 @@ inviare o eliminare contenuti se lasci vuote le protezioni.
 | `ACCOUNTS` | Account facoltativi con cronologie separate. Vuoto significa nessun account aggiuntivo. |
 | `ACCOUNTS_FILE` | File facoltativo per molti utenti; lascia vuoto alla prima installazione. |
 | `SESSION_DAYS` | Giorni del login web ricordato, da 1 a 3650. Puoi scegliere `365` per ridurre la durata. |
+| `PUBLIC_ADDRESS` | Indirizzo facoltativo mostrato nella configurazione dispositivi, con la porta pubblicata. Non inserire credenziali. |
 
 ### Facoltativo: proteggere la clipboard generale
 
@@ -348,7 +350,7 @@ Se la copia fallisce, non aggiornare: riavvia il vecchio container con
 1. Leggi le [release](https://github.com/Mattboxx/Clipboard-Bridge/releases): scegli
    una versione **server** pubblicata, non il numero dell'app Windows o Android.
 2. Modifica solo `APP_IMAGE` in `.env` con il tag desiderato. Oggi l'esempio stabile
-   e `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`. Mantieni percorso
+   e `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`. Mantieni percorso
    dati, porta e credenziali. Salva.
 3. Esegui nell'ordine, con `sudo` su Linux se necessario:
 
@@ -363,7 +365,7 @@ Attendi `healthy`, controlla `/health`, cronologia e un trasferimento. Se il dow
 fallisce dopo il backup, `docker compose start` puo riavviare il container vecchio
 ancora presente: risolvi l'errore prima di ricrearlo.
 
-**Con un tag fisso `1.0.11`, `pull` non passa da solo alla versione successiva:**
+**Con un tag fisso `1.0.12`, `pull` non passa da solo alla versione successiva:**
 prima devi cambiarlo. `latest` segue le versioni stabili quando scaricato, ma
 non aggiorna da solo un container in esecuzione. `edge` non e consigliato per
 un'installazione stabile da principianti.
@@ -417,7 +419,8 @@ grafica, trovi gli adattatori ZimaOS, Portainer, Umbrel, Runtipi e Dockge nel
 [catalogo separato](https://github.com/Mattboxx/Clipboard-Bridge-AppStore/blob/main/README.it.md).
 Non seguire entrambe le installazioni per gli stessi dati.
 
-Il server web offre sette lingue, incluso l'italiano, dal selettore nell'intestazione.
+Il server web offre sette lingue, incluso l'italiano: apri **Impostazioni** con
+il pulsante in alto a destra. Nello stesso pannello trovi **Tema: Chiaro, Scuro o Sistema**.
 Apri **Collega i tuoi dispositivi** per il riepilogo degli indirizzi e delle app.
 
 [File account e sicurezza](DOCKER.md#security-and-accounts) |

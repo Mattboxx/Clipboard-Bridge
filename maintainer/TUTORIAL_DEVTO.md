@@ -30,7 +30,7 @@ a suitable private network route.
 ## 1. Make Windows the host
 
 Download the Windows installer or portable EXE from the
-[release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.20).
+[release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.21).
 Intel/AMD Windows 10/11 PCs normally need x64; Windows 11 Snapdragon PCs need ARM64.
 
 Open the app. Right-click its clipboard icon near the Windows clock and choose
@@ -50,9 +50,9 @@ and the mobile clients. Left-clicking the tray icon opens History. Its default
 ## 2. Connect iPhone or iPad with two Shortcuts
 
 Download the signed
-[Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Load.Clipboard.shortcut)
+[Load Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Load.Clipboard.shortcut)
 and
-[Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Download.Clipboard.shortcut)
+[Download Clipboard](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Download.Clipboard.shortcut)
 files on your iPhone and add them to Apple's Shortcuts app.
 
 Edit the Get Contents of URL action in each Shortcut:
@@ -133,7 +133,7 @@ folder:
 ```yaml
 services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.12
     restart: unless-stopped
     ports:
       - "5088:5088"

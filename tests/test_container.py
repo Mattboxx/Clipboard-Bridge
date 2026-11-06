@@ -139,12 +139,18 @@ def test_container_ships_translations_and_device_guide(container_host, lang):
     assert status == 200
     html = body.decode("utf-8")
     assert f'<html lang="{lang}">' in html
-    assert 'id="connect"' in html and 'class="setup-section"' in html
+    assert f'href="/setup?lang={lang}"' in html
+    assert 'id="connect"' not in html
     assert "https://mattboxx.github.io/Clipboard-Bridge/" in html
     assert headers["Referrer-Policy"] == "no-referrer"
-    assert html.index('id="project-links"') < html.index('id="connect"')
     assert html.index('class="support-link"') < html.index('id="txt"')
     assert 'class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge"' in html
+    status, headers, body = container_host.request("GET", "/setup", lang=lang)
+    assert status == 200
+    html = body.decode("utf-8")
+    assert 'id="connect"' in html and 'class="setup-section"' in html
+    assert 'id="web-settings" hidden' in html
+    assert 'type="radio" name="theme"' in html
 
 
 def test_container_numeric_user_with_preowned_data_volume():

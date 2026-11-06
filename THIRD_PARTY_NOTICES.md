@@ -1,11 +1,12 @@
 # Third-Party Notices
 
-## Website Icons
+## Website and Server Icons
 
-The website uses original [Lucide](https://lucide.dev/) icons from release 1.57.0.
+The website and standalone server use original [Lucide](https://lucide.dev/) icons from release 1.57.0.
 They are distributed under the ISC license; some inherited Feather icons have
 MIT license notices. The complete upstream license is included in
-`docs/assets/icons/LICENSE`. Icons are served locally, without a CDN or tracking.
+`docs/assets/icons/LICENSE`; the server source also includes the full license
+beside its inline icons. Icons are served locally, without a CDN or tracking.
 
 ## PDF Preview Dependencies
 
@@ -17,3 +18,9 @@ Windows builds include the installed pypdfium2 distribution metadata and its
 complete `licenses` directory, including notices for the bundled PDFium binary
 and its dependencies. Build scripts explicitly collect this metadata. No Adobe
 installation or separate PDF viewer is required to generate a thumbnail.
+
+## Setup QR Dependency
+
+The Python client and server use [python-qrcode](https://github.com/lincolnloop/python-qrcode)
+for locally generated QR images (BSD-3-Clause). Windows packages include its
+distribution metadata and license files.

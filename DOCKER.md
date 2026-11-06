@@ -149,7 +149,7 @@ downloaded values; do not paste it into the terminal:
 ```dotenv
 APP_PORT=5088
 DATA_ROOT=./data
-APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
+APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.12
 MAX_HISTORY=200
 MAX_UPLOAD_MB=64
 API_TOKEN=
@@ -157,6 +157,7 @@ WEB_PASSWORD=
 ACCOUNTS=
 ACCOUNTS_FILE=
 SESSION_DAYS=3650
+PUBLIC_ADDRESS=
 ```
 
 **Save before proceeding.** On Linux/Mac, run `chmod 600 .env` to restrict access
@@ -168,7 +169,7 @@ service can read, upload or delete shared content when protection is empty.
 |---|---|
 | `APP_PORT` | Keep `5088`. If occupied, use e.g. `5089`; all device URLs then use `5089`. The container still listens on `5088`. |
 | `DATA_ROOT` | Keep `./data` for a new install. This becomes the `data` folder beside `compose.yaml`, mounted as `/data` inside Docker. For NAS/Portainer use an existing, writable absolute host path. Never change an existing data path casually. |
-| `APP_IMAGE` | The example pins server `1.0.11`. Docker picks the supported CPU architecture automatically. |
+| `APP_IMAGE` | The example pins server `1.0.12`. Docker picks the supported CPU architecture automatically. |
 | `MAX_HISTORY` | Retained history entries per shared space/account. Older entries are removed when the limit is exceeded. |
 | `MAX_UPLOAD_MB` | Maximum upload **request** size in MB, including a whole file group. `64` is the default. |
 | `API_TOKEN` | Optional protection for the shared API used by apps and Shortcuts. |
@@ -176,6 +177,7 @@ service can read, upload or delete shared content when protection is empty.
 | `ACCOUNTS` | Optional separate clipboard accounts. Leave empty for the shared clipboard. |
 | `ACCOUNTS_FILE` | Optional file for many accounts; leave empty for the first installation. |
 | `SESSION_DAYS` | Remember browser logins for 1..3650 days. Choose e.g. `365` for a shorter duration. |
+| `PUBLIC_ADDRESS` | Optional address shown on the device setup page, including the published port. No credentials. |
 
 ### Optional: protect the general clipboard
 
@@ -315,16 +317,17 @@ Do **not** expose the port directly to the internet.
 
 ## Connect your devices and choose a language
 
-The page header offers English (default), Italian, Spanish, French, German,
+Open **Settings** using the top-right button for English (default), Italian, Spanish, French, German,
 Portuguese and simplified Chinese. The selection is remembered for this browser,
 including the login page. It does not change clipboard text or file contents.
 
-Expand **Connect your devices** above the text editor for the server address and
+Open **Connect your devices** above the text editor for the server address and
 step-by-step Windows, Android and Apple Shortcuts instructions. Project website,
 downloads, full tutorial and optional Ko-fi support are linked without forwarding
 your account credentials. Full external guides remain available in English and Italian.
 
-For a source-only Python deployment, keep `server_web_strings.json` beside
+For a source-only Python deployment, install `requirements-server.txt` and keep
+`server_web_strings.json` and `clipboard_setup.py` beside
 `clipboard_bridge-Server.py`, `clipboard_text.py` and `clipboard_storage.py`.
 The Docker image already includes these files; no language packs are needed.
 
@@ -423,7 +426,7 @@ restart the existing service with `docker compose start` while investigating.
    and choose a **published server** version (Windows/Android numbers are separate).
 2. Open `.env` as in step 3. Change **only** `APP_IMAGE` to the desired full image
    tag, keeping the same `DATA_ROOT`, credentials and port. Current stable:
-   `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`.
+   `APP_IMAGE=ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`.
 3. Save, then run these commands in order (with `sudo` on Linux if needed):
 
 ```text
@@ -437,7 +440,7 @@ Wait for `healthy`, reopen `/health`, check your version and history, then try a
 send/receive. If downloading fails after the backup, `docker compose start` can
 start the existing stopped container; investigate before recreating it.
 
-**A pinned `1.0.11` tag does not advance to the next release when you run `pull`.**
+**A pinned `1.0.12` tag does not advance to the next release when you run `pull`.**
 Change it first. `latest` follows stable releases when pulled but does not update
 a running container by itself; pinning makes upgrades deliberate. Do not use
 `edge` for a beginner's stable installation.

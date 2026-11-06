@@ -111,7 +111,7 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.20` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.21` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
@@ -159,7 +159,7 @@ and abandoned downloads are cleaned after seven days. Unfinished helpers are kep
 When Windows is hosting, the updater waits for graceful shutdown of active requests;
 it never force-closes the app. A failed handoff leaves the existing app available.
 
-> **Windows 11 security:** version 2.0.20 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.21 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -176,7 +176,9 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
 2. In **General**, choose a mode:
    - **Server**: the app displays the address to place in the iPhone Shortcuts. No
      separate server is required.
-   - **Client**: in **Connection**, set **Server IP** = `SERVER_IP` and **Port** = `5088`.
+   - **Client**: in **Connection**, set **Full server address** to `http://SERVER_IP:5088`.
+     Existing IP/port settings are retained when upgrading. Use **Connect device**
+     to copy the address or open the public downloads QR; this does not pair devices.
 3. In Client mode, enter the optional token or account credentials configured by the
    server.
 4. Click **Check connection now**. The detailed status must become **CONNECTED** and the
@@ -311,10 +313,10 @@ to each shortcut.
 ### Download the ready-made Shortcuts
 
 Both prepared iPhone Shortcuts are included in the
-[Clipboard Bridge 2.0.20 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.20):
+[Clipboard Bridge 2.0.21 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.21):
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Load.Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Download.Clipboard.shortcut)
+- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Load.Clipboard.shortcut)
+- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Download.Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app. Edit the
 **Get Contents of URL** action and replace the complete example URL:
@@ -442,6 +444,14 @@ For an account or token, append the same query parameters to **every URL above**
 ---
 
 ## 6. Use the web interface
+
+Open **Settings** using the top-right button, then choose **Theme: System, Light
+or Dark**. The browser keeps
+this appearance preference across visits, including the login and setup pages.
+Open **Connect your devices**, or visit `http://SERVER_IP:5088/setup`, for
+three short steps per platform. Apple instructions come first, with Send/Receive
+endpoints and optional account headers. The QR links to public downloads only:
+enter your own server address in each client or Shortcut; scanning does not pair it.
 
 You don't even need the client or Shortcuts: open `http://SERVER_IP:5088/` in any browser
 (including Safari on the iPhone). From there you can:

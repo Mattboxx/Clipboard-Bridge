@@ -47,18 +47,25 @@ import uuid
 import mimetypes
 import threading
 import zipfile
+from functools import lru_cache
 from datetime import datetime, timedelta
 from clipboard_text import RTF_MIMES, decode_rtf_bytes, plain_clipboard_text
 from clipboard_storage import HistoryStoreError, read_history, write_history
+from clipboard_setup import DOWNLOAD_URL, base_address
+import qrcode
+from qrcode.image.svg import SvgPathImage
 
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.11"
+SERVER_VERSION = "1.0.12"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
 INDEX_FILE = os.path.join(DATA_DIR, "index.json")
+PUBLIC_ADDRESS = os.getenv("CLIPBOARD_PUBLIC_ADDRESS", "")
+if PUBLIC_ADDRESS:
+    PUBLIC_ADDRESS = base_address(PUBLIC_ADDRESS)
 
 
 def _env_int(name, default, minimum, maximum):
@@ -758,7 +765,7 @@ def _bundle_member_response(entry, member_index):
 @app.before_request
 def _check_auth():
     p = request.path
-    if p in ("/health", "/login", "/logout"):
+    if p in ("/health", "/login", "/logout", "/setup"):
         return
     web = (p == "/" or p.startswith("/ui/"))
 
@@ -838,24 +845,17 @@ def _upload_too_large(_error):
 
 
 LOGIN_HTML = """<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipboard Bridge</title>
-<style>body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-background:linear-gradient(180deg,#eef2ff,#f8fafc);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}}
-main{{box-sizing:border-box;max-width:calc(100% - 32px);background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:28px;width:380px;
-box-shadow:0 10px 30px -20px rgba(15,23,42,.3);text-align:center}}
-h1{{font-size:18px;margin:0 0 16px;color:#1e293b}}
-input{{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:15px;margin-bottom:10px}}
-button{{width:100%;border:0;background:#4f46e5;color:#fff;padding:11px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}}
-button:hover{{background:#4338ca}}.err{{color:#b91c1c;font-size:13px;margin-bottom:10px}}
-.language-form{{margin-bottom:20px}}select{{max-width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#1e293b}}
-</style></head>
-<body><main>{language_selector}<form method="post" action="/login?lang={lang}">
-<h1>&#128274; Clipboard Bridge</h1>
-{err}
-{user_field}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
+<title>Clipboard Bridge</title>{theme_init}<style>{css}</style></head>
+<body><main class="login-wrap"><div class="login-panel">
+<header class="head"><div class="brand">{logo}<h1>Clipboard Bridge</h1></div>{settings_button}</header>
+{settings_panel}
+<form method="post" action="/login?lang={lang}">
+{err}{user_field}
 <input type="password" name="password" placeholder="{password}" aria-label="{password}" autocomplete="current-password"{pw_autofocus}>
-<button type="submit">{login_label}</button>
-</form></main></body></html>"""
+<button class="btn" type="submit">{login_label}</button>
+</form></div></main><script>{js}</script></body></html>"""
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -890,7 +890,9 @@ def login():
                   if ACCOUNTS else '')
     pw_autofocus = '' if ACCOUNTS else ' autofocus'
     return Response(LOGIN_HTML.format(err=err, user_field=user_field, pw_autofocus=pw_autofocus,
-                                     lang=lang, language_selector=_language_selector(lang, "/login"),
+                                     theme_init=_THEME_INIT, css=_HOME_CSS, logo=LOGO_SVG,
+                                     settings_button=_settings_button(lang), js=_HOME_JS,
+                                     settings_panel=_preferences_panel(lang, "/login"), lang=lang,
                                      password=strings["password"], login_label=strings["login"]),
                     mimetype="text/html")
 
@@ -1184,89 +1186,206 @@ LOGO_SVG = ('<svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000
             '<rect x="16" y="27" width="16" height="2.5" rx="1.25" fill="#b0bac6"/>'
             '<rect x="16" y="33" width="16" height="2.5" rx="1.25" fill="#b0bac6"/></svg>')
 
-_S = ('viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
-      'stroke-linecap="round" stroke-linejoin="round"')
-IC_TEXT = f'<svg {_S}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>'
-IC_FILE = f'<svg {_S}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
-IC_UP = f'<svg {_S}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5"/><path d="M12 4v12"/></svg>'
-IC_HIST = f'<svg {_S}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
-IC_PHONE = f'<svg {_S}><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>'
+# Lucide 1.57.0: original geometry, bundled inline for offline use.
+# https://github.com/lucide-icons/lucide/tree/1.57.0
+# ISC License
+#
+# Copyright (c) 2026 Lucide Icons and Contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+# ---
+#
+# The following Lucide icons are derived from the Feather project:
+#
+# airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+#
+# The MIT License (MIT) (for the icons listed above)
+#
+# Copyright (c) 2013-present Cole Bemis
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+_S = ('xmlns="http://www.w3.org/2000/svg" width="24" height="24" '
+      'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+      'stroke-linecap="round" stroke-linejoin="round" class="ui-icon" '
+      'aria-hidden="true" focusable="false"')
+IC_TEXT = f'<svg {_S} data-icon="file-text"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg>'
+IC_FILE = f'<svg {_S} data-icon="file"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /></svg>'
+IC_UP = f'<svg {_S} data-icon="upload"><path d="M12 3v12" /><path d="m17 8-5-5-5 5" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /></svg>'
+IC_HIST = f'<svg {_S} data-icon="history"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>'
+IC_PHONE = f'<svg {_S} data-icon="smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>'
+IC_REFRESH = f'<svg {_S} data-icon="refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>'
+IC_TRASH = f'<svg {_S} data-icon="trash-2"><path d="M10 11v6" /><path d="M14 11v6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>'
+IC_SETTINGS = f'<svg {_S} data-icon="settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg>'
+IC_SUN = f'<svg {_S} data-icon="sun"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>'
+IC_MOON = f'<svg {_S} data-icon="moon"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg>'
+IC_SYSTEM = f'<svg {_S} data-icon="monitor"><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /></svg>'
+IC_LINK = f'<svg {_S} data-icon="link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>'
+IC_HEART = f'<svg {_S} data-icon="heart"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" /></svg>'
 
 _HOME_CSS = """
-*{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,#eef2ff,#f8fafc 260px);
- font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1e293b}
-.wrap{max-width:760px;margin:0 auto;padding:22px 16px 50px}
-.head{display:flex;align-items:center;gap:14px;margin:6px 0 18px}
-.logo{width:46px;height:46px;flex:0 0 auto}
-.head h1{font-size:21px;margin:0}.head p{margin:2px 0 0;color:#64748b;font-size:13px}
-.badge{margin-left:auto;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;
- padding:6px 11px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;margin:16px 0;
- box-shadow:0 1px 2px rgba(15,23,42,.04),0 10px 30px -20px rgba(15,23,42,.25)}
-.card h2{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 12px}
-.card h2 svg{width:18px;height:18px;color:#4f46e5;flex:0 0 auto}
-textarea{width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font:inherit;
- font-size:15px;resize:vertical;min-height:120px;background:#f8fafc}
-.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.btn{border:0;background:#4f46e5;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;
- font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
-.btn:hover{background:#4338ca}
-.btn.ghost{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0}
-.btn.ghost:hover{background:#e2e8f0}
-.btn.small{padding:6px 10px;font-size:12px;border-radius:8px}
-.drop{border:2px dashed #c7d2fe;border-radius:12px;padding:24px;text-align:center;color:#64748b;
- background:#f8fafc;cursor:pointer;transition:.15s}
-.drop.hover{border-color:#4f46e5;background:#eef2ff;color:#4f46e5}
-.item{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #eef2f7}
-.item:first-child{border-top:0}
-.thumb{width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid #e2e8f0;background:#fff;flex:0 0 auto}
-.ico{width:44px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;
- background:#eef2ff;color:#4f46e5;flex:0 0 auto}.ico svg{width:22px;height:22px}
-.meta{flex:1;min-width:0}.prev{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub{font-size:12px;color:#94a3b8;margin-top:2px}
-.actions{display:flex;gap:6px;flex:0 0 auto}
-.empty{color:#94a3b8;font-size:14px;padding:6px 0}
-.url{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;
- border-radius:9px;padding:8px 10px;margin:4px 0 10px}
-.url code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
- font-size:12.5px;color:#334155;background:transparent;padding:0}
-.method{font-weight:700;color:#4f46e5;font-size:11px;background:#eef2ff;padding:3px 8px;border-radius:6px}
-code{background:#eef2ff;padding:2px 6px;border-radius:5px;font-size:13px}
-.nota{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px 12px;
- border-radius:10px;font-size:13px;margin:0 0 10px}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;
- padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
-.toast.show{opacity:1}.foot{display:flex;align-items:center;justify-content:space-between;
- flex-wrap:wrap;gap:10px;color:#64748b;font-size:12px;margin-top:12px}
-.support-link{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #e2e8f0;
- border-radius:6px;color:#9f315e;background:#fff;text-decoration:none;font-size:12px;font-weight:600}
-.support-link:hover,.support-link:focus-visible{background:#fff1f5;border-color:#f0b8ce}
-.support-link span{font-size:17px;line-height:1}
-.support-note{max-width:490px;margin:5px 0 0;line-height:1.5}
-.project-nav{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;
- padding:0 0 14px;border-bottom:1px solid #e2e8f0;margin-bottom:16px}
-.repo-link{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid #cbd5e1;
- border-radius:6px;background:#fff;color:#334155;font-size:12px;font-weight:600;text-decoration:none}
-.repo-link:hover,.repo-link:focus-visible{background:#f1f5f9;border-color:#94a3b8}
-.project-nav a:focus-visible{outline:2px solid #4f46e5;outline-offset:3px}
-.lang{margin-top:6px;font-size:12px}
-.lang a{color:#94a3b8;text-decoration:none;padding:0 3px}
-.lang a.on{color:#4f46e5;font-weight:700}
-.language-form{margin:8px 0}
-.language-form select{max-width:100%;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font:inherit;font-size:13px}
-.setup-guide{border-block:1px solid #cbd5e1;padding:16px 0;margin:0 0 20px;font-size:14px;line-height:1.6}
-.setup-guide summary{cursor:pointer;font-weight:600;color:#334155}
-.setup-guide p{color:#475569;margin:12px 0}
-.setup-section{border-top:1px solid #e2e8f0;padding:12px 0}
-.setup-section ol{padding-left:24px;color:#475569}
-.setup-section li{margin:8px 0}
-.resource-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin:10px 0}
-.resource-link{color:#4338ca;text-underline-offset:3px;overflow-wrap:anywhere}
-.head{flex-wrap:wrap;gap:12px}
-.foot>div{flex:1 1 260px;min-width:0}
-@media(max-width:480px){.head>div:last-child{flex:1 1 100%;text-align:left!important}.url{gap:6px}.url code{min-width:0}.item{flex-wrap:wrap}.actions{margin-left:auto}}
+:root{color-scheme:light;--bg:#f7f8fa;--surface:#fff;--field:#f0f2f5;--hover:#e8ecf2;
+--ink:#20242c;--muted:#606b7a;--line:#dce1e8;--accent:#2367d1;--accent-hover:#1b55b0;
+--tint:#eaf1ff;--good:#16734c;--good-bg:#e9f6ee;--warning:#815513;--warning-bg:#fff6e4;
+--danger:#b82a43;--danger-bg:#fff0f3}
+:root[data-theme=dark]{color-scheme:dark;--bg:#17181b;--surface:#202226;--field:#24272d;
+--hover:#30343c;--ink:#f0f2f6;--muted:#a9b2c0;--line:#373c45;--accent:#8ab6ff;
+--accent-hover:#aacbff;--tint:#26344c;--good:#8bdbb0;--good-bg:#20372b;
+--warning:#f0cd8a;--warning-bg:#342c1e;--danger:#ff9eac;--danger-bg:#38232b}
+*{box-sizing:border-box}[hidden]{display:none!important}html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;letter-spacing:0}button,a,summary{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent);text-underline-offset:3px}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.ui-icon{display:block;width:18px;height:18px;aspect-ratio:1;flex:0 0 auto}
+.wrap{width:100%;max-width:1000px;margin:auto;padding:28px 32px 40px}
+.head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.brand-copy{min-width:0}
+.logo{width:40px;height:40px;flex:0 0 auto}.head h1{font-size:22px;line-height:1.25;margin:0;font-weight:650;overflow-wrap:normal}
+.head p{margin:5px 0 0;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.active-space{min-width:0;overflow-wrap:anywhere}.online{color:var(--good);display:inline-flex;align-items:center;gap:6px}
+.online::before{content:"";width:6px;height:6px;background:currentColor;border-radius:50%;flex-shrink:0}
+.project-nav{border-block:1px solid var(--line);padding:10px 0;margin-bottom:22px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.repo-link{display:inline-flex;align-items:center;gap:8px;color:var(--ink);font-size:13px;font-weight:600;text-decoration:none;min-height:44px;overflow-wrap:anywhere}
+.repo-link svg{width:18px;height:18px;flex:0 0 auto;color:var(--accent)}.repo-link:hover{text-decoration:underline}
+.support-link{display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;color:var(--danger);
+border:1px solid transparent;background:var(--danger-bg);border-radius:6px;text-decoration:none;font-size:24px}
+.support-link:hover{border-color:var(--danger)}
+.support-link .ui-icon{width:21px;height:21px}
+.web-settings{padding:18px 0 22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:22px}
+.web-settings h2{margin:0 0 16px;font-size:16px;font-weight:650}
+.preferences{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:24px;align-items:start}
+.language-form,.theme-form{min-width:0;margin:0;padding:0;border:0}
+.field-label,.theme-form legend{display:block;font-size:13px;font-weight:600;margin-bottom:8px;padding:0;color:var(--ink)}
+.language-form label{display:block}.language-form select{width:100%;min-height:46px}
+select,input[type=search],input[readonly]{min-width:0;max-width:100%;background:var(--surface);color:var(--ink);
+border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-height:44px;font-size:14px}
+.theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.theme-option{position:relative;min-width:0;cursor:pointer}
+.theme-option input{position:absolute;width:1px;height:1px;opacity:0;inset:0;pointer-events:none}
+.theme-option>span{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface);border:1px solid var(--line);
+border-radius:6px;min-height:46px;padding:8px;font-size:13px;font-weight:500;text-align:center;overflow-wrap:anywhere}
+.theme-option svg{width:18px;height:18px;flex:0 0 auto}.theme-option:hover>span{background:var(--hover)}
+.theme-option input:checked+span{background:var(--tint);border-color:var(--accent);color:var(--accent)}
+.theme-option input:focus-visible+span{outline:2px solid var(--accent);outline-offset:3px}
+.lang{display:flex;gap:12px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere;padding-top:18px;font-size:13px}
+.lang .on{font-weight:600}.lang a{min-height:40px;display:inline-flex;align-items:center}
+.composer{padding-bottom:24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.composer-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:280px;max-width:100%;gap:4px;padding:4px;background:var(--field);border-radius:8px;margin-bottom:16px}
+.composer-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:40px;padding:8px 12px;
+border:1px solid transparent;border-radius:5px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
+.composer-tabs button svg{width:18px;height:18px;flex:0 0 auto}
+.composer-tabs button[aria-selected=true]{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.composer-tabs button:hover{color:var(--ink)}
+.panel{min-width:0}.panel h2{font-size:16px;margin:0 0 12px}
+textarea{display:block;width:100%;min-height:124px;resize:vertical;background:var(--surface);color:var(--ink);
+border:1px solid var(--line);border-radius:8px;padding:14px;line-height:1.6;font-size:16px}
+textarea::placeholder,input::placeholder{color:var(--muted);opacity:1}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.btn{min-height:44px;display:inline-flex;justify-content:center;align-items:center;gap:8px;background:var(--accent);color:#fff;
+border:1px solid transparent;border-radius:6px;font-size:13px;font-weight:600;padding:10px 14px;text-decoration:none;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+[data-theme=dark] .btn{color:#11203b}.btn:hover{background:var(--accent-hover)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}.btn.ghost:hover{background:var(--hover)}
+.btn.small{padding:8px 12px;min-height:40px;font-size:12px}.btn.danger{color:var(--danger)}
+.btn svg{width:18px;height:18px;flex-shrink:0}.btn.icon-button{width:44px;height:44px;padding:10px;flex:0 0 44px}
+.drop{min-height:124px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+border:1px dashed var(--line);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer;padding:18px;font-size:14px}
+.drop svg{width:26px;height:26px;color:var(--accent);margin-bottom:6px}.drop b{color:var(--ink);font-weight:600}
+.drop:hover,.drop.hover{background:var(--tint);border-color:var(--accent)}
+.history{margin-bottom:28px}.history-title{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:16px}
+.history-title h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px;margin:0;font-weight:650}
+.count{font-size:12px;font-weight:500;color:var(--muted);background:var(--field);padding:2px 8px;border-radius:5px}
+.history-tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.history-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,180px) auto;gap:8px;margin-bottom:18px}
+.history-filter input[type=search]{width:100%}.history-filter select{width:100%}
+.history-list{border-top:1px solid var(--line)}
+.item{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:10px;padding:16px 0;border-bottom:1px solid var(--line);min-width:0}
+.thumb,.ico{width:40px;height:40px;border-radius:6px;background:var(--tint);border:1px solid var(--line)}
+.thumb{object-fit:cover}.ico{display:flex;align-items:center;justify-content:center;color:var(--accent)}.ico svg{width:20px;height:20px}
+.meta{min-width:0}.prev{font-size:14px;overflow-wrap:anywhere;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.sub{font-size:12px;color:var(--muted);margin-top:5px;display:flex;column-gap:10px;row-gap:2px;flex-wrap:wrap;overflow-wrap:anywhere}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;min-width:0}.empty{color:var(--muted);padding:28px 10px;text-align:center}
+.pagination{justify-content:flex-end;color:var(--muted);font-size:12px}.pagination>span{margin-right:auto}
+.setup-guide{margin-bottom:24px}.setup-guide>summary{font-size:18px}.setup-page .setup-guide>summary{display:none}
+summary{cursor:pointer;color:var(--ink);font-weight:600;padding:12px 0}summary::marker{color:var(--muted)}
+.setup-guide p,.setup-section li,.shortcut-content>p{color:var(--muted)}.setup-content{padding-top:0}
+.setup-intro{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:24px;margin:0 0 20px}
+.setup-address{min-width:0}.setup-address>p{margin-top:6px}.qr{margin:0;text-align:center}
+.qr svg{width:124px;height:124px;display:block;margin:auto;background:#fff;border:8px solid #fff;border-radius:6px}
+.qr figcaption{font-size:12px;color:var(--muted);margin-top:8px}.setup-section{border-top:1px solid var(--line);padding:4px 0}
+.setup-section summary{font-size:15px}.setup-section ol{padding-left:22px;max-width:800px}.setup-section li{padding-left:4px;margin:12px 0}
+.resource-links{display:flex;gap:10px 18px;flex-wrap:wrap;margin:12px 0}.resource-link{font-size:13px;overflow-wrap:anywhere;display:inline-flex;align-items:center;min-height:32px}
+.url{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;background:var(--field);
+border:1px solid var(--line);border-radius:6px;margin:8px 0 16px}
+.url code{min-width:0;white-space:normal;overflow-wrap:anywhere;font-size:12px;background:none;padding:0;color:var(--ink)}
+.method{color:var(--accent);font-size:11px;font-weight:700}
+code{font-size:12px;background:var(--tint);color:var(--ink);border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}
+.nota{color:var(--warning);background:var(--warning-bg);border-radius:6px;padding:12px;margin:12px 0;font-size:13px}
+.shortcut-content{padding:8px 0}.shortcut-content h3{font-size:13px;margin-bottom:6px}
+.foot{border-top:1px solid var(--line);padding-top:18px;font-size:12px;color:var(--muted)}.foot .resource-links{margin:6px 0}
+.support-note{max-width:680px;margin-bottom:0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);background:var(--ink);
+color:var(--surface);padding:10px 18px;border-radius:6px;opacity:0;transition:opacity .15s;pointer-events:none;z-index:10}
+.toast.show{opacity:1}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.login-panel{width:420px;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:24px}
+.login-panel .head{padding-bottom:16px}.login-panel .head h1{font-size:20px}.login-panel .logo{width:32px;height:32px}
+.login-panel .web-settings{padding-top:16px}.login-panel .preferences{grid-template-columns:minmax(0,1fr);gap:16px}
+.login-panel .theme-option>span{flex-direction:column}
+.login-panel input:not([type=radio]){width:100%;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:12px;margin:0 0 12px;font-size:16px}
+.login-panel button[type=submit]{width:100%}.err{color:var(--danger);font-size:13px;margin-bottom:12px}
+.setup-page{max-width:900px}.setup-page>h2{font-size:20px;line-height:1.35;margin:22px 0 16px}
+@media(max-width:600px){.wrap{padding:20px 16px 28px}.head{gap:12px;padding-bottom:16px}.head h1{font-size:20px}.logo{width:36px;height:36px}.brand{gap:10px}
+.preferences{grid-template-columns:minmax(0,1fr);gap:18px}.theme-option>span{flex-direction:column;min-height:64px;padding:10px 6px;gap:6px}
+.project-nav{margin-bottom:20px;gap:10px}.composer-tabs{width:100%}.composer-tabs button{min-height:44px}
+.composer{padding-bottom:22px;margin-bottom:24px}.composer .row .btn{flex:1;min-width:0}
+.history-filter{grid-template-columns:minmax(0,1fr) auto}.history-filter input[type=search]{grid-column:1/-1;font-size:16px}
+.history-title{gap:8px}.history-title h2{font-size:16px}.history-tools{gap:6px}.history-tools .btn{min-height:44px}
+.item{grid-template-columns:36px minmax(0,1fr);gap:10px}.thumb,.ico{width:36px;height:36px}.actions{grid-column:2;justify-content:flex-start}
+.actions .btn{min-height:44px}.setup-intro{grid-template-columns:minmax(0,1fr)}.qr{display:flex;align-items:center;gap:16px;text-align:left}
+.qr svg{width:90px;height:90px;margin:0}.qr>div{flex:0 0 90px}.qr figcaption{max-width:240px}
+.url{grid-template-columns:auto minmax(0,1fr);gap:8px}.url .btn{grid-column:2;justify-self:start}.url code{line-height:1.6}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
 """
+
+_THEME_INIT = """<script>
+(function(){
+var preference='system';
+try{var stored=localStorage.getItem('clipboard-bridge-theme');if(['system','light','dark'].includes(stored))preference=stored;}catch(e){}
+var media=window.matchMedia('(prefers-color-scheme: dark)');
+function apply(){document.documentElement.dataset.theme=preference==='system'?(media.matches?'dark':'light'):preference;}
+window.setBridgeTheme=function(value){if(!['system','light','dark'].includes(value))return;preference=value;try{localStorage.setItem('clipboard-bridge-theme',value);}catch(e){}apply();};
+window.bridgeThemePreference=function(){return preference;};
+if(media.addEventListener)media.addEventListener('change',function(){if(preference==='system')apply();});
+apply();
+})();
+</script>"""
+
 
 _HOME_JS = """
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
@@ -1279,6 +1398,24 @@ fetch('/clipboard/item/'+id+TOKENQS,{method:'DELETE'}).then(checkResult).catch(f
 function clearHistory(){if(!confirm(T_CLEAR))return;
 fetch('/clipboard/history'+TOKENQS,{method:'DELETE'}).then(checkResult).catch(function(){toast(T_ERROR);});}
 function checkResult(r){if(!r.ok)throw new Error('Request failed');location.reload();}
+document.querySelectorAll('[data-theme-selector]').forEach(function(radio){
+radio.checked=radio.value===window.bridgeThemePreference();
+radio.addEventListener('change',function(){if(this.checked)window.setBridgeTheme(this.value);});});
+document.querySelectorAll('[data-settings-toggle]').forEach(function(button){
+button.addEventListener('click',function(){var panel=document.getElementById('web-settings');
+panel.hidden=!panel.hidden;button.setAttribute('aria-expanded',String(!panel.hidden));});});
+(function(){var tabs=Array.from(document.querySelectorAll('[data-compose-tab]'));if(!tabs.length)return;
+function activate(tab,focus){tabs.forEach(function(other){var selected=other===tab;
+other.setAttribute('aria-selected',String(selected));other.tabIndex=selected?0:-1;
+document.getElementById(other.getAttribute('aria-controls')).hidden=!selected;});
+if(focus)tab.focus();}
+tabs.forEach(function(tab,index){tab.addEventListener('click',function(){activate(tab,false);});
+tab.addEventListener('keydown',function(e){var next;
+if(e.key==='ArrowRight')next=(index+1)%tabs.length;
+else if(e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;
+else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;
+if(next!==undefined){e.preventDefault();activate(tabs[next],true);}});});
+activate(tabs[0],false);})();
 (function(){var z=document.getElementById('drop'),f=document.getElementById('file'),
 fm=document.getElementById('upform');if(!z)return;z.onclick=function(){f.click();};
 function on(e){e.preventDefault();z.classList.add('hover');}
@@ -1346,8 +1483,9 @@ def _language_selector(lang, action="/"):
     hidden = f'<input type="hidden" name="token" value="{escape(token)}">' if token else ""
     label = WEB_STRINGS[lang]["language"]
     return (f'<form class="language-form" method="get" action="{action}">{hidden}'
+            f'<label><span class="field-label">{label}</span>'
             f'<select name="lang" aria-label="{label}" onchange="this.form.submit()">'
-            f'{options}</select><noscript><button type="submit">{label}</button></noscript></form>')
+            f'{options}</select></label><noscript><button type="submit">{label}</button></noscript></form>')
 
 
 def _public_link(url, label):
@@ -1355,26 +1493,81 @@ def _public_link(url, label):
             f'rel="noopener noreferrer">{label}</a>')
 
 
-def _connection_guide(lang, base):
+def _theme_selector(lang):
+    strings = WEB_STRINGS[lang]
+    icons = {"system": IC_SYSTEM, "light": IC_SUN, "dark": IC_MOON}
+    options = "".join(
+        f'<label class="theme-option"><input type="radio" name="theme" value="{mode}" data-theme-selector>'
+        f'<span>{icons[mode]}<span>{strings["theme_" + mode]}</span></span></label>'
+        for mode in ("light", "dark", "system"))
+    return (f'<fieldset class="theme-form"><legend>{strings["theme"]}</legend>'
+            f'<div class="theme-options">{options}</div></fieldset>')
+
+
+def _settings_button(lang):
+    label = WEB_STRINGS[lang]["settings"]
+    return (f'<button class="btn ghost icon-button" type="button" data-settings-toggle '
+            f'aria-controls="web-settings" aria-expanded="false" aria-label="{label}" title="{label}">'
+            f'{IC_SETTINGS}</button>')
+
+
+def _preferences_panel(lang, action="/", account_bar=""):
+    strings = WEB_STRINGS[lang]
+    return (f'<section class="web-settings" id="web-settings" hidden aria-labelledby="settings-heading">'
+            f'<h2 id="settings-heading">{strings["settings"]}</h2><div class="preferences">'
+            f'{_language_selector(lang, action)}{_theme_selector(lang)}</div>{account_bar}</section>')
+
+
+def _shortcut_endpoints(lang, base, suffix="", account=None, token=""):
+    strings = WEB_STRINGS[lang]
+    notice = f'<div class="nota">{strings["auth_optional"]}</div>'
+    if account:
+        notice += (f'<p>{strings["acct_note"].format(name=escape(account))}</p>'
+                   '<p><code>X-Clipboard-User</code> &middot; <code>X-Clipboard-Password</code></p>')
+    elif token:
+        notice += f'<p>{strings["token_note"]} <code>X-Auth-Token</code></p>'
+    return (f'<div class="shortcut-content">{notice}<p>{strings["iphone_intro"]}</p>'
+            f'<h3>{strings["ip_send"]}</h3>{_urlrow("POST", base + "/clipboard" + suffix, strings["copy"])}'
+            f'<h3>{strings["ip_recv"]}</h3>{_urlrow("GET", base + "/clipboard/latest/raw" + suffix, strings["copy"])}'
+            f'<details><summary>{strings["ip_multi"]}</summary><h3>{strings["ip_bundle"]}</h3>'
+            f'{_urlrow("POST", base + "/clipboard/bundle" + suffix, strings["copy"])}'
+            f'<h3>{strings["ip_meta"]}</h3>{_urlrow("GET", base + "/clipboard/latest/meta" + suffix, strings["copy"])}</details></div>')
+
+
+@lru_cache(maxsize=1)
+def _download_qr():
+    return qrcode.make(DOWNLOAD_URL, image_factory=SvgPathImage).to_string().decode("ascii")
+
+
+def _connection_guide(lang, base, *, expanded=False, shortcut_details=""):
     strings = WEB_STRINGS[lang]
     tutorial = PROJECT_SITE + ("tutorial.it.html" if lang == "it" else "tutorial.html")
     guide_label = strings["platform_guide"] + (" (English)" if lang not in ("en", "it") else "")
     sections = ""
     for key, title, fragment in (
-        ("windows", "Windows", "windows"), ("android", "Android", "android"),
         ("apple", "iPhone, iPad &amp; Mac", "iphone"),
+        ("windows", "Windows", "windows"), ("android", "Android", "android"),
         ("container", strings["container_title"], "docker"),
     ):
         steps = "".join(f'<li>{strings[f"{key}_{n}"]}</li>' for n in (1, 2, 3))
-        sections += (f'<details class="setup-section"><summary>{title}</summary><ol>{steps}</ol>'
-                     f'{_public_link(tutorial + "#" + fragment, guide_label)}</details>')
-    return (f'<details class="setup-guide" id="connect"><summary>{strings["connect"]}</summary>'
-            f'<p>{strings["connect_intro"]}</p><strong>{strings["server_address"]}</strong>'
-            f'{_urlrow("URL", base, strings["copy"])}'
-            f'<p>{strings["network_tip"]}</p><p>{strings["account_tip"]}</p>'
-            f'<div class="resource-links">{_public_link(PROJECT_SITE + "#download", strings["downloads"])}'
-            f'{_public_link(tutorial, strings["setup_guide"])}</div>{sections}</details>')
-
+        opened = " open" if expanded and key == "apple" else ""
+        extra = shortcut_details if key == "apple" else ""
+        guide_url = (PROJECT_SITE + "#server" if key == "container" else tutorial + "#" + fragment)
+        sections += (f'<details class="setup-section" id="guide-{key}"{opened}>'
+                     f'<summary>{title}</summary><ol>{steps}</ol>{extra}'
+                     f'{_public_link(guide_url, guide_label)}</details>')
+    # This QR contains a public download URL, never pairing secrets or account data.
+    qr = _download_qr()
+    opened = " open" if expanded else ""
+    return (f'<details class="setup-guide" id="connect"{opened}><summary>{strings["connect"]}</summary>'
+            f'<div class="setup-content"><p>{strings["connect_intro"]}</p>'
+            f'<div class="setup-intro"><div class="setup-address"><strong>{strings["server_address"]}</strong>'
+            f'{_urlrow("URL", base, strings["copy"])}<p>{strings["network_tip"]}</p>'
+            f'<p>{strings["account_tip"]}</p><div class="resource-links">'
+            f'{_public_link(DOWNLOAD_URL, strings["downloads"])}'
+            f'{_public_link(tutorial, strings["setup_guide"])}</div></div>'
+            f'<figure class="qr"><div aria-hidden="true">{qr}</div><figcaption>{strings["qr_note"]}</figcaption>'
+            f'</figure></div>{sections}</div></details>')
 
 def render_home():
     tok = _ui_token()
@@ -1383,11 +1576,7 @@ def render_home():
     encoded_token = quote(tok, safe="")
     tq = ("?token=" + encoded_token) if tok else ""             # token only (raw / API / img)
     fq = "?lang=" + lang + (("&token=" + encoded_token) if tok else "")  # forms / redirect
-    base = request.host_url.rstrip("/")
     acct = getattr(g, "account", None)                          # current account (or None = shared)
-    # Suffix for the iPhone URLs: account credentials, or the general token.
-    suffix = ("?user=" + quote(acct, safe="") + "&password="
-              + quote(ACCOUNTS.get(acct, ""), safe="")) if acct else tq
 
     e = _latest_of(("text",))
     latest_text = _read_text(e) if e else ""
@@ -1405,7 +1594,13 @@ def render_home():
         prev = escape(it.get("preview") or S["no_preview"])
         label = (f'{len(it.get("files", []))} {S["files"]}'
                  if kind == "bundle" else S[kind + "_type"])
-        sub = f'{label} &middot; {_human(it.get("size"))} &middot; {escape(it.get("timestamp") or "")}'
+        timestamp = it.get("timestamp") or ""
+        try:
+            stamp = datetime.fromisoformat(timestamp).strftime("%d/%m/%Y, %H:%M")
+        except ValueError:
+            stamp = timestamp
+        sub = (f'<span>{label} &middot; {_human(it.get("size"))}</span>'
+               f'<time datetime="{escape(timestamp)}">{escape(stamp)}</time>')
         if kind == "image":
             media = f'<img class="thumb" src="/clipboard/item/{tid}/raw{tq}" alt="">'
         else:
@@ -1433,14 +1628,6 @@ def render_home():
                 params["token"] = tok
             navigation += f'<a class="btn small ghost" href="/?{escape(urlencode(params))}#history">{S[label]}</a>'
 
-    nota = f'<div class="nota">{S["auth_optional"]}</div>'
-    if tok:
-        nota += (f'<div class="nota">{S["token_note"]} '
-                f'<code>X-Auth-Token: {escape(tok)}</code>.</div>')
-    if acct:
-        nota += f'<div class="nota">{S["acct_note"].format(name=escape(acct))}</div>'
-
-    lang_toggle = _language_selector(lang)
     tutorial = PROJECT_SITE + ("tutorial.it.html" if lang == "it" else "tutorial.html")
     guide_label = S["setup_guide"] + (" (English)" if lang not in ("en", "it") else "")
 
@@ -1464,76 +1651,61 @@ def render_home():
 
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clipboard Bridge</title><style>{_HOME_CSS}</style></head>
-<body><div class="wrap">
+<meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
+<title>Clipboard Bridge</title>{_THEME_INIT}<style>{_HOME_CSS}</style>
+<noscript><style>#web-settings[hidden]{{display:block!important}}.composer-tabs,[data-settings-toggle]{{display:none}}</style></noscript></head>
+<body><main class="wrap">
+<header class="head"><div class="brand">{LOGO_SVG}<div class="brand-copy">
+<h1>Clipboard Bridge</h1><p><span class="online">{S["status_online"]}</span>
+<span class="active-space">{escape("@" + acct if acct else S["shared"])}</span></p></div></div>
+{_settings_button(lang)}</header>
+{_preferences_panel(lang, account_bar=account_bar)}
 
-<div class="head">{LOGO_SVG}
-<div><h1>Clipboard Bridge</h1><p>{S["subtitle"]}</p></div>
-<div style="margin-left:auto;text-align:right"><span class="badge">&#9679; {S["online"].format(n=len(items))}</span>{lang_toggle}{account_bar}</div></div>
-
-<nav class="project-nav" id="project-links" aria-label="{S['project_site']}">
-<a class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge" target="_blank" rel="noopener noreferrer">GitHub</a>
-<a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer" title="{escape(S['support_note'])}"><span aria-hidden="true">&#9825;</span>{S["support"]}</a>
+<nav class="project-nav" id="project-links" aria-label="{S['connect']}">
+<a class="repo-link" href="/setup?lang={lang}">{IC_LINK}{S["connect"]}</a>
+<a class="support-link" href="https://ko-fi.com/mattboxx" target="_blank" rel="noopener noreferrer" title="{escape(S['support_note'])}" aria-label="{S['support']}">{IC_HEART}<span class="sr-only">{S["support"]}</span></a>
 </nav>
 
-{_connection_guide(lang, base)}
-
-<div class="card">
-<h2>{IC_TEXT} {S["h_text"]}</h2>
+<section class="composer" aria-label="{S['subtitle']}">
+<div class="composer-tabs" role="tablist" aria-label="{S['all_types']}">
+<button id="text-tab" type="button" role="tab" data-compose-tab aria-selected="true" aria-controls="text-panel">{IC_TEXT}{S["h_text"]}</button>
+<button id="file-tab" type="button" role="tab" data-compose-tab aria-selected="false" aria-controls="file-panel" tabindex="-1">{IC_FILE}{S["h_file"]}</button>
+</div>
+<div class="panel" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
 <form method="post" action="/ui/text{fq}">
-<textarea id="txt" name="text" placeholder="{S["ph_text"]}">{escape(latest_text)}</textarea>
-<div class="row">
-<button class="btn" type="submit">{S["save"]}</button>
-<button class="btn ghost" type="button" onclick="copyText(document.getElementById('txt').value)">{S["copy"]}</button>
-</div>
-</form>
-</div>
-
-<div class="card">
-<h2>{IC_UP} {S["h_file"]}</h2>
+<textarea id="txt" name="text" aria-label="{S["h_text"]}" placeholder="{S["ph_text"]}">{escape(latest_text)}</textarea>
+<div class="row"><button class="btn" type="submit">{IC_UP}{S["save"]}</button>
+<button class="btn ghost" type="button" onclick="copyText(document.getElementById('txt').value)">{S["copy"]}</button></div>
+</form></div>
+<div class="panel" id="file-panel" role="tabpanel" aria-labelledby="file-tab">
 <form id="upform" method="post" action="/ui/upload{fq}" enctype="multipart/form-data">
-<div class="drop" id="drop">{S["drop1"]}<br><b>{S["drop2"]}</b></div>
-<input id="file" type="file" name="file" multiple style="display:none">
-<div class="row"><button class="btn" type="submit">{S["upload"]}</button></div>
-</form>
-</div>
+<button class="drop" id="drop" type="button" aria-label="{S['upload']}">{IC_UP}<b>{S["drop2"]}</b><span>{S["drop1"]}</span></button>
+<input id="file" type="file" name="file" multiple hidden>
+<noscript><style>#file[hidden]{{display:block!important}}</style><button class="btn" type="submit">{S["upload"]}</button></noscript>
+</form></div>
+</section>
 
-<div class="card" id="history">
-<h2>{IC_HIST} {S["h_history"]} <span style="margin-left:auto;display:flex;gap:6px"><button class="btn small ghost" type="button" onclick="location.reload()">{S["refresh"]}</button><button class="btn small ghost" type="button" onclick="clearHistory()">{S["clear"]}</button></span></h2>
-<form method="get" action="/#history" class="row" style="margin-bottom:12px">
+<section class="history" id="history" aria-labelledby="history-heading">
+<div class="history-title"><h2 id="history-heading">{S["h_history"]}<span class="count">{len(items)}</span></h2>
+<div class="history-tools"><button class="btn ghost icon-button" type="button" onclick="location.reload()" aria-label="{S['refresh']}" title="{S['refresh']}">{IC_REFRESH}</button>
+<button class="btn ghost danger" type="button" onclick="clearHistory()">{S["clear"]}</button></div></div>
+<form method="get" action="/#history" class="history-filter">
 <input type="hidden" name="lang" value="{lang}">
 {('<input type="hidden" name="token" value="' + str(escape(tok)) + '">') if tok else ''}
-<input type="search" name="q" value="{escape(search_query)}" placeholder="{S['search']}" aria-label="{S['search']}" maxlength="200" style="flex:1;min-width:140px;padding:8px;border:1px solid #e2e8f0;border-radius:6px">
-<select name="type" aria-label="{S['all_types']}" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">{options}</select>
-<button class="btn small ghost" type="submit">{S['search_button']}</button>
+<input type="search" name="q" value="{escape(search_query)}" placeholder="{S['search']}" aria-label="{S['search']}" maxlength="200">
+<select name="type" aria-label="{S['all_types']}">{options}</select>
+<button class="btn ghost" type="submit">{S['search_button']}</button>
 </form>
-{rows}
-<nav class="row" aria-label="{S['h_history']}" style="align-items:center;font-size:13px">{navigation}</nav>
-</div>
+<div class="history-list">{rows}</div>
+<nav class="row pagination" aria-label="{S['h_history']}">{navigation}</nav>
+</section>
 
-<div class="card">
-<h2>{IC_PHONE} {S["h_iphone"]}</h2>
-{nota}
-<p style="color:#64748b;font-size:13px;margin:0 0 8px">{S["iphone_intro"]}</p>
-<div style="font-size:13px"><b>{S["ip_send"]}</b></div>
-{_urlrow("POST", base + "/clipboard" + suffix, S["copy"])}
-<div style="font-size:13px"><b>{S["ip_recv"]}</b></div>
-{_urlrow("GET", base + "/clipboard/latest/raw" + suffix, S["copy"])}
-<details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;font-weight:600">{S["ip_multi"]}</summary>
-<div style="font-size:13px;margin-top:10px"><b>{S["ip_bundle"]}</b></div>
-{_urlrow("POST", base + "/clipboard/bundle" + suffix, S["copy"])}
-<div style="font-size:13px"><b>{S["ip_meta"]}</b></div>
-{_urlrow("GET", base + "/clipboard/latest/meta" + suffix, S["copy"])}
-</details>
-</div>
-
-<footer class="foot"><div><span>{S["foot"]}</span><div class="resource-links">{_public_link(PROJECT_SITE, S["project_site"])}{_public_link(tutorial, guide_label)}</div><p class="support-note">{S["support_note"]}</p></div></footer>
-</div>
-<div id="toast" class="toast"></div>
+<footer class="foot"><span>{S["foot"]}</span><div class="resource-links">
+<a class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge" target="_blank" rel="noopener noreferrer">GitHub</a>
+{_public_link(PROJECT_SITE, S["project_site"])}{_public_link(tutorial, guide_label)}</div><p class="support-note">{S["support_note"]}</p></footer>
+</main><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>{js_consts}{_HOME_JS}</script>
 </body></html>"""
-
-
 @app.route("/")
 def home():
     try:
@@ -1543,6 +1715,30 @@ def home():
         return jsonify({"error": str(error)}), 400
     return Response(content, mimetype="text/html")
 
+
+@app.get("/setup")
+def setup():
+    lang = _ui_lang()
+    strings = WEB_STRINGS[lang]
+    try:
+        address = PUBLIC_ADDRESS or base_address(request.host_url)
+    except ValueError:
+        return Response("Invalid server address", status=400)
+    # Public setup deliberately does not read the active account or expose its data.
+    guide = _connection_guide(lang, address, expanded=True,
+                              shortcut_details=_shortcut_endpoints(lang, address))
+    html = f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
+<title>{strings["connect"]} | Clipboard Bridge</title>{_THEME_INIT}<style>{_HOME_CSS}</style></head>
+<body><main class="wrap setup-page"><header class="head"><div class="brand">{LOGO_SVG}
+<div class="brand-copy"><h1>Clipboard Bridge</h1></div></div>{_settings_button(lang)}</header>
+{_preferences_panel(lang, "/setup")}
+<nav class="project-nav"><a class="repo-link" href="/?lang={lang}">{strings["h_history"]}</a>
+<a class="repo-link" href="{PROJECT_SITE}" target="_blank" rel="noopener noreferrer">{strings["project_site"]}</a></nav>
+<h2>{strings["connect"]}</h2>{guide}</main><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>const T_COPIED={json.dumps(strings["js_copied"])};{_HOME_JS}</script></body></html>"""
+    return Response(html, mimetype="text/html", headers={"Cache-Control": "no-store"})
 
 @app.route("/ui/text", methods=["POST"])
 def ui_text():

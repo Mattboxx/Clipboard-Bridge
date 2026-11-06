@@ -21,16 +21,19 @@ embedded as illustrations of the new settings layout.
 
 ## Docker web interface
 
-`docs/assets/server-web.png` and `docs/assets/server-history.png` show the actual
-published image `ghcr.io/mattboxx/clipboard-bridge-server:1.0.8`, running in a fresh
-disposable container bound only to loopback. Browser captures used Chrome through
-Playwright at 1120 x 1080, with no interface modifications or injected captions.
-The overview includes the header, text editor and upload area; the history capture
-is limited to the actual History panel.
+Refreshed on 2026-11-06 for server 1.0.12. `docs/assets/server-web.png` and
+`docs/assets/server-history.png` capture the real Flask interface from the release
+source, using a temporary profile and a loopback-only test host. Docker runtime,
+upgrade and persistence checks are separate; these captures are not evidence of
+installing a public image or a store package on a physical NAS.
 
-Sample items were uploaded through the HTTP API: public example text and an
-example.com link, project-notes.txt and checklist.csv as one file group, and the
-project's own clipboard icon as a PNG. The API history was checked independently
-to confirm three entries, including both original members of the file group.
+Browser captures use headless Edge through Playwright at 1440 x 1050, with no UI
+overlays, painted changes or cursor. The overview shows the Text/File tabs and
+history; the second image contains only the actual History section.
+
+Sample items were uploaded through the HTTP API: synthetic meeting notes, the
+project's own clipboard icon, and sample project-notes.pdf/notes.txt in one group.
+No personal clipboard contents, account names, passwords or private LAN IPs
+appear. The same PNGs are mirrored in the custom store's application assets.
 
 These captures illustrate the UI, not a physical phone-to-PC transfer.

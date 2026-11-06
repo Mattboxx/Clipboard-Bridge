@@ -43,8 +43,24 @@ def test_release_metadata_is_consistent():
     metadata = load_release_metadata()
     version = metadata.current_version()
 
-    assert version == "2.0.20"
+    assert version == "2.0.21"
     metadata.validate(version)
+
+
+def test_private_clipboard_worker_copies_all_local_client_modules():
+    import ast
+
+    tree = ast.parse((ROOT / "clipboard_bridge_windows.py").read_text(encoding="utf-8"))
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module.split(".")[0])
+    worker = (ROOT / "tests/windows_clipboard_worker.py").read_text(encoding="utf-8")
+    for module in modules:
+        if (ROOT / (module + ".py")).is_file():
+            assert '"' + module + '.py"' in worker
 
 
 @pytest.mark.parametrize("manifest,name,patched,obsolete,next_major", [
@@ -116,6 +132,7 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
     assert set(rules[1:]) == {
         "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
         "!clipboard_text.py", "!clipboard_storage.py", "!server_web_strings.json", "!LICENSE",
+        "!clipboard_setup.py",
     }
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile

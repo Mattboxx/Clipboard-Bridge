@@ -37,6 +37,7 @@ echo Compiling...
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
   --copy-metadata striprtf ^
+  --copy-metadata qrcode ^
   --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 ^
   --exclude-module numpy ^
   clipboard_bridge_windows.py

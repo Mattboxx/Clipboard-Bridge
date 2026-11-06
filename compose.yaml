@@ -18,6 +18,7 @@ services:
       CLIPBOARD_ACCOUNTS: "${ACCOUNTS:-}"
       CLIPBOARD_ACCOUNTS_FILE: "${ACCOUNTS_FILE:-}"
       CLIPBOARD_SESSION_DAYS: "${SESSION_DAYS:-3650}"
+      CLIPBOARD_PUBLIC_ADDRESS: "${PUBLIC_ADDRESS:-}"
     volumes:
       - "${DATA_ROOT:-./data}:/data"
     networks:

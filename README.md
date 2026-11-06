@@ -79,14 +79,14 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.20 | Android 1.0.0-beta.12 | Server 1.0.11
+**Current releases:** Windows 2.0.21 | Android 1.0.0-beta.12 | Server 1.0.12
 
 | Your device | Ready-to-use downloads |
 |---|---|
-| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.20.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge.Portable.Windows.x64.V2.0.20.exe) |
-| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.20.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/Clipboard.Bridge.Portable.Windows.arm64.V2.0.20.exe) |
+| **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.21.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/Clipboard.Bridge.Portable.Windows.x64.V2.0.21.exe) |
+| **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.21.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/Clipboard.Bridge.Portable.Windows.arm64.V2.0.21.exe) |
 | **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), currently a public beta |
-| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.20/iPhone.Download.Clipboard.shortcut) |
+| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Load.Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Download.Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
 
@@ -106,7 +106,7 @@ app before switching between x64 and ARM64; both architectures share your settin
 > Defender or Smart App Control may block them. Read [CODE_SIGNING.md](CODE_SIGNING.md);
 > do not disable Windows protection to bypass a warning.
 
-All assets, checksums and release notes are in the [2.0.20 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.20).
+All assets, checksums and release notes are in the [2.0.21 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.21).
 Image/PDF previews and native ARM64 packages are included. See [CHANGELOG.md](CHANGELOG.md)
 for the full changes; Android and the standalone server have independent version numbers.
 
@@ -326,20 +326,26 @@ actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
 ## Standalone server
 
-**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.11`
+**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`
 
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file
 uploads, searchable history, downloads, refresh, deletion and optional login.
 
 The web interface and login support **English, Italian, Spanish, French, German,
-Portuguese and simplified Chinese**. Choose a language in the page header; the
-browser remembers it. English is the default. Expand **Connect your devices** for
+Portuguese and simplified Chinese**. Choose a language in **Settings**; the
+browser remembers it. English is the default. Open **Connect your devices** for
 Windows, Android and Apple Shortcuts setup, the server address, and safe container
-update steps. The footer links to the project website, full guide and optional Ko-fi support.
+update steps. The footer links to the project website and full guide; the heart button opens optional Ko-fi support.
 These languages apply to the standalone web interface, not the native client apps.
 
 ### Browser interface
+
+Open **Settings** (the top-right button), then choose **Theme: Light, Dark or System**.
+Your browser remembers your choice. Text and file uploads have separate tabs.
+Use **Connect your devices** for short setup steps for Apple, Windows, Android
+and Docker, or open `http://SERVER_IP:5088/setup` directly. The QR opens the
+public downloads page; it does not pair a device or contain credentials.
 
 Save text or upload files from any browser, without installing another client.
 This interface belongs to the **optional standalone server**, not Windows Server mode.
@@ -535,7 +541,7 @@ space; latest raw content is an empty response. Retention limits remove old entr
 | Server/metadata tests | Install `requirements-server.txt` and `pytest`, then `python -m pytest -q tests/test_server.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_metadata.py` |
 | Windows tests | Install `requirements-client.txt` and `pytest`, then `python -m pytest -q tests/test_windows_client.py tests/test_clipboard_text.py tests/test_clipboard_storage.py` on Windows |
 | Version consistency | `python scripts/release_metadata.py --check` |
-| Windows x64 packaging | **Build Windows x64** Actions workflow, or `scripts\windows\build_release.bat 2.0.20`; requires x64 Python and Inno Setup |
+| Windows x64 packaging | **Build Windows x64** Actions workflow, or `scripts\windows\build_release.bat 2.0.21`; requires x64 Python and Inno Setup |
 | Windows ARM64 packaging | **Build Windows ARM64** Actions workflow; native runner, tests, payload and installer verification |
 | Android build | Java 17, Android SDK 35; [Gradle and private signing instructions](android/README.md#build-from-source) |
 | Docker source build | `docker build -t clipboard-bridge-server:dev .` |

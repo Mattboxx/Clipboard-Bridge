@@ -19,6 +19,129 @@ from flask.testing import FlaskClient
 SERVER_FILE = Path(__file__).resolve().parents[1] / "clipboard_bridge-Server.py"
 
 
+@pytest.mark.parametrize("constant,name,digest", [
+    ("IC_TEXT", "file-text", "1735f22958cd375a40f311ee8bbd3e55551c52cd3c83cf09ae8fd0d1c11a096e"),
+    ("IC_FILE", "file", "0482f1a232fde8628656df0f624810f49813707f170c9bd727abbff6a8dc34f3"),
+    ("IC_UP", "upload", "b9bce437434cd18335071c26e0084f3719c04f58ebd2ead0d922fa1ade86c21c"),
+    ("IC_HIST", "history", "54222b385619d5ee5d1e1dac53bd19fc4fc7109a159db6887e4897dde037a886"),
+    ("IC_PHONE", "smartphone", "be6ec042d04610b3c9e9821394bd328e78469ab92b282182a237f66dd4cd4266"),
+    ("IC_REFRESH", "refresh-cw", "938e137dfa44c03c657068a1046f155d9de1cb80dbc06f2f482086494d7a42b0"),
+    ("IC_TRASH", "trash-2", "2a864a78e7098293b783e22f73629a7655410dc2d306d2ff718dfcf03435fd58"),
+    ("IC_SETTINGS", "settings", "2b4d1c08876f64cf4bf058e7a1242e70488218009dbfa2d9c255421f2afea7e2"),
+    ("IC_SUN", "sun", "814bd114fe874e470b2168637eacdae01c51d354b04d4cf43bddc5d90509505d"),
+    ("IC_MOON", "moon", "449f9bba286c0b5ce47ce485edaa89bab5cb0f46d896bad42ec1889e01e77837"),
+    ("IC_SYSTEM", "monitor", "9f8fce29e2d9426f545f27b2ae15b02da62260f8363677c6559bdac5dc333ece"),
+    ("IC_LINK", "link", "2d2e172ad8c7bba7d486b92856a779f51513ebdf49763f65a828a6942cf97a15"),
+    ("IC_HEART", "heart", "e28f87917c56f1de05ab08e91c79b8eceea35f3f72e86bd2d5640cf123ba9334"),
+])
+def test_web_icons_preserve_original_lucide_geometry(server, constant, name, digest):
+    import hashlib
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(getattr(server, constant))
+    assert root.attrib["viewBox"] == "0 0 24 24"
+    assert root.attrib["width"] == root.attrib["height"] == "24"
+    assert root.attrib["stroke-width"] == "2"
+    assert root.attrib["data-icon"] == name
+    assert root.attrib["class"] == "ui-icon"
+    assert root.attrib["aria-hidden"] == "true"
+    assert root.attrib["focusable"] == "false"
+    for attribute in ("class", "data-icon", "aria-hidden", "focusable"):
+        root.attrib.pop(attribute)
+    root.set("class", "lucide lucide-" + name)
+    for node in root.iter():
+        node.tag = node.tag.rsplit("}", 1)[-1]
+        assert node.tag in {"svg", "path", "circle", "rect", "line", "polyline", "polygon", "ellipse"}
+        assert "transform" not in node.attrib
+    canonical = ET.canonicalize(ET.tostring(root, encoding="unicode"), strip_text=True)
+    # Reference hashes are from the SRI-verified lucide-static 1.57.0 package.
+    assert hashlib.sha256(canonical.encode()).hexdigest() == digest
+
+
+def test_classic_setup_offers_download_qr_without_credentials(server):
+    response = server.app.test_client().get("/setup?lang=it", base_url="http://bridge.test:5088")
+    assert response.status_code == 200
+    assert b"http://bridge.test:5088" in response.data
+    assert b"<svg" in response.data
+    assert b"https://mattboxx.github.io/Clipboard-Bridge/#download" in response.data
+    assert b"p&ss?word" not in response.data
+
+
+def test_native_shortcut_direct_round_trip_with_account_and_no_token(server):
+    client = server.app.test_client()
+    headers = {"X-Clipboard-User": "alice", "X-Clipboard-Password": "p&ss?word"}
+    raw = b"AEA1\x00\xffexample-shortcut"
+    assert client.post("/clipboard", headers={
+        **headers, "X-Clipboard-Filename": "example.shortcut",
+    }, data=raw, content_type="application/octet-stream").status_code == 200
+    received = client.get("/clipboard/latest/raw", headers=headers)
+    assert received.headers["X-Clipboard-Filename"] == "example.shortcut"
+    assert received.headers["X-Clipboard-Type"] == "file"
+    assert received.data == raw
+    assert client.get("/clipboard/latest", headers={
+        "X-Clipboard-User": "bob", "X-Clipboard-Password": "second",
+    }).get_json() == {"type": "empty"}
+    assert client.get("/clipboard/latest/raw", headers={
+        **headers, "X-Clipboard-Password": "wrong",
+    }).status_code == 401
+    text = "Caff\u00e8 \U0001f680"
+    assert client.post("/clipboard", headers=headers, json={"text": text}).status_code == 200
+    assert client.get("/clipboard/latest/raw", headers=headers).text == text
+
+
+@pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
+def test_public_setup_has_platform_steps_and_no_account_secrets(server, lang):
+    client = server.app.test_client()
+    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
+    response = client.get("/setup", query_string={"lang": lang})
+    assert response.status_code == 200
+    html = response.text
+    assert f'<html lang="{lang}">' in html
+    assert 'id="connect" open' in html and 'id="guide-apple" open' in html
+    for platform in ("apple", "windows", "android", "container"):
+        assert f'id="guide-{platform}"' in html
+        assert server.WEB_STRINGS[lang][platform + "_2"] in html
+    for secret in ("p&ss?word", "shared-token", "shared-web-password"):
+        assert secret not in html
+    assert "X-Clipboard-User" in html and "X-Clipboard-Password" in html
+    assert "/clipboard/latest/raw" in html
+    assert 'data-theme-selector' in html
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_theme_is_available_on_login_home_and_setup_without_external_assets(server):
+    client = server.app.test_client()
+    pages = [client.get("/login"), client.get("/setup")]
+    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
+    pages.append(client.get("/"))
+    for page in pages:
+        assert page.status_code == 200
+        assert 'data-theme-selector' in page.text
+        assert "prefers-color-scheme: dark" in page.text
+        assert "clipboard-bridge-theme" in page.text
+        assert page.text.index("window.setBridgeTheme") < page.text.index("<body>")
+        assert "script src=" not in page.text
+        assert "prefers-reduced-motion" in page.text
+        assert '<legend>Theme</legend>' in page.text
+        assert 'type="radio" name="theme" value="light"' in page.text
+        assert 'type="radio" name="theme" value="dark"' in page.text
+        assert 'type="radio" name="theme" value="system"' in page.text
+        assert 'id="web-settings" hidden' in page.text
+
+
+def test_home_has_one_connection_entry_and_accessible_composer_tabs(server):
+    client = server.app.test_client()
+    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
+    page = client.get("/").text
+    assert page.count('href="/setup?lang=en"') == 1
+    assert 'id="guide-apple"' not in page
+    assert 'role="tablist"' in page
+    assert 'aria-controls="text-panel"' in page and 'aria-controls="file-panel"' in page
+    assert 'id="text-panel" role="tabpanel" aria-labelledby="text-tab"' in page
+    assert 'id="file-panel" role="tabpanel" aria-labelledby="file-tab"' in page
+    assert 'id="drop" type="button"' in page
+
+
 @pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
 def test_support_link_is_localized_and_does_not_leak_account_credentials(server, lang):
     class Links(HTMLParser):
@@ -40,7 +163,8 @@ def test_support_link_is_localized_and_does_not_leak_account_credentials(server,
     assert server.WEB_STRINGS[lang]["support_note"] in html
     assert server.WEB_STRINGS[lang]["support"] in html
     assert parser.support[0]["title"] == server.WEB_STRINGS[lang]["support_note"]
-    assert html.index('id="project-links"') < html.index('id="connect"')
+    assert f'href="/setup?lang={lang}"' in html
+    assert 'id="connect"' not in html
     assert html.index('class="support-link"') < html.index('id="txt"')
     assert 'class="repo-link" href="https://github.com/Mattboxx/Clipboard-Bridge"' in html
 
@@ -79,10 +203,13 @@ def test_localized_device_guide_login_and_external_links(server, lang):
     page = client.post("/login", data={"username": "alice", "password": "p&ss?word"}, follow_redirects=True)
     assert page.status_code == 200
     assert f'<html lang="{lang}">' in page.text
+    assert f'href="/setup?lang={lang}"' in page.text
+    assert 'id="web-settings" hidden' in page.text
+    page = client.get("/setup", query_string={"lang": lang})
     for key in ("connect", "windows_1", "android_2", "apple_3", "container_3"):
         assert strings[key] in page.text
     assert 'id="connect"' in page.text
-    assert 'action="/"' in page.text and 'name="lang"' in page.text
+    assert 'action="/setup"' in page.text and 'name="lang"' in page.text
     parser = Links()
     parser.feed(page.text)
     public = [link for link in parser.links if urlsplit(link.get("href", "")).scheme == "https"]
@@ -799,7 +926,7 @@ def test_raw_iphone_upload_can_preserve_an_unusual_filename_in_the_url(server):
     assert latest.headers["Content-Disposition"].startswith("attachment;")
 
 
-def test_web_login_builds_encoded_shortcut_urls(server):
+def test_web_login_shows_shortcut_urls_without_account_password(server):
     client = server.app.test_client()
     response = client.post(
         "/login",
@@ -808,8 +935,12 @@ def test_web_login_builds_encoded_shortcut_urls(server):
     )
 
     assert response.status_code == 200
-    html = response.get_data(as_text=True)
-    assert "?user=alice&amp;password=p%26ss%3Fword" in html
+    assert 'href="/setup?lang=en"' in response.text
+    html = client.get("/setup").text
+    assert "http://localhost/clipboard/latest/raw" in html
+    assert "X-Clipboard-User" in html and "X-Clipboard-Password" in html
+    assert "p%26ss%3Fword" not in html
+    assert "p&amp;ss?word" not in html
     assert "p&ss?word" not in html
 
 
@@ -834,7 +965,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.11"
+    assert response.get_json()["version"] == "1.0.12"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):
