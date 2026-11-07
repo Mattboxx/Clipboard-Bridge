@@ -325,6 +325,39 @@ shortcut. **There is no native Mac client or continuous background sync.** The
 distributed iPhone files have not been device-tested on a Mac; build the same
 actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
+### Linux and command line
+
+`cb_cli.py` is a small, pure-Python command-line client (standard library only). It is
+developed on Linux, and its tests (which run it against the real standalone server) also
+run on the Windows CI runner; macOS is untested. It uses the same `/clipboard` API as the
+other clients and is user-triggered: there is no background sync.
+
+```bash
+export CB_URL=https://clip.example.com          # base address, no path
+export CB_TOKEN_FILE=~/.config/clipboard-bridge/token   # or CB_TOKEN; see below
+python3 cb_cli.py push -t "text"        # send text; `echo hi | python3 cb_cli.py push` also works
+python3 cb_cli.py push photo.jpg        # one file; several files are sent as one bundle
+python3 cb_cli.py pull                  # newest item: text to stdout, files saved by name
+python3 cb_cli.py ls                    # history; then `pull ID` or `rm ID` (`rm --all`)
+# aliases: send/put = push, receive/get = pull, list = ls
+```
+
+On Windows PowerShell use `py` and `$env:`; received file names are made valid for Windows:
+
+```powershell
+$env:CB_URL = "https://clip.example.com"
+$env:CB_TOKEN_FILE = "$HOME\.config\clipboard-bridge\token"   # UTF-8 or PowerShell's UTF-16 both work
+py cb_cli.py push -t "text"
+```
+
+Credentials come from the environment, never from arguments: `CB_TOKEN` or
+`CB_TOKEN_FILE` for the shared space (sent as `X-Auth-Token`), or `CB_USER` with
+`CB_PASSWORD` or `CB_PASSWORD_FILE` for an account (sent as `X-Clipboard-User` and
+`X-Clipboard-Password`). A token file may be a one-line file or a `.env` file containing
+`CLIPBOARD_TOKEN=` or `API_TOKEN=`. The client warns before sending credentials over
+plain HTTP to a non-loopback address. Download names are reduced to a file name, and an
+existing file is only replaced with `-f`.
+
 ## Standalone server
 
 **Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`
@@ -558,6 +591,7 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 |---|---|
 | `clipboard_bridge_windows.py` | Windows client and built-in server |
 | `clipboard_bridge-Server.py` | Standalone Flask server and web interface |
+| `cb_cli.py` | Command-line client (pure Python) |
 | `clipboard_text.py` | Shared Unicode/RTF conversion; keep alongside either Python script |
 | `clipboard_storage.py` | Shared fail-safe history reads and atomic index writes; keep alongside either Python script |
 | `android/` | Android source and build files |

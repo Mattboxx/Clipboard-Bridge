@@ -13,6 +13,7 @@ steps in a transfer.
 | Windows app | `clipboard_bridge_windows.py` | Tray commands, Tk history/settings, clipboard access, optional automation and embedded HTTP host |
 | Shared Python text conversion | `clipboard_text.py` | Normalize copied rich text to plain Unicode; preserve actual files |
 | Shared Python history storage | `clipboard_storage.py` | Refuse malformed/unreadable indices; flush and atomically commit complete replacements |
+| Command-line client | `cb_cli.py` | User-triggered send, receive, list and delete from a terminal over the universal `/clipboard` API; standard library only |
 | Android app | `android/app/src/main/` | Native UI, server history, Share target, notifications and optional incoming monitoring |
 | Apple integration | `Iphone Shortcuts/` | User-triggered Send and Receive Shortcuts for iPhone, iPad and Mac |
 
@@ -79,6 +80,7 @@ clipboard_bridge-Server.py   Standalone server entry point
 clipboard_bridge_windows.py Windows entry point and embedded host
 clipboard_text.py           Shared text conversion
 clipboard_storage.py        Shared history persistence
+cb_cli.py                   Command-line client (pure Python)
 clipboard_updates.py        GitHub metadata, verified downloads and Windows helper
 android/                    Android application and Gradle wrapper
 Iphone Shortcuts/           Signed exports and update instructions

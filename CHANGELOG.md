@@ -4,7 +4,10 @@ All notable user-facing changes are documented here.
 
 ## Unreleased
 
-No pending release changes.
+- Add `cb_cli.py`, a standard-library command-line client for
+  Linux and Windows terminals: send text, files and file groups, receive the newest item, list history
+  and delete items for the shared space or an account. Credentials are read from the
+  environment or files. No server, API, Android, Windows or Shortcut change.
 
 ## Server 1.0.12 - 2026-11-06
 
