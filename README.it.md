@@ -335,6 +335,29 @@ Usa il flusso manuale di invio/ricezione in Comandi Rapidi, eventualmente con un
 iPhone distribuiti non sono stati collaudati su un Mac: se l'importazione non funziona,
 ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
+### Client desktop Linux in anteprima
+
+L'app grafica Python si collega al server Docker oppure a Windows in modalità
+Server. Supporta invio e ricezione manuale di testo e file, gruppi, ricerca nella
+cronologia del server e anteprime. Non sostituisce ancora tutte le funzioni
+Windows: mancano icona nel tray, hotkey globali, sincronizzazione automatica,
+notifiche e server integrato.
+
+Installa Python 3.10+ con Tkinter e lo strumento per gli appunti della tua
+sessione. Su Debian/Ubuntu (usa `xclip` al posto di `wl-clipboard` per X11):
+
+```bash
+sudo apt install python3-tk wl-clipboard
+python3 scripts/linux/install.py
+```
+
+Avvia l'installer dalla cartella del repository come utente normale. Troverai
+**Clipboard Bridge** nel menu applicazioni. Per provarlo senza installazione:
+`python3 clipboard_bridge_linux.py`. Su Fedora Tkinter è fornito da
+`python3-tkinter`; su Arch installa `tk` insieme a Python. Per le anteprime di
+immagini e PDF servono Pillow e pypdfium2 nello stesso ambiente Python.
+Inserisci eventuali credenziali in **Connection settings**: restano in memoria.
+
 ## Server indipendente
 
 **Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`

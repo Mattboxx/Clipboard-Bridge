@@ -14,6 +14,7 @@ from werkzeug.serving import make_server
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import clipboard_bridge_linux as desktop
+import clipboard_linux_transport as transport
 
 
 def wait_for(root, predicate):
@@ -193,3 +194,23 @@ def test_user_installer_preserves_other_files(tmp_path):
     assert "Terminal=false" in launcher.read_text()
     if os.environ.get("CB_TEST_ISOLATED_X11") == "1":
         subprocess.run(["desktop-file-validate", str(launcher)], check=True, timeout=10)
+
+
+def test_wayland_clipboard_uses_native_tools(monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setenv("DISPLAY", ":0")
+    calls = []
+    payload = "Hello \U0001f680\n".encode()
+
+    def run(command, **kwargs):
+        calls.append((command, kwargs["input"]))
+        return subprocess.CompletedProcess(command, 0, stdout=payload)
+
+    monkeypatch.setattr(transport.subprocess, "run", run)
+    assert transport.clipboard_text() == payload
+    transport.clipboard_text(payload)
+    assert calls == [
+        (["wl-paste", "--no-newline", "--type", "text"], None),
+        (["wl-copy", "--type", "text/plain;charset=utf-8"], payload),
+    ]
