@@ -11,7 +11,7 @@ with yourself. Sometimes a manual file-transfer tool is all you need. If you als
 want one retained latest item and a history on a host you control, this tutorial
 shows a different workflow using Clipboard Bridge.
 
-I maintain the project; it is MIT-licensed. AI assistants have been used substantially
+I maintain the project; it is GPLv3-licensed. AI assistants have been used substantially
 for implementation, tests and documentation, including preparing this article.
 
 ## Start with a host, not a cloud account

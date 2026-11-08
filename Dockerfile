@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.title="Clipboard Bridge Server" \
       org.opencontainers.image.url="https://github.com/Mattboxx/Clipboard-Bridge" \
       org.opencontainers.image.source="https://github.com/Mattboxx/Clipboard-Bridge" \
       org.opencontainers.image.documentation="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="GPL-3.0-only" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}"
 
@@ -22,6 +22,7 @@ COPY clipboard_storage.py .
 COPY clipboard_setup.py ./
 COPY server_web_strings.json .
 COPY LICENSE .
+COPY LICENSE-MIT-legacy.txt THIRD_PARTY_NOTICES.md ./
 
 ENV CLIPBOARD_DATA_DIR=/data \
     CLIPBOARD_MAX_HISTORY=200 \

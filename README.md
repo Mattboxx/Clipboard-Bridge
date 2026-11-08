@@ -24,7 +24,8 @@ up, you do not need to reopen the Shortcuts editor for each transfer.
 
 [Website](https://mattboxx.github.io/Clipboard-Bridge/) |
 [Downloads](#download) | [Desktop demo](#desktop-in-action) | [Start here](#start-here) |
-[Full guide](GUIDE.md) | [Developers](#developers)
+[Full guide](GUIDE.md) | [Developers](#developers) |
+[Request a feature](https://github.com/Mattboxx/Clipboard-Bridge/issues/new?template=feature_request.yml)
 
 New here? Follow the [step-by-step setup tutorial](https://mattboxx.github.io/Clipboard-Bridge/tutorial.html).
 
@@ -32,7 +33,7 @@ Device-specific guides: [Windows to iPhone clipboard sharing](https://mattboxx.g
 and [sharing a clipboard between Apple and Android devices](https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html).
 
 [![Tests](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
-[![MIT License](https://img.shields.io/badge/license-MIT-555)](LICENSE)
+[![GPLv3 License](https://img.shields.io/badge/license-GPLv3-555)](LICENSE)
 
 ## Desktop in action
 
@@ -581,7 +582,9 @@ Never commit credentials, clipboard data, Android signing keys or local build ou
 [Full user guide](GUIDE.md) | [Docker guide](DOCKER.md) | [Android documentation](android/README.md) |
 [Changelog](CHANGELOG.md) | [Security](SECURITY.md)
 
-Released under the [MIT License](LICENSE). Dependency licenses are described in
+Current project source is licensed under the [GNU GPL version 3 only](LICENSE).
+Earlier MIT releases retain their [original terms](LICENSE-MIT-legacy.txt).
+Dependency licenses are described in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Support the project

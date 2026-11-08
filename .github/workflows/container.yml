@@ -49,7 +49,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Clipboard Bridge Server
             org.opencontainers.image.description=Local-network clipboard bridge for Windows, Android and iPhone
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=GPL-3.0-only
 
       - name: Build and push multi-platform image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0

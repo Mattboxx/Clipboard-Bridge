@@ -35,7 +35,7 @@ HTTP does not encrypt them.
 The tutorial explains Windows-to-iPhone sending and receiving. A separate technical
 recording shows the optional web interface with independent HTTP checks, not physical
 phone-to-PC transfers.
-The source is MIT-licensed. AI tools have been used
+The source is GPLv3-licensed. AI tools have been used
 substantially for implementation, tests and documentation, including this draft.
 
 I'd appreciate feedback on the setup instructions and everyday clipboard workflow,
