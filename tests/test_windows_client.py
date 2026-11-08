@@ -48,6 +48,30 @@ def embedded(tmp_path, monkeypatch):
     thread.join(timeout=5)
 
 
+def test_linux_cli_transfers_with_windows_host(embedded, monkeypatch, tmp_path, capsys):
+    import cb_cli
+
+    _, (host, port) = embedded
+    monkeypatch.setenv("CB_URL", f"http://{host}:{port}")
+    for var in ("CB_TOKEN", "CB_TOKEN_FILE", "CB_USER", "CB_PASSWORD", "CB_PASSWORD_FILE"):
+        monkeypatch.delenv(var, raising=False)
+    message = "Text with emoji \U0001f680"
+    cb_cli.main(["push", "-t", message])
+    cb_cli.main(["pull"])
+    assert capsys.readouterr().out == message
+
+    source = tmp_path / "r\u00e9sum\u00e9 %.pdf"
+    source.write_bytes(b"%PDF-1.7")
+    other = tmp_path / "workflow.shortcut"
+    other.write_bytes(b"\x00\xff")
+    cb_cli.main(["push", str(source), str(other)])
+    archive = tmp_path / "received.zip"
+    cb_cli.main(["pull", "-o", str(archive)])
+    with zipfile.ZipFile(archive) as group:
+        assert group.read(source.name) == source.read_bytes()
+        assert group.read(other.name) == other.read_bytes()
+
+
 def test_queued_file_send_cannot_move_to_a_different_account(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     queued, uploads, notices = [], [], []

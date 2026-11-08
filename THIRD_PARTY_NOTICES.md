@@ -24,3 +24,9 @@ installation or separate PDF viewer is required to generate a thumbnail.
 The Python client and server use [python-qrcode](https://github.com/lincolnloop/python-qrcode)
 for locally generated QR images (BSD-3-Clause). Windows packages include its
 distribution metadata and license files.
+
+## Command-Line Client
+
+The initial CLI implementation and tests came from [laz-'s contribution](https://github.com/laz-/Clipboard-Bridge/commit/d588d59e679842bdca59b8e64882658c104c2e74),
+published under MIT. Its notice is preserved in [LICENSE-MIT-legacy.txt](LICENSE-MIT-legacy.txt).
+Optional desktop clipboard tools are installed separately from the Linux distribution.

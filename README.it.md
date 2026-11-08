@@ -337,21 +337,35 @@ ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
 ### Linux e riga di comando
 
-`cb_cli.py` è un piccolo client da riga di comando in puro Python (solo libreria
-standard). È sviluppato su Linux e i suoi test (che lo eseguono contro il vero server
-indipendente) girano anche sul runner Windows della CI; macOS non è stato collaudato.
-Usa la stessa API `/clipboard` degli altri client e si usa a richiesta: non c'è
-sincronizzazione in background.
+`cb_cli.py` è un client Linux in anteprima per Python 3.10+, senza dipendenze pip.
+Si collega al server Docker o all'app Windows in modalità Server. I trasferimenti
+sono manuali: non c'è un'icona nell'area di notifica né sincronizzazione automatica.
+
+Dalla cartella del repository, imposta l'indirizzo e prova:
 
 ```bash
-export CB_URL=https://clip.example.com          # indirizzo base, senza percorso
-export CB_TOKEN_FILE=~/.config/clipboard-bridge/token   # oppure CB_TOKEN; vedi sotto
+export CB_URL=http://192.168.1.20:5088  # sostituisci con l'indirizzo del tuo host
 python3 cb_cli.py push -t "testo"       # invia testo; vale anche `echo ciao | python3 cb_cli.py push`
 python3 cb_cli.py push foto.jpg         # un file; più file vengono inviati come un solo gruppo
 python3 cb_cli.py pull                  # elemento più recente: testo su stdout, file salvati col nome
 python3 cb_cli.py ls                    # cronologia; poi `pull ID` o `rm ID` (`rm --all`)
 # alias: send/put = push, receive/get = pull, list = ls
 ```
+
+Per copiare e incollare **testo** negli appunti di sistema, installa `wl-clipboard`
+su Wayland o `xclip` su X11 con il gestore pacchetti della tua distribuzione. Ad
+esempio, su Debian/Ubuntu usa `sudo apt install wl-clipboard` per Wayland oppure
+`sudo apt install xclip` per X11. Su Fedora usa `sudo dnf install` e su Arch
+`sudo pacman -S`, con gli stessi nomi dei pacchetti. Poi esegui:
+
+```bash
+python3 cb_cli.py push --clipboard
+python3 cb_cli.py pull --clipboard
+```
+
+Per foto e altri file, passa i percorsi a `push` e usa `pull -o PERCORSO` per
+salvarli. Un gruppo di file si scarica come unico ZIP. In SSH o senza ambiente
+grafico puoi usare stdin, stdout o `-o` senza installare strumenti aggiuntivi.
 
 In Windows PowerShell usa `py` e `$env:`; i nomi dei file ricevuti vengono resi validi per Windows:
 
@@ -361,7 +375,7 @@ $env:CB_TOKEN_FILE = "$HOME\.config\clipboard-bridge\token"   # vanno bene UTF-8
 py cb_cli.py push -t "testo"
 ```
 
-Le credenziali arrivano dall'ambiente, mai dagli argomenti: `CB_TOKEN` o `CB_TOKEN_FILE`
+Le credenziali sono opzionali. Se l'host le richiede, usa `CB_TOKEN` o `CB_TOKEN_FILE`
 per lo spazio condiviso (inviato come `X-Auth-Token`), oppure `CB_USER` con `CB_PASSWORD`
 o `CB_PASSWORD_FILE` per un account (inviati come `X-Clipboard-User` e
 `X-Clipboard-Password`). Il file del token può contenere una sola riga oppure essere un

@@ -37,6 +37,7 @@ jobs:
           python -m py_compile clipboard_updates.py
           python -m py_compile clipboard_design.py
           python -m py_compile cb_cli.py
+          python -m py_compile cb_cli.py
           python -m py_compile scripts/release_metadata.py
           python -m py_compile scripts/prepare_release_assets.py
 
@@ -45,6 +46,12 @@ jobs:
 
       - name: Test server API and public site
         run: python -m pytest -q tests/test_server.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_assets.py tests/test_release_metadata.py tests/test_site_seo.py tests/test_docker_docs.py tests/test_cli.py
+
+      - name: Test Linux clipboard on an isolated X11 display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xclip xvfb xauth
+          CB_TEST_ISOLATED_X11=1 xvfb-run -a python -m pytest -q tests/test_cli.py -k real_xclip
 
       - name: Validate Docker Compose files
         run: |

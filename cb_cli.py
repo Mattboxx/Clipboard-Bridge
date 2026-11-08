@@ -26,6 +26,8 @@ import json
 import mimetypes
 import os
 import re
+import shutil
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -35,7 +37,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 from urllib.parse import quote, unquote, urlsplit
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 TIMEOUT = 120
 TOKEN_KEYS = ("CLIPBOARD_TOKEN", "API_TOKEN")
@@ -95,19 +97,32 @@ class Client:
         base = (url or os.environ.get("CB_URL", "")).strip().rstrip("/")
         if not base:
             die("no server address: set CB_URL or pass --url (for example http://HOST_IP:5088)")
-        parts = urlsplit(base)
-        if parts.scheme not in ("http", "https") or not parts.hostname:
-            die("server address must start with http:// or https://")
+        try:
+            parts = urlsplit(base)
+            port = parts.port
+        except ValueError:
+            die("invalid server address")
+        if (parts.scheme not in ("http", "https") or not parts.hostname
+                or parts.username is not None or parts.query or parts.fragment
+                or "?" in base or "#" in base or port == 0
+                or any(ch.isspace() or ord(ch) < 32 for ch in base)):
+            die("use an http:// or https:// server address without credentials, query or fragment")
         self.base = base
+        self.opener = urllib.request.build_opener(NoRedirects())
         self.auth: dict[str, str] = {}
         user = os.environ.get("CB_USER", "")
         if user:
             password = env_secret("CB_PASSWORD", ())
+            if not password:
+                die("CB_USER requires CB_PASSWORD or CB_PASSWORD_FILE")
             self.auth = {"X-Clipboard-User": user, "X-Clipboard-Password": password}
         else:
             token = env_secret("CB_TOKEN", TOKEN_KEYS)
             if token:
                 self.auth = {"X-Auth-Token": token}
+        if any(any(not 32 <= ord(ch) <= 255 or ord(ch) == 127 for ch in value)
+               for value in self.auth.values()):
+            die("credentials contain characters not supported by HTTP headers")
         if self.auth and parts.scheme == "http" and not is_loopback(parts.hostname):
             print("cb-cli: warning: credentials are sent unencrypted over http; "
                   "use https or a trusted network", file=sys.stderr)
@@ -123,18 +138,57 @@ class Client:
             self.base + path, data=body, method=method, headers={**self.auth, **(headers or {})}
         )
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            with self.opener.open(req, timeout=TIMEOUT) as resp:
                 return resp.read(), {k.lower(): v for k, v in resp.headers.items()}
         except urllib.error.HTTPError as exc:
+            if 300 <= exc.code < 400:
+                exc.close()
+                die("server redirected the request; configure its final address")
             detail = ""
             try:
-                detail = str(json.loads(exc.read()).get("error", ""))
+                detail = str(json.loads(exc.read(8192)).get("error", ""))
             except (ValueError, AttributeError):
                 pass
+            finally:
+                exc.close()
             hint = " (check token or account credentials)" if exc.code == 401 else ""
             die(f"HTTP {exc.code}{hint}: {detail or exc.reason}")
         except urllib.error.URLError as exc:
             die(f"cannot reach {self.base}: {exc.reason}")
+        except (OSError, ValueError) as exc:
+            die(f"request failed: {exc}")
+
+
+class NoRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def clipboard_text(data: bytes | None = None) -> bytes:
+    """Read or write the desktop text clipboard without invoking a shell."""
+    reading = data is None
+    if os.environ.get("WAYLAND_DISPLAY") and os.environ.get("XDG_SESSION_TYPE") != "x11":
+        tool = "wl-paste" if reading else "wl-copy"
+        command = [tool, "--type", "text" if reading else "text/plain;charset=utf-8"]
+        if reading:
+            command.append("--no-newline")
+        package = "wl-clipboard"
+    elif os.environ.get("DISPLAY"):
+        tool = package = "xclip"
+        command = [tool, "-selection", "clipboard", "-target", "UTF8_STRING",
+                   "-out" if reading else "-in"]
+    else:
+        die("no Wayland or X11 session; use stdin or --out instead")
+    if not shutil.which(tool):
+        die(f"{tool} is missing; install {package} for this desktop session")
+    try:
+        result = subprocess.run(
+            command, input=data, stdout=subprocess.PIPE if reading else subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=10, check=True,
+        )
+        return result.stdout if reading else b""
+    except (OSError, subprocess.SubprocessError):
+        die(f"{tool} could not {'read' if reading else 'write'} the text clipboard")
 
 
 def looks_like_text(data: bytes) -> bool:
@@ -153,10 +207,10 @@ def multipart(files: list[Path]) -> tuple[bytes, str]:
     boundary = uuid.uuid4().hex
     out = bytearray()
     for i, path in enumerate(files):
-        name = quote(path.name, safe=" ._-()")
+        name = quote(path.name, safe="")
         out += f"--{boundary}\r\n".encode()
         out += (
-            f'Content-Disposition: form-data; name="file{i}"; filename="{name}"\r\n'
+            f'Content-Disposition: form-data; name="file{i}"; filename*=UTF-8\'\'{name}\r\n'
             f"Content-Type: {guess_mime(path.name)}\r\n\r\n"
         ).encode()
         out += path.read_bytes() + b"\r\n"
@@ -171,6 +225,15 @@ def report_push(raw: bytes) -> None:
 
 
 def cmd_push(c: Client, args: argparse.Namespace) -> None:
+    if args.clipboard:
+        if args.files or args.name or args.text is not None:
+            die("--clipboard cannot be combined with --text, --name or file paths")
+        data = clipboard_text()
+        if not data or not looks_like_text(data):
+            die("the desktop clipboard does not contain UTF-8 text")
+        raw, _ = c.request("POST", "/clipboard", data, {"Content-Type": "text/plain; charset=utf-8"})
+        report_push(raw)
+        return
     if args.text is not None:
         raw, _ = c.request("POST", "/clipboard", args.text.encode(),
                            {"Content-Type": "text/plain; charset=utf-8"})
@@ -224,36 +287,52 @@ def windows_safe_name(name: str) -> str:
 def safe_name(header: str, fallback: str) -> str:
     # Split by hand: on Windows Path("a:b").name would treat "a:" as a drive and drop it.
     name = unquote(header).replace("\\", "/").rsplit("/", 1)[-1]
+    name = "".join(ch for ch in name if ch.isprintable())
     if is_windows():
         name = windows_safe_name(name)
     return name if name not in ("", ".", "..") else fallback
 
 
 def cmd_pull(c: Client, args: argparse.Namespace) -> None:
+    if args.clipboard and args.out:
+        die("--clipboard cannot be combined with --out")
     path = f"/clipboard/item/{quote(args.id, safe='')}/raw" if args.id else "/clipboard/latest/raw"
     data, h = c.request("GET", path)
     kind = h.get("x-clipboard-type", "")
-    if not data and not kind:
+    if not kind and (not data or h.get("content-type", "").startswith("application/json")):
         die("clipboard is empty", 2)
-    if kind == "text" or (not kind and looks_like_text(data)):
+    text = kind == "text" or (not kind and looks_like_text(data))
+    if args.clipboard:
+        if not text:
+            die("the item is a file; use pull -o PATH to save it")
+        clipboard_text(data)
+        print("copied to the desktop clipboard", file=sys.stderr)
+        return
+    if text:
         if args.out and args.out != "-":
-            Path(args.out).write_bytes(data)
+            save_file(Path(args.out), data, args.force)
         else:
             sys.stdout.buffer.write(data)
             if sys.stdout.isatty() and not data.endswith(b"\n"):
                 sys.stdout.write("\n")
         return
-    fname = safe_name(h.get("x-clipboard-filename", ""), f"clipboard-{h.get('x-clipboard-id', 'item')}")
+    fname = safe_name(h.get("x-clipboard-filename", ""), "clipboard-item")
     if args.out == "-" or (args.out is None and not sys.stdout.isatty()):
         sys.stdout.buffer.write(data)
         return
     dest = Path(args.out) if args.out else Path(fname)
     if dest.is_dir():
         dest = dest / fname
-    if dest.exists() and not args.force:
-        die(f"{dest} exists (use -f to overwrite)")
-    dest.write_bytes(data)
+    save_file(dest, data, args.force)
     print(f"saved {kind or 'file'} -> {dest} ({len(data)} bytes)", file=sys.stderr)
+
+
+def save_file(dest: Path, data: bytes, force: bool) -> None:
+    try:
+        with dest.open("wb" if force else "xb") as output:
+            output.write(data)
+    except FileExistsError:
+        die(f"{dest} exists (use -f to overwrite)")
 
 
 def cmd_ls(c: Client, args: argparse.Namespace) -> None:
@@ -268,7 +347,8 @@ def cmd_ls(c: Client, args: argparse.Namespace) -> None:
         return
     print(f"{'ID':<12}  {'TIME':<19}  {'TYPE':<6} {'SIZE':>8}  NAME/PREVIEW")
     for it in items:
-        label = it.get("filename") or (it.get("preview") or "").replace("\n", " ")[:60]
+        label = it.get("filename") or (it.get("preview") or "")[:60]
+        label = "".join(ch if ch.isprintable() else " " for ch in label)
         print(f"{it['id']:<12}  {str(it.get('timestamp', ''))[:19]:<19}  "
               f"{it['type']:<6} {it.get('size') or '':>8}  {label}")
 
@@ -297,6 +377,7 @@ def build_parser() -> argparse.ArgumentParser:
     push = sub.add_parser("push", aliases=["send", "put"], help="send text (-t / stdin) or file(s)")
     push.add_argument("-t", "--text", help="literal text to send")
     push.add_argument("-n", "--name", help="filename when piping file data on stdin")
+    push.add_argument("-c", "--clipboard", action="store_true", help="read text from the Linux clipboard")
     push.add_argument("files", nargs="*", help="one file, or several (sent as one bundle)")
     push.set_defaults(fn=cmd_push)
 
@@ -305,6 +386,7 @@ def build_parser() -> argparse.ArgumentParser:
     pull.add_argument("id", nargs="?", help="history ID (default: latest)")
     pull.add_argument("-o", "--out", help="write to PATH or directory ('-' = stdout)")
     pull.add_argument("-f", "--force", action="store_true", help="overwrite an existing file")
+    pull.add_argument("-c", "--clipboard", action="store_true", help="copy received text to the Linux clipboard")
     pull.set_defaults(fn=cmd_pull)
 
     ls = sub.add_parser("ls", aliases=["list"], help="list history (newest first)")
@@ -331,7 +413,12 @@ def make_output_safe() -> None:
 def main(argv: Sequence[str] | None = None) -> None:
     make_output_safe()
     args = build_parser().parse_args(argv)
-    args.fn(Client(args.url), args)
+    try:
+        args.fn(Client(args.url), args)
+    except BrokenPipeError:
+        raise
+    except (OSError, ValueError) as exc:
+        die(str(exc))
 
 
 if __name__ == "__main__":

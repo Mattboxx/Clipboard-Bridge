@@ -327,20 +327,35 @@ actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
 ### Linux and command line
 
-`cb_cli.py` is a small, pure-Python command-line client (standard library only). It is
-developed on Linux, and its tests (which run it against the real standalone server) also
-run on the Windows CI runner; macOS is untested. It uses the same `/clipboard` API as the
-other clients and is user-triggered: there is no background sync.
+`cb_cli.py` is a preview Linux client for Python 3.10+ with no pip dependencies.
+Point it at the Docker server or the Windows app in Server mode. Transfers are
+manual; there is no tray app or background sync.
+
+From the repository folder, set the address and try:
 
 ```bash
-export CB_URL=https://clip.example.com          # base address, no path
-export CB_TOKEN_FILE=~/.config/clipboard-bridge/token   # or CB_TOKEN; see below
+export CB_URL=http://192.168.1.20:5088  # replace with your host address
 python3 cb_cli.py push -t "text"        # send text; `echo hi | python3 cb_cli.py push` also works
 python3 cb_cli.py push photo.jpg        # one file; several files are sent as one bundle
 python3 cb_cli.py pull                  # newest item: text to stdout, files saved by name
 python3 cb_cli.py ls                    # history; then `pull ID` or `rm ID` (`rm --all`)
 # aliases: send/put = push, receive/get = pull, list = ls
 ```
+
+To use the desktop clipboard for **text**, install `wl-clipboard` on Wayland
+or `xclip` on X11 with your distribution's package manager. For example, on
+Debian/Ubuntu use `sudo apt install wl-clipboard` on Wayland or
+`sudo apt install xclip` on X11. Fedora uses `sudo dnf install` and Arch uses
+`sudo pacman -S` with the same package names. Then run:
+
+```bash
+python3 cb_cli.py push --clipboard
+python3 cb_cli.py pull --clipboard
+```
+
+For photos and other files, pass their paths to `push` and use `pull -o PATH`
+to save them. A file group is downloaded as one ZIP. In SSH sessions or on
+headless systems, use stdin and stdout or `-o` without installing a clipboard helper.
 
 On Windows PowerShell use `py` and `$env:`; received file names are made valid for Windows:
 
@@ -350,7 +365,7 @@ $env:CB_TOKEN_FILE = "$HOME\.config\clipboard-bridge\token"   # UTF-8 or PowerSh
 py cb_cli.py push -t "text"
 ```
 
-Credentials come from the environment, never from arguments: `CB_TOKEN` or
+Credentials are optional. Set them only if the host requires them, using `CB_TOKEN` or
 `CB_TOKEN_FILE` for the shared space (sent as `X-Auth-Token`), or `CB_USER` with
 `CB_PASSWORD` or `CB_PASSWORD_FILE` for an account (sent as `X-Clipboard-User` and
 `X-Clipboard-Password`). A token file may be a one-line file or a `.env` file containing

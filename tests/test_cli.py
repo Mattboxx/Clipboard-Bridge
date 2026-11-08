@@ -3,10 +3,12 @@
 import importlib.util
 import io
 import json
+import os
 import sys
 import threading
 import uuid
 import zipfile
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -116,7 +118,7 @@ def test_file_keeps_bytes_name_and_mime(shared, capsys, tmp_path, monkeypatch):
 
 
 def test_several_files_form_one_bundle(shared, capsys, tmp_path):
-    first, second = tmp_path / "one two.txt", tmp_path / "b.txt"
+    first, second = tmp_path / "one two.txt", tmp_path / "caff\u00e8 %.txt"
     first.write_text("one")
     second.write_text("two")
     _, err = run(capsys, "push", str(first), str(second))
@@ -124,8 +126,77 @@ def test_several_files_form_one_bundle(shared, capsys, tmp_path):
     archive = tmp_path / "bundle.zip"
     run(capsys, "pull", "-o", str(archive))
     with zipfile.ZipFile(archive) as zf:
-        assert sorted(zf.namelist()) == ["b.txt", "one two.txt"]
+        assert sorted(zf.namelist()) == ["caff\u00e8 %.txt", "one two.txt"]
         assert zf.read("one two.txt") == b"one"
+
+
+@pytest.mark.parametrize("desktop", ["wayland", "x11"])
+def test_desktop_clipboard_text_round_trip(shared, capsys, monkeypatch, desktop):
+    monkeypatch.setenv("XDG_SESSION_TYPE", desktop)
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setattr(cb_cli.shutil, "which", lambda tool: tool)
+    payload = "Hello \U0001f680\n".encode()
+    calls = []
+
+    def run_helper(command, **kwargs):
+        calls.append((command, kwargs["input"]))
+        return cb_cli.subprocess.CompletedProcess(command, 0, stdout=payload)
+
+    monkeypatch.setattr(cb_cli.subprocess, "run", run_helper)
+    run(capsys, "push", "--clipboard")
+    assert run(capsys, "pull", "--clipboard")[1] == "copied to the desktop clipboard\n"
+    if desktop == "wayland":
+        assert calls == [
+            (["wl-paste", "--type", "text", "--no-newline"], None),
+            (["wl-copy", "--type", "text/plain;charset=utf-8"], payload),
+        ]
+    else:
+        prefix = ["xclip", "-selection", "clipboard", "-target", "UTF8_STRING"]
+        assert calls == [(prefix + ["-out"], None), (prefix + ["-in"], payload)]
+
+
+def test_clipboard_mode_does_not_copy_files_as_text(shared, capsys, monkeypatch, tmp_path):
+    sample = tmp_path / "demo.txt"
+    sample.write_text("a file, not a text entry", encoding="utf-8")
+    run(capsys, "push", str(sample))
+    monkeypatch.setattr(cb_cli, "clipboard_text", lambda _: pytest.fail("clipboard was modified"))
+    assert "use pull -o" in fail(capsys, "pull", "--clipboard")[1]
+
+
+@pytest.mark.skipif(os.environ.get("CB_TEST_ISOLATED_X11") != "1", reason="requires an isolated Xvfb display")
+def test_desktop_clipboard_with_real_xclip(shared, capsys, monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
+    payload = "X11 \U0001f680\n".encode()
+    cb_cli.clipboard_text(payload)
+    run(capsys, "push", "--clipboard")
+    cb_cli.clipboard_text(b"changed")
+    run(capsys, "pull", "--clipboard")
+    assert cb_cli.clipboard_text() == payload
+
+
+def test_redirect_is_not_followed(capsys, monkeypatch):
+    requested = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            requested.append((self.path, self.headers.get("X-Auth-Token")))
+            self.send_response(302 if len(requested) == 1 else 200)
+            self.send_header("Location", "/elsewhere")
+            self.end_headers()
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as httpd:
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            monkeypatch.delenv("CB_USER", raising=False)
+            monkeypatch.setenv("CB_TOKEN", "test-only")
+            url = f"http://127.0.0.1:{httpd.server_port}"
+            assert "redirected" in fail(capsys, "--url", url, "ls")[1]
+            assert requested == [("/clipboard/history?limit=20", "test-only")]
+        finally:
+            httpd.shutdown()
+            thread.join(timeout=5)
 
 
 def test_ls_header_aliases_and_rm_by_id(shared, capsys):
