@@ -292,6 +292,36 @@ was created.
 
 ---
 
+### Ubuntu desktop beta
+
+1. Download the [Ubuntu .deb](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/linux-v0.1.0-preview.1/Clipboard.Bridge.Ubuntu.V0.1.0-preview.1.all.deb).
+2. Open a terminal in your Downloads folder and run:
+
+   ```bash
+   sudo apt install ./Clipboard.Bridge.Ubuntu.V0.1.0-preview.1.all.deb
+   ```
+
+3. Open **Clipboard Bridge** from the applications menu. Enter your existing
+   Docker server or Windows host address, for example `http://192.168.1.20:5088`.
+   For a protected clipboard space, enter credentials in **Connection settings**.
+4. Click **Connect**. For automatic sharing while the app is running, enable
+   **Auto-sync text**. It watches for new text after you enable it; files are manual.
+   Clipboard data is unencrypted over HTTP. Enable syncing only on a trusted host.
+
+While the window is focused, use **Ctrl+Shift+S** to send, **Ctrl+Shift+R** to
+receive and **F5** to refresh. To assign system-wide shortcuts, open your desktop's
+keyboard settings and create custom shortcuts for these commands:
+
+| Action | Command |
+|---|---|
+| Send clipboard | `clipboard-bridge --send` |
+| Receive latest | `clipboard-bridge --receive` |
+| Show or hide the app | `clipboard-bridge --toggle` |
+
+The app must already be running for these commands to work. A desktop may
+limit whether the window can take focus. This beta has no system tray,
+notifications, automatic file sync or server mode.
+
 ## 5. Set up iPhone Shortcuts
 
 ### Mac compatibility

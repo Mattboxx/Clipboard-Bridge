@@ -325,6 +325,32 @@ shortcut. **There is no native Mac client or continuous background sync.** The
 distributed iPhone files have not been device-tested on a Mac; build the same
 actions if importing fails. See [Mac compatibility](GUIDE.md#mac-compatibility).
 
+### Ubuntu desktop beta
+
+[Download the Ubuntu .deb](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/linux-v0.1.0-preview.1/Clipboard.Bridge.Ubuntu.V0.1.0-preview.1.all.deb) |
+[Installation and shortcuts](GUIDE.md#ubuntu-desktop-beta)
+
+The Python desktop app connects to the Docker server or to Windows in Server
+mode. It supports optional automatic **text** sync, desktop shortcuts, manual
+file transfers, grouped files, searchable server history and previews. It is an
+early beta: no tray, notifications, automatic file sync or embedded server.
+Global shortcuts are assigned in your Linux desktop settings.
+
+For a source installation instead, install Python 3.10+ with Tkinter and the clipboard utility for your session.
+For Debian/Ubuntu (substitute `xclip` for `wl-clipboard` on X11):
+
+```bash
+sudo apt install python3-tk wl-clipboard
+python3 scripts/linux/install.py
+```
+
+Run the installer from the repository folder as your normal user. It adds
+**Clipboard Bridge** to the application menu, or run
+`python3 clipboard_bridge_linux.py` without installing it. On Fedora, Tkinter is
+provided by `python3-tkinter`; on Arch, install `tk` alongside Python.
+For source installs, image/PDF previews use Pillow and Poppler.
+Use **Connection settings** for optional credentials; they are kept in memory.
+
 ## Standalone server
 
 **Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`

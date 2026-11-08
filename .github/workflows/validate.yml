@@ -36,6 +36,7 @@ jobs:
           python -m py_compile clipboard_setup.py
           python -m py_compile clipboard_updates.py
           python -m py_compile clipboard_design.py
+          python -m py_compile clipboard_bridge_linux.py clipboard_linux_transport.py clipboard_linux_shortcuts.py scripts/linux/install.py scripts/linux/build_deb.py
           python -m py_compile scripts/release_metadata.py
           python -m py_compile scripts/prepare_release_assets.py
 
@@ -44,6 +45,24 @@ jobs:
 
       - name: Test server API and public site
         run: python -m pytest -q tests/test_server.py tests/test_updates.py tests/test_clipboard_text.py tests/test_clipboard_storage.py tests/test_release_assets.py tests/test_release_metadata.py tests/test_site_seo.py tests/test_docker_docs.py
+
+      - name: Test Linux desktop on an isolated display
+        env:
+          CB_TEST_ISOLATED_X11: "1"
+          CB_DESKTOP_SCREENSHOT: linux-desktop.png
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-tk xclip xvfb xauth scrot desktop-file-utils
+          python -m pip install "pillow>=12.3,<13" "pypdfium2>=5.13,<6"
+          xvfb-run -a -s "-screen 0 1024x640x24" python -m pytest -q tests/test_linux_desktop.py
+
+      - name: Upload Linux desktop preview
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1
+        with:
+          name: linux-desktop-preview
+          path: linux-desktop.png
+          if-no-files-found: ignore
 
       - name: Validate Docker Compose files
         run: |
@@ -67,6 +86,50 @@ jobs:
           CLIPBOARD_TEST_IMAGE: clipboard-bridge-server:test
           CLIPBOARD_TEST_PREVIOUS_IMAGE: ghcr.io/mattboxx/clipboard-bridge-server:1.0.11
         run: python -m pytest -q tests/test_container.py
+
+  linux-deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build and install the Ubuntu package
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          /usr/bin/python3 scripts/linux/build_deb.py --out linux-dist
+          sudo apt-get update
+          sudo apt-get install -y python3-venv xvfb xauth xdotool desktop-file-utils
+          sudo apt-get install -y "$PWD"/linux-dist/*.deb
+          dpkg-query -W -f='${Package} ${Version} ${Architecture}\n' clipboard-bridge
+          desktop-file-validate /usr/share/applications/io.github.mattbox03.clipboard-bridge.desktop
+          /usr/bin/clipboard-bridge --help
+          xvfb-run -a bash -eu -c '
+            /usr/bin/clipboard-bridge &
+            app=$!
+            trap "kill $app 2>/dev/null || true" EXIT
+            timeout 12s xdotool search --sync --onlyvisible --name "^Clipboard Bridge$"
+          '
+
+      - name: Test the installed GUI, clipboard sync and desktop shortcuts
+        env:
+          CB_TEST_ISOLATED_X11: "1"
+          CB_DESKTOP_APP_DIR: /usr/lib/clipboard-bridge
+        run: |
+          /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/clipboard-linux-test"
+          "$RUNNER_TEMP/clipboard-linux-test/bin/python" -m pip install -r requirements-server.txt pytest
+          xvfb-run -a "$RUNNER_TEMP/clipboard-linux-test/bin/python" -m pytest -q tests/test_linux_desktop.py
+
+      - name: Record package checksum and provenance
+        run: |
+          git rev-parse HEAD^{tree} > linux-dist/source-tree.txt
+          (cd linux-dist && sha256sum *.deb > SHA256SUMS.txt)
+
+      - name: Upload tested Ubuntu package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.1
+        with:
+          name: clipboard-bridge-ubuntu
+          path: linux-dist/
+          if-no-files-found: error
 
   windows-client:
     runs-on: windows-latest

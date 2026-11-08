@@ -6,6 +6,14 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Linux 0.1.0-preview.1
+
+- First Ubuntu desktop beta, installable from an architecture-independent .deb.
+- Connect to the Docker server or Windows host. Send and receive text, photos
+  and grouped files, search history, preview items and open downloaded files.
+- Optional automatic text sync and commands for desktop keyboard shortcuts.
+- No change to stable Windows, Android, Docker, App Store or Apple downloads.
+
 ## Server 1.0.12 - 2026-11-06
 
 - Simplify the browser workspace with separate Text/File tabs, a compact history,

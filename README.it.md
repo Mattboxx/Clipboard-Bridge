@@ -335,6 +335,32 @@ Usa il flusso manuale di invio/ricezione in Comandi Rapidi, eventualmente con un
 iPhone distribuiti non sono stati collaudati su un Mac: se l'importazione non funziona,
 ricrea le stesse azioni. Vedi [Compatibilità Mac](GUIDE.md#mac-compatibility).
 
+### Client desktop Ubuntu in beta
+
+[Scarica il pacchetto .deb per Ubuntu](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/linux-v0.1.0-preview.1/Clipboard.Bridge.Ubuntu.V0.1.0-preview.1.all.deb) |
+[Installazione e scorciatoie](GUIDE.md#ubuntu-desktop-beta)
+
+L'app grafica Python si collega al server Docker oppure a Windows in modalità
+Server. Supporta autosync opzionale del **testo**, scorciatoie, invio manuale
+di file e gruppi, ricerca nella cronologia e anteprime. È una prima beta:
+mancano tray, notifiche, sincronizzazione automatica dei file e server integrato.
+Le scorciatoie globali si impostano nelle preferenze del desktop Linux.
+
+Per installare da sorgente, usa Python 3.10+ con Tkinter e lo strumento per gli appunti della tua
+sessione. Su Debian/Ubuntu (usa `xclip` al posto di `wl-clipboard` per X11):
+
+```bash
+sudo apt install python3-tk wl-clipboard
+python3 scripts/linux/install.py
+```
+
+Avvia l'installer dalla cartella del repository come utente normale. Troverai
+**Clipboard Bridge** nel menu applicazioni. Per provarlo senza installazione:
+`python3 clipboard_bridge_linux.py`. Su Fedora Tkinter è fornito da
+`python3-tkinter`; su Arch installa `tk` insieme a Python. Per le anteprime di
+immagini e PDF, installa Pillow e Poppler.
+Inserisci eventuali credenziali in **Connection settings**: restano in memoria.
+
 ## Server indipendente
 
 **Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`

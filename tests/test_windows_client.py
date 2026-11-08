@@ -48,6 +48,28 @@ def embedded(tmp_path, monkeypatch):
     thread.join(timeout=5)
 
 
+def test_linux_desktop_transport_connects_to_windows_host(embedded, tmp_path):
+    from clipboard_linux_transport import Connection
+
+    _, (host, port) = embedded
+    connection = Connection(f"http://{host}:{port}")
+    message = "From Linux \U0001f680\n".encode()
+    connection.send_text(message)
+    text, headers = connection.item()
+    assert (text, headers["x-clipboard-type"]) == (message, "text")
+
+    first = tmp_path / "r\u00e9sum\u00e9 %.pdf"
+    second = tmp_path / "workflow.shortcut"
+    first.write_bytes(b"%PDF-1.7")
+    second.write_bytes(b"\x00\xff")
+    connection.send_files([first, second])
+    data, headers = connection.item()
+    assert headers["x-clipboard-type"] == "bundle"
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        assert archive.read(first.name) == first.read_bytes()
+        assert archive.read(second.name) == second.read_bytes()
+
+
 def test_queued_file_send_cannot_move_to_a_different_account(tmp_path, monkeypatch):
     client = load_client(tmp_path, monkeypatch)
     queued, uploads, notices = [], [], []
