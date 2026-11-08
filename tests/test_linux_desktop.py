@@ -107,9 +107,18 @@ def test_buttons_transfer_preview_filter_and_delete(app, monkeypatch, tmp_path):
     assert len(app.tree.get_children()) == 2
 
     archive = tmp_path / "received.zip"
-    monkeypatch.setattr(desktop.filedialog, "asksaveasfilename", lambda **_: archive)
+
+    def save_with_sync_tick(**_):
+        app.root.after_cancel(app.sync_timer)
+        app.poll_sync()
+        assert not app.busy
+        return archive
+
+    app.sync_enabled.set(True)
+    monkeypatch.setattr(desktop.filedialog, "asksaveasfilename", save_with_sync_tick)
     app.receive_button.invoke()
     wait_for(app.root, lambda: app.last_saved == archive)
+    app.sync_enabled.set(False)
     with zipfile.ZipFile(archive) as group:
         assert group.read(first.name) == first.read_bytes()
         assert group.read(second.name) == second.read_bytes()

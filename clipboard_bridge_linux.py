@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import threading
 import tkinter as tk
+from contextlib import contextmanager
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from urllib.parse import quote, unquote
@@ -79,6 +80,7 @@ class Desktop:
         self.client = None
         self.auth = {}
         self.busy = False
+        self.modal_open = False
         self.closed = False
         self.last_saved = None
         self.image = None
@@ -295,7 +297,7 @@ class Desktop:
         self.address_input.state(["disabled"] if self.busy else ["!disabled"])
 
     def start(self, label, work, done):
-        if self.busy or self.closed:
+        if self.busy or self.closed or self.modal_open:
             return
         self.busy = True
         if label:
@@ -311,7 +313,8 @@ class Desktop:
         threading.Thread(target=worker, daemon=True).start()
 
     def pump(self):
-        if self.listener and (command := self.listener.take()):
+        if (self.listener and not self.modal_open and not self.root.grab_current()
+                and (command := self.listener.take())):
             if command == "show" or command == "toggle" and self.root.state() != "normal":
                 self.root.deiconify()
                 self.root.lift()
@@ -347,9 +350,18 @@ class Desktop:
     def reset_sync(self):
         self.sync_state = None
 
+    @contextmanager
+    def modal_dialog(self):
+        self.modal_open = True
+        try:
+            yield
+        finally:
+            self.modal_open = False
+
     def poll_sync(self):
         self.sync_timer = self.root.after(2000, self.poll_sync)
-        if not self.client or self.busy or not self.sync_enabled.get():
+        if (not self.client or self.busy or self.modal_open or self.root.grab_current()
+                or not self.sync_enabled.get()):
             return
         client, state = self.client, self.sync_state
 
@@ -433,7 +445,8 @@ class Desktop:
     def send_files(self):
         if not self.client or self.busy:
             return
-        paths = [Path(name) for name in filedialog.askopenfilenames(parent=self.root)]
+        with self.modal_dialog():
+            paths = [Path(name) for name in filedialog.askopenfilenames(parent=self.root)]
         if paths:
             client = self.client
             self.start("Sending files...", lambda: client.send_files(paths),
@@ -504,7 +517,8 @@ class Desktop:
         self.preview.configure(state="disabled")
 
     def save_download(self, data, name):
-        selected = filedialog.asksaveasfilename(parent=self.root, initialfile=name)
+        with self.modal_dialog():
+            selected = filedialog.asksaveasfilename(parent=self.root, initialfile=name)
         if not selected:
             self.status.set("Save cancelled")
             return
@@ -531,8 +545,9 @@ class Desktop:
         item_id = self.selection()
         if not self.client or not item_id or self.busy:
             return
-        if not messagebox.askyesno("Delete item", "Delete this item from the server history?", parent=self.root):
-            return
+        with self.modal_dialog():
+            if not messagebox.askyesno("Delete item", "Delete this item from the server history?", parent=self.root):
+                return
         client = self.client
 
         def done(_):
