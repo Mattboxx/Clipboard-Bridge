@@ -115,7 +115,10 @@ def test_buttons_transfer_preview_filter_and_delete(app, monkeypatch, tmp_path):
     if capture := os.environ.get("CB_DESKTOP_SCREENSHOT"):
         assert os.environ.get("CB_TEST_ISOLATED_X11") == "1"
         app.root.update()
-        subprocess.run(["scrot", "-o", capture], check=True, timeout=10)
+        x, y = app.root.winfo_rootx(), app.root.winfo_rooty()
+        width, height = app.root.winfo_width(), app.root.winfo_height()
+        subprocess.run(["scrot", "-a", f"{x},{y},{width},{height}", "-o", capture],
+                       check=True, timeout=10)
 
     desktop.clipboard_text(b"different")
     app.selection_buttons[1].invoke()

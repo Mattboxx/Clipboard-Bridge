@@ -16,8 +16,8 @@ from clipboard_linux_transport import Connection, clipboard_text
 
 
 PALETTES = {
-    "dark": ("#121a22", "#1d2934", "#edf5fa", "#adbdcb", "#385973", "#23485b"),
-    "light": ("#edf2f5", "#ffffff", "#192a36", "#465e70", "#c9dfed", "#d7ece7"),
+    "dark": ("#121a22", "#1d2934", "#edf5fa", "#adbdcb", "#385973", "#23485b", "#304352"),
+    "light": ("#edf2f5", "#ffffff", "#192a36", "#465e70", "#c9dfed", "#d7ece7", "#bfced8"),
 }
 KINDS = {"All": "", "Text": "text", "Images": "image", "Files": "file", "Groups": "bundle"}
 
@@ -86,7 +86,8 @@ class Desktop:
         header = ttk.Frame(shell)
         header.pack(fill="x", pady=(0, 12))
         ttk.Label(header, text="Clipboard Bridge", style="Title.TLabel").pack(side="left")
-        self.button(header, "Theme", self.toggle_theme, side="right", tracked=False)
+        self.theme_button = self.button(header, "Light theme", self.toggle_theme,
+                                        side="right", tracked=False)
         self.button(header, "Connection settings", self.connection_settings, side="right")
 
         connection = ttk.Frame(shell)
@@ -102,6 +103,7 @@ class Desktop:
         self.send_button = self.button(actions, "Send clipboard", self.send_clipboard)
         self.files_button = self.button(actions, "Send files", self.send_files)
         self.receive_button = self.button(actions, "Receive latest", self.receive_latest)
+        self.receive_button.configure(style="Accent.TButton")
         self.refresh_button = self.button(actions, "Refresh", self.refresh, side="right")
 
         panes = ttk.Panedwindow(shell, orient="horizontal")
@@ -174,26 +176,34 @@ class Desktop:
         return widget
 
     def paint(self):
-        bg, panel, fg, muted, hover, select = PALETTES[self.theme]
-        self.style.configure(".", background=bg, foreground=fg)
+        bg, panel, fg, muted, hover, select, border = PALETTES[self.theme]
+        self.style.configure(".", background=bg, foreground=fg, bordercolor=border,
+                             lightcolor=border, darkcolor=border, troughcolor=bg,
+                             arrowcolor=muted)
         self.style.configure("Title.TLabel", font=("TkDefaultFont", 21, "bold"))
         self.style.configure("Section.TLabel", font=("TkDefaultFont", 11, "bold"))
         self.style.configure("Muted.TLabel", foreground=muted)
-        self.style.configure("TButton", padding=(8, 5), background=panel, bordercolor=bg)
-        self.style.map("TButton", background=[("active", hover)], foreground=[("disabled", muted)])
+        self.style.configure("TButton", padding=(8, 5), background=panel)
+        self.style.map("TButton", background=[("pressed", select), ("active", hover)],
+                       foreground=[("disabled", muted)], bordercolor=[("focus", muted)])
+        self.style.configure("Accent.TButton", background=select)
         for style in ("TEntry", "TCombobox", "Treeview"):
             self.style.configure(style, fieldbackground=panel, background=panel, foreground=fg,
-                                 insertcolor=fg, bordercolor=bg)
+                                 insertcolor=fg)
+        self.style.map("TEntry", bordercolor=[("focus", muted)])
         self.style.map("TCombobox", fieldbackground=[("readonly", panel)])
         self.style.configure("Treeview", rowheight=29)
         self.style.map("Treeview", background=[("selected", select)], foreground=[("selected", fg)])
         self.style.configure("Treeview.Heading", background=bg, foreground=fg, padding=(5, 4))
         self.style.map("Treeview.Heading", background=[("active", hover)])
+        self.style.configure("Vertical.TScrollbar", background=border, arrowsize=12, gripcount=0)
+        self.style.map("Vertical.TScrollbar", background=[("active", hover)])
         self.preview.configure(background=panel, foreground=fg, selectbackground=hover,
                                selectforeground=fg, font="TkDefaultFont")
 
     def toggle_theme(self):
         self.theme = "light" if self.theme == "dark" else "dark"
+        self.theme_button.configure(text="Light theme" if self.theme == "dark" else "Dark theme")
         self.paint()
 
     def connection_settings(self):
