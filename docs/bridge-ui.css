@@ -25,6 +25,8 @@ h1{font-size:54px;font-weight:740;line-height:1.1;letter-spacing:0}.hero-tagline
 .button.android{background:#1c5747;border-color:#3d8c73;color:#f0fff9}.button.android:hover{background:#266e59}
 main section{padding:72px 28px}#download{padding-top:34px}.section-kicker{color:#a2beed;font-size:11px}.section-heading{gap:40px}.section-heading h2{font-size:36px}.section-heading .section-copy{font-size:15px}
 .grid{gap:28px}.item,.item:first-child,.item:last-child{padding:22px 0 0;border-left:0;border-top:1px solid #394455}.item>p:not(.mac-guide){min-height:90px}
+@media(min-width:651px){#download .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1180px){#download .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .platform-icon,.item:nth-child(2) .platform-icon,.item:nth-child(3) .platform-icon{background:#202a38;border:1px solid #3d4d65;border-radius:8px}
 .platform-icon img{filter:brightness(0) invert(1);opacity:.9}.item .button{min-height:45px}.item h3{font-size:23px}.download-version{color:#b2c0d5}
 .notice{color:#b8c5d8}.notice .icon{filter:brightness(0) invert(1)}.download-notes summary,.arm-downloads summary{color:#d7e2f1}

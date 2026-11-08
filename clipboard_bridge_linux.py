@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """Linux desktop client. Network and clipboard helpers run off the Tk thread."""
 
+import argparse
 import base64
 import io
 import os
 import queue
+import shutil
 import subprocess
+import tempfile
 import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from urllib.parse import quote, unquote
 
-from clipboard_linux_transport import Connection, clipboard_text
+from clipboard_linux_shortcuts import ShortcutListener, forward, runtime_path
+from clipboard_linux_transport import Connection, clipboard_text, sync_text
 
 
 PALETTES = {
@@ -34,6 +38,16 @@ def render_preview(data, kind, mime, name, bounds):
             with Image.open(io.BytesIO(data)) as source:
                 source.thumbnail(bounds)
                 image = source.convert("RGBA")
+        elif shutil.which("pdftoppm"):
+            with tempfile.TemporaryDirectory(prefix="clipboard-preview-") as directory:
+                output_path = Path(directory) / "page"
+                subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-singlefile", "-png",
+                                "-scale-to", str(max(bounds)), "-", str(output_path)],
+                               input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               timeout=10, check=True)
+                with Image.open(output_path.with_suffix(".png")) as source:
+                    source.thumbnail(bounds)
+                    image = source.convert("RGBA")
         else:
             import pypdfium2
 
@@ -52,11 +66,11 @@ def render_preview(data, kind, mime, name, bounds):
         image.save(output, format="PNG")
         return "image", output.getvalue()
     except ImportError:
-        return "text", f"{name}\n\nInstall Pillow and pypdfium2 for image and PDF previews."
+        return "text", f"{name}\n\nInstall Pillow and Poppler for image and PDF previews."
 
 
 class Desktop:
-    def __init__(self, root):
+    def __init__(self, root, listener=None):
         self.root = root
         self.style = ttk.Style(root)
         self.style.theme_use("clam")
@@ -68,6 +82,9 @@ class Desktop:
         self.closed = False
         self.last_saved = None
         self.image = None
+        self.listener = listener
+        self.sync_state = None
+        self.sync_enabled = tk.BooleanVar(value=False)
         self.address = tk.StringVar(value=os.environ.get("CB_URL", ""))
         self.query = tk.StringVar()
         self.kind = tk.StringVar(value="All")
@@ -105,6 +122,10 @@ class Desktop:
         self.receive_button = self.button(actions, "Receive latest", self.receive_latest)
         self.receive_button.configure(style="Accent.TButton")
         self.refresh_button = self.button(actions, "Refresh", self.refresh, side="right")
+        self.sync_button = ttk.Checkbutton(actions, text="Auto-sync text",
+                                           variable=self.sync_enabled, command=self.reset_sync)
+        self.sync_button.pack(side="right", padx=(0, 6))
+        self.buttons.append(self.sync_button)
 
         panes = ttk.Panedwindow(shell, orient="horizontal")
         panes.pack(fill="both", expand=True)
@@ -162,11 +183,15 @@ class Desktop:
         ttk.Separator(shell).pack(fill="x", pady=(10, 7))
         ttk.Label(shell, textvariable=self.status, style="Muted.TLabel", wraplength=600).pack(anchor="w")
         root.bind("<F5>", lambda _: self.refresh())
+        root.bind("<Control-Shift-S>", lambda _: self.send_clipboard())
+        root.bind("<Control-Shift-R>", lambda _: self.receive_latest())
+        root.bind("<Control-q>", lambda _: self.close())
         self.paint()
         self.show_text("Select an item to preview its contents.")
         self.address.trace_add("write", self.address_changed)
         self.update_controls()
         self.timer = root.after(35, self.pump)
+        self.sync_timer = root.after(2000, self.poll_sync)
 
     def button(self, parent, label, command, *, side="left", tracked=True):
         widget = ttk.Button(parent, text=label, command=command)
@@ -248,6 +273,8 @@ class Desktop:
     def address_changed(self, *_):
         self.client = None
         self.auth = {}
+        self.sync_enabled.set(False)
+        self.reset_sync()
         self.load_history({"items": []})
         self.show_text("Select an item to preview its contents.")
         self.status.set("Not connected")
@@ -255,7 +282,8 @@ class Desktop:
     def update_controls(self):
         for button in self.buttons:
             button.state(["disabled"] if self.busy else ["!disabled"])
-        for button in (self.send_button, self.files_button, self.receive_button, self.refresh_button):
+        for button in (self.send_button, self.files_button, self.receive_button, self.refresh_button,
+                       self.sync_button):
             if not self.client:
                 button.state(["disabled"])
         for button in self.selection_buttons:
@@ -270,7 +298,8 @@ class Desktop:
         if self.busy or self.closed:
             return
         self.busy = True
-        self.status.set(label)
+        if label:
+            self.status.set(label)
         self.update_controls()
 
         def worker():
@@ -282,6 +311,16 @@ class Desktop:
         threading.Thread(target=worker, daemon=True).start()
 
     def pump(self):
+        if self.listener and (command := self.listener.take()):
+            if command == "show" or command == "toggle" and self.root.state() != "normal":
+                self.root.deiconify()
+                self.root.lift()
+            elif command == "toggle":
+                self.root.withdraw()
+            elif command == "send":
+                self.send_clipboard()
+            elif command == "receive":
+                self.receive_latest()
         try:
             done, value, error = self.results.get_nowait()
         except queue.Empty:
@@ -302,7 +341,24 @@ class Desktop:
     def close(self):
         self.closed = True
         self.root.after_cancel(self.timer)
+        self.root.after_cancel(self.sync_timer)
         self.root.destroy()
+
+    def reset_sync(self):
+        self.sync_state = None
+
+    def poll_sync(self):
+        self.sync_timer = self.root.after(2000, self.poll_sync)
+        if not self.client or self.busy or not self.sync_enabled.get():
+            return
+        client, state = self.client, self.sync_state
+
+        def done(result):
+            self.sync_state, status = result
+            if status:
+                self.refresh(status)
+
+        self.start(None, lambda: sync_text(client, state, clipboard_text), done)
 
     def connect(self):
         if self.busy:
@@ -312,6 +368,8 @@ class Desktop:
             self.status.set("Enter a server address.")
             return
         self.client = None
+        self.sync_enabled.set(False)
+        self.reset_sync()
         self.load_history({"items": []})
         self.show_text("Select an item to preview its contents.")
 
@@ -366,7 +424,11 @@ class Desktop:
             data.decode("utf-8")
             client.send_text(data)
 
-        self.start("Sending clipboard...", work, lambda _: self.refresh("Clipboard sent"))
+        def done(_):
+            self.reset_sync()
+            self.refresh("Clipboard sent")
+
+        self.start("Sending clipboard...", work, done)
 
     def send_files(self):
         if not self.client or self.busy:
@@ -420,6 +482,8 @@ class Desktop:
                 self.show_image(value)
                 self.status.set("Preview loaded")
             else:
+                if not preview:
+                    self.reset_sync()
                 self.show_text(value)
                 self.status.set("Preview loaded" if preview else "Copied to the clipboard")
 
@@ -480,9 +544,29 @@ class Desktop:
 
 
 def main():
-    root = tk.Tk()
-    Desktop(root)
-    root.mainloop()
+    parser = argparse.ArgumentParser(description="Clipboard Bridge desktop app")
+    actions = parser.add_mutually_exclusive_group()
+    for action in ("send", "receive", "toggle"):
+        actions.add_argument(f"--{action}", action="store_const", const=action, dest="command")
+    command = parser.parse_args().command
+    path = runtime_path()
+    if forward(path, command or "show"):
+        return
+    if command:
+        parser.exit(1, "Open Clipboard Bridge before using desktop shortcuts.\n")
+    listener = None
+    if path is not None:
+        try:
+            listener = ShortcutListener(path)
+        except BlockingIOError:
+            return
+    try:
+        root = tk.Tk()
+        Desktop(root, listener)
+        root.mainloop()
+    finally:
+        if listener:
+            listener.close()
 
 
 if __name__ == "__main__":

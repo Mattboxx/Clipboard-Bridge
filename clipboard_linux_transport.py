@@ -4,6 +4,7 @@ import json
 import mimetypes
 import os
 import subprocess
+from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -56,7 +57,9 @@ class Connection:
         return self.request("GET", "/clipboard" + resource + "/raw")
 
     def send_text(self, data):
-        self.request("POST", "/clipboard", data, {"Content-Type": "text/plain; charset=utf-8"})
+        content, _ = self.request("POST", "/clipboard", data,
+                                  {"Content-Type": "text/plain; charset=utf-8"})
+        return json.loads(content)["id"]
 
     def send_files(self, paths):
         boundary = uuid4().hex
@@ -75,7 +78,7 @@ class Connection:
                      {"Content-Type": f"multipart/form-data; boundary={boundary}"})
 
 
-def clipboard_text(data=None):
+def clipboard_text(data=None, *, allow_empty=False):
     read = data is None
     if os.environ.get("WAYLAND_DISPLAY") and os.environ.get("XDG_SESSION_TYPE") != "x11":
         package = "wl-clipboard"
@@ -93,6 +96,44 @@ def clipboard_text(data=None):
                                 stderr=subprocess.DEVNULL)
     except FileNotFoundError as error:
         raise RuntimeError(f"Install {package} to use the desktop clipboard.") from error
+    except subprocess.CalledProcessError as error:
+        if read and allow_empty:
+            return b""
+        raise RuntimeError(f"Could not {'read' if read else 'write'} the desktop clipboard.") from error
     except subprocess.SubprocessError as error:
         raise RuntimeError(f"Could not {'read' if read else 'write'} the desktop clipboard.") from error
     return result.stdout
+
+
+@dataclass(frozen=True)
+class SyncState:
+    local: bytes
+    remote_id: str | None
+
+
+def sync_text(connection, state, clipboard=clipboard_text):
+    """Detect changes without publishing pre-existing clipboard data on enable."""
+    local = clipboard(allow_empty=True)
+    try:
+        local.decode("utf-8")
+    except UnicodeDecodeError:
+        local = b""
+    if b"\x00" in local:
+        local = b""
+    items = connection.history(1)["items"]
+    newest = items[0] if items else {}
+    remote_id = newest.get("id")
+    if state is None:
+        return SyncState(local, remote_id), ""
+    if local and local != state.local:
+        return SyncState(local, connection.send_text(local)), "Clipboard sent automatically"
+    if remote_id and remote_id != state.remote_id and newest.get("type") == "text":
+        data, headers = connection.item(remote_id)
+        if headers.get("x-clipboard-type") != "text":
+            raise RuntimeError("The server changed the item type during sync.")
+        if clipboard(allow_empty=True) != local:
+            return state, ""
+        if data != local:
+            clipboard(data)
+        return SyncState(data, remote_id), "Clipboard received automatically"
+    return SyncState(local, remote_id), ""

@@ -12,8 +12,9 @@ import pytest
 from werkzeug.serving import make_server
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, os.environ.get("CB_DESKTOP_APP_DIR", str(ROOT)))
 import clipboard_bridge_linux as desktop
+import clipboard_linux_shortcuts as shortcuts
 import clipboard_linux_transport as transport
 
 
@@ -49,17 +50,26 @@ def server_url(tmp_path, monkeypatch):
         thread.join(timeout=5)
 
 
-@pytest.fixture()
-def app(server_url, monkeypatch):
+@pytest.fixture(scope="module")
+def tk_root():
     isolated_x11 = os.environ.get("CB_TEST_ISOLATED_X11") == "1"
     if sys.platform.startswith("linux") and not isolated_x11:
         pytest.skip("GUI tests require an isolated Xvfb display")
     root = desktop.tk.Tk()
+    root.withdraw()
+    yield root
+    root.destroy()
+
+
+@pytest.fixture()
+def app(server_url, monkeypatch, tk_root):
+    isolated_x11 = os.environ.get("CB_TEST_ISOLATED_X11") == "1"
+    root = desktop.tk.Toplevel(tk_root)
     if not isolated_x11:
         root.withdraw()
         clipboard = b""
 
-        def clipboard_helper(data=None):
+        def clipboard_helper(data=None, **_):
             nonlocal clipboard
             if data is None:
                 return clipboard
@@ -172,7 +182,7 @@ def test_window_stays_responsive_while_connecting(app, monkeypatch):
 @pytest.mark.parametrize("suffix,mime,kind", [("png", "image/png", "image"), ("pdf", "application/pdf", "file")])
 def test_image_and_pdf_preview(tmp_path, suffix, mime, kind):
     image = pytest.importorskip("PIL.Image")
-    if suffix == "pdf":
+    if suffix == "pdf" and not desktop.shutil.which("pdftoppm"):
         pytest.importorskip("pypdfium2")
     path = tmp_path / f"example.{suffix}"
     image.new("RGB", (120, 60), (34, 84, 107)).save(path)
@@ -217,3 +227,54 @@ def test_wayland_clipboard_uses_native_tools(monkeypatch):
         (["wl-paste", "--no-newline", "--type", "text"], None),
         (["wl-copy", "--type", "text/plain;charset=utf-8"], payload),
     ]
+
+
+def test_automatic_sync_is_opt_in_and_does_not_echo(app, server_url):
+    connection = transport.Connection(server_url, {"X-Auth-Token": "test-token"})
+    connection.send_text(b"already on server")
+    desktop.clipboard_text(b"already on clipboard")
+    app.connect_button.invoke()
+    wait_for(app.root, lambda: app.status.get().startswith("Connected"))
+    assert not app.sync_enabled.get()
+    app.sync_button.invoke()
+    wait_for(app.root, lambda: app.sync_state is not None)
+    assert connection.item()[0] == b"already on server"
+    assert desktop.clipboard_text() == b"already on clipboard"
+
+    desktop.clipboard_text(b"new local value")
+    wait_for(app.root, lambda: app.status.get() == "Clipboard sent automatically")
+    assert connection.item()[0] == b"new local value"
+
+    connection.send_text(b"new remote value")
+    wait_for(app.root, lambda: app.status.get() == "Clipboard received automatically")
+    assert desktop.clipboard_text() == b"new remote value"
+    state, message = transport.sync_text(connection, app.sync_state, desktop.clipboard_text)
+    assert not message and state == app.sync_state
+    assert len(connection.history(20)["items"]) == 3
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="requires Unix datagram sockets")
+def test_global_shortcuts_control_the_running_window(app, tmp_path, monkeypatch):
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    path = shortcuts.runtime_path()
+    listener = shortcuts.ShortcutListener(path)
+    app.listener = listener
+    try:
+        desktop.clipboard_text(b"sent by desktop shortcut")
+        app.connect_button.invoke()
+        wait_for(app.root, lambda: app.status.get().startswith("Connected"))
+        assert shortcuts.forward(path, "send")
+        wait_for(app.root, lambda: app.status.get() == "Clipboard sent")
+        desktop.clipboard_text(b"something else")
+        assert shortcuts.forward(path, "receive")
+        wait_for(app.root, lambda: app.status.get() == "Copied to the clipboard")
+        assert desktop.clipboard_text() == b"sent by desktop shortcut"
+        assert shortcuts.forward(path, "toggle")
+        wait_for(app.root, lambda: app.root.state() == "withdrawn")
+        assert shortcuts.forward(path, "toggle")
+        wait_for(app.root, lambda: app.root.state() == "normal")
+    finally:
+        app.listener = None
+        listener.close()

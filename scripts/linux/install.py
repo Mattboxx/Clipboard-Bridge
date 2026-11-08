@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 APP_ID = "io.github.mattbox03.clipboard-bridge"
-FILES = ("clipboard_bridge_linux.py", "clipboard_linux_transport.py", "clipboard_setup.py",
+FILES = ("clipboard_bridge_linux.py", "clipboard_linux_transport.py",
+         "clipboard_linux_shortcuts.py", "clipboard_setup.py",
          "LICENSE", "LICENSE-MIT-legacy.txt",
          "THIRD_PARTY_NOTICES.md")
 
