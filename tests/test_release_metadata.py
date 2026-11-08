@@ -132,12 +132,23 @@ def test_docker_context_is_an_explicit_server_only_allowlist():
     assert set(rules[1:]) == {
         "!Dockerfile", "!requirements-server.txt", "!clipboard_bridge-Server.py",
         "!clipboard_text.py", "!clipboard_storage.py", "!server_web_strings.json", "!LICENSE",
-        "!clipboard_setup.py",
+        "!clipboard_setup.py", "!LICENSE-MIT-legacy.txt", "!THIRD_PARTY_NOTICES.md",
     }
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert "COPY clipboard_text.py ." in dockerfile and "COPY LICENSE ." in dockerfile
     assert "COPY clipboard_storage.py ." in dockerfile
     assert "COPY server_web_strings.json ." in dockerfile
+    assert "COPY LICENSE-MIT-legacy.txt THIRD_PARTY_NOTICES.md ./" in dockerfile
+
+
+def test_container_license_metadata_matches_project_license():
+    assert "GNU GENERAL PUBLIC LICENSE" in (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert 'org.opencontainers.image.licenses="GPL-3.0-only"' in (
+        ROOT / "Dockerfile"
+    ).read_text()
+    assert "org.opencontainers.image.licenses=GPL-3.0-only" in (
+        ROOT / ".github/workflows/container.yml"
+    ).read_text()
 
 
 def test_installer_supports_native_arm64_without_changing_app_identity():
