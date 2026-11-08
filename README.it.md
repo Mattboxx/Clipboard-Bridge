@@ -24,7 +24,8 @@ configurazione non devi riaprire l'editor di Comandi Rapidi a ogni trasferimento
 
 [Sito web](https://mattboxx.github.io/Clipboard-Bridge/) |
 [Download](#download) | [Demo desktop](#desktop-in-azione) | [Da dove iniziare](#da-dove-iniziare) |
-[Guida completa](GUIDE.md) | [Sviluppatori](#sviluppatori)
+[Guida completa](GUIDE.md) | [Sviluppatori](#sviluppatori) |
+[Proponi una funzionalità](https://github.com/Mattboxx/Clipboard-Bridge/issues/new?template=feature_request.yml)
 
 Prima configurazione? Segui il [tutorial passo passo](https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html).
 
@@ -32,7 +33,7 @@ Guide specifiche in inglese: [clipboard tra Windows e iPhone](https://mattboxx.g
 e [clipboard tra dispositivi Apple e Android](https://mattboxx.github.io/Clipboard-Bridge/apple-android-clipboard.html).
 
 [![Test](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml/badge.svg)](https://github.com/Mattboxx/Clipboard-Bridge/actions/workflows/validate.yml)
-[![Licenza MIT](https://img.shields.io/badge/licenza-MIT-555)](LICENSE)
+[![Licenza GPLv3](https://img.shields.io/badge/licenza-GPLv3-555)](LICENSE)
 
 ## Desktop in azione
 
@@ -595,7 +596,9 @@ Non committare credenziali, clipboard personali, chiavi Android o output di buil
 [Guida completa](GUIDE.md) | [Guida Docker](DOCKER.md) | [Documentazione Android](android/README.md) |
 [Changelog](CHANGELOG.md) | [Sicurezza](SECURITY.md)
 
-Distribuito con [licenza MIT](LICENSE). Le licenze delle dipendenze sono descritte in
+Il codice sorgente attuale è distribuito con [licenza GNU GPL, solo versione 3](LICENSE).
+Le precedenti release MIT mantengono le [condizioni originali](LICENSE-MIT-legacy.txt).
+Le licenze delle dipendenze sono descritte in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Sostieni il progetto

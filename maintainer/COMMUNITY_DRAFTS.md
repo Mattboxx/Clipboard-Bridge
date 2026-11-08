@@ -28,7 +28,7 @@ unsigned. This is a trusted-LAN/private-VPN tool, not a service to expose public
 HTTP is supported locally; an optional account/token does not encrypt the connection.
 
 No online account, subscription or project-hosted clipboard service is required.
-The source is MIT-licensed:
+The source is GPLv3-licensed:
 
 https://github.com/Mattboxx/Clipboard-Bridge
 
@@ -47,7 +47,7 @@ These are distinct starting points, not permission to cross-post one advertiseme
 
 | Community | Proposed title | Useful focus |
 |---|---|---|
-| r/opensource | A MIT-licensed clipboard hub with Windows hosting and Apple Shortcuts | Explain the small HTTP API, contribution guide and currently unsigned binaries; ask for review, not stars |
+| r/opensource | A GPLv3-licensed clipboard hub with Windows hosting and Apple Shortcuts | Explain the small HTTP API, contribution guide and currently unsigned binaries; ask for review, not stars |
 | r/windows | A configurable tray clipboard bridge to Android and Apple Shortcuts | Show History toggle, previews and standard-user install; disclose signing warnings |
 | r/Android | Android clipboard sharing with a private Windows or Docker host | Show Share/Quick Settings; explain Android 10+ background limitations and beta status |
 | r/homelab | A small persistent clipboard hub for a home Docker host | Show volume persistence, upgrade/rollback and LAN/VPN boundaries |
@@ -72,7 +72,7 @@ for trusted LANs and private VPNs, without mandatory cloud accounts or telemetry
 
 - Repository: https://github.com/Mattboxx/Clipboard-Bridge
 - Website: https://mattboxx.github.io/Clipboard-Bridge/
-- License: MIT
+- License: GPL-3.0-only
 - Docker image: use the approved stable `ghcr.io/mattboxx/clipboard-bridge-server` tag
 - Docker guide: https://github.com/Mattboxx/Clipboard-Bridge/blob/main/DOCKER.md
 - Platforms: Windows 10/11 x64; Windows 11 ARM64; Android 10+; Apple Shortcuts;
@@ -190,7 +190,7 @@ one host on my own network. The host can be the Windows app itself or a small Do
 service, with retained history and optional user spaces. Android has a native app;
 Apple uses two Shortcuts, so I am not claiming continuous background sync on iPhone.
 
-The source is MIT-licensed and the API is intentionally small. No online account is
+The source is GPLv3-licensed and the API is intentionally small. No online account is
 required. It is intended for a trusted LAN/private VPN, not direct public exposure.
 Windows binaries are currently unsigned. I would like feedback on the first setup,
 file-group behavior and what is confusing in the device instructions.

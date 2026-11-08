@@ -82,6 +82,8 @@ so changing architecture preserves the existing per-user settings and history.
 
 ## Pull requests
 
+- Contributions to the project are distributed under [GPL-3.0-only](LICENSE).
+  Identify any third-party code or assets and preserve their original notices.
 - Open an issue first for large changes or changes to the API.
 - Preserve compatibility with the prepared iOS Shortcuts.
 - Add or update focused tests for behavior changes.

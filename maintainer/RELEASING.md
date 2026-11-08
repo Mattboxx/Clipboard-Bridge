@@ -14,6 +14,11 @@ only Android or the server changed. Unchanged signed Apple exports remain reusab
 3. Update current download links, README languages, guide, website, changelog and the
    catalog mirror. Preserve historical evidence and demo capture version captions.
 4. Merge through protected PRs only after required checks and review threads pass.
+5. For GPLv3 builds, include the license and applicable notices in the packages.
+   Provide clear access to Corresponding Source for each exact published build,
+   including required build/install scripts and covered dependencies. Verify that
+   source access works for anonymous users; do not assume a GitHub source archive
+   alone covers separately bundled components. Do not relabel older MIT artifacts.
 
 ## Publication Order
 

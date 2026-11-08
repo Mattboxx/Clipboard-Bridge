@@ -1,8 +1,11 @@
 name: Feature request
-description: Suggest a focused improvement
+description: Suggest a new feature, platform, or improvement
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: Check existing issues first. Do not include credentials, private URLs, or clipboard contents.
   - type: textarea
     id: problem
     attributes:
@@ -23,9 +26,12 @@ body:
       options:
         - Windows client
         - Docker/Python server
-        - iPhone Shortcut
+        - Android app
+        - Apple Shortcuts (iPhone, iPad, Mac)
         - Web interface
         - Documentation
         - App Store package
+        - New platform (e.g. Linux)
+        - Other or multiple components
     validations:
       required: true
