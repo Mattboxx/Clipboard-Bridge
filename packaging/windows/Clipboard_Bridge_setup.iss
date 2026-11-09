@@ -1,7 +1,7 @@
 ; Windows installer. Source and output paths are relative to the repository root.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.21"
+  #define MyAppVersion "2.0.22"
 #endif
 
 #ifndef MyAppArchitecture
@@ -62,6 +62,9 @@ Name: "windowsstartup"; Description: "{cm:StartupDescription}"; GroupDescription
 
 [Files]
 Source: "dist\Clipboard Bridge.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE-MIT-legacy.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

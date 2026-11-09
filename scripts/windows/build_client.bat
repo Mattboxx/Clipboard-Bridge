@@ -34,6 +34,7 @@ echo Compiling...
   --version-file packaging\windows\windows_version_info.txt ^
   --add-data "icon.ico;." ^
   --add-data "VERSION;." ^
+  --add-data "LICENSE;." --add-data "LICENSE-MIT-legacy.txt;." --add-data "THIRD_PARTY_NOTICES.md;." ^
   --hidden-import pystray._win32 ^
   --collect-submodules keyboard ^
   --copy-metadata striprtf ^

@@ -18,10 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import clipboard_updates as updates
 
 
-OLD_VERSION = "2.0.18"
+OLD_VERSION = "2.0.21"
 OLD_HASHES = {
-    "x64": "9350c62d325e3c8c9f709a7dd8b95cc50a87a316b6858529eb499427f1b4ab18",
-    "arm64": "28bd03d34033496cddfe1a37495788641013f176519705dae83082faca65ae0d",
+    "x64": "81eb0dbef8417bf81afba4776e7d104f377e936bc4c215ad0895b77e392e5736",
+    "arm64": "8852556507be7308c96db6aa8e56b3357871a6c2880889f5d8f688c06a785ccc",
 }
 
 
@@ -111,8 +111,17 @@ def exercise(old, executable, installer, architecture, root, kind):
         assert helper.wait(timeout=15) == 0
         updates.verify_executable(target, updates.file_digest(executable), version, architecture)
         assert all(path.read_bytes() == contents for path, contents in before.items()), "User data changed"
-        with opener.open(f"http://127.0.0.1:{port}/health", timeout=10) as response:
-            assert response.status == 200, "Updated client did not restart"
+        # A successful handoff starts the new process before its server is ready.
+        deadline = time.monotonic() + 60
+        while True:
+            try:
+                with opener.open(f"http://127.0.0.1:{port}/health", timeout=2) as response:
+                    assert response.status == 200, "Updated client health check failed"
+                break
+            except OSError as error:
+                if time.monotonic() >= deadline:
+                    raise AssertionError("Updated client did not restart") from error
+                time.sleep(.5)
         print(f"Frozen {architecture} {kind}: {OLD_VERSION} -> {version}, restart and data preservation OK")
     finally:
         if restarted_pid:

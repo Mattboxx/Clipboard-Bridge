@@ -102,7 +102,7 @@ You should see the Clipboard Bridge web page. If it doesn't load, see
 ## 4. Set up the Windows client
 
 ### Option A — Executable
-Download the installer or portable EXE from the GitHub Release. Choose **x64** for
+Download the installer or portable EXE from the [Clipboard Bridge 2.0.22 release](https://github.com/Mattboxx/Clipboard-Bridge/releases/tag/2.0.22). Choose **x64** for
 Intel/AMD PCs, or the native **ARM64** downloads for Windows 11 ARM devices, such as
 Snapdragon PCs and ARM-based Surface models. To identify your device, open **Settings >
 System > About > System type**. The ARM64 version has the same functions, including
@@ -111,7 +111,7 @@ image and PDF previews.
 Both architectures share settings and history. Quit Clipboard Bridge before switching
 architectures, then install the other package normally; do not delete your data folder.
 
-To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.21` (requires x64
+To rebuild x64 packages locally, run `scripts\windows\build_release.bat 2.0.22` (requires x64
 Python, PyInstaller and Inno Setup). Native ARM64 builds use the **Build Windows ARM64**
 GitHub Actions workflow; see [CONTRIBUTING.md](CONTRIBUTING.md#windows-release-builds).
 No personal configuration is embedded in any package.
@@ -159,7 +159,7 @@ and abandoned downloads are cleaned after seven days. Unfinished helpers are kep
 When Windows is hosting, the updater waits for graceful shutdown of active requests;
 it never force-closes the app. A failed handoff leaves the existing app available.
 
-> **Windows 11 security:** version 2.0.21 is currently unsigned, so Smart App Control can
+> **Windows 11 security:** version 2.0.22 is currently unsigned, so Smart App Control can
 > block both the installer and portable executable. There is no per-app exception for
 > Smart App Control. Trusted Authenticode signing is being prepared; see the
 > [code signing policy](CODE_SIGNING.md).
@@ -196,6 +196,14 @@ A clipboard icon appears in the system tray (bottom‑right). Right‑click it:
    previous settings intact. F12 is reserved by Windows and cannot be selected.
 
 ### Daily use
+
+In **Settings > General**, choose the folder for newly received files or restore
+the default `Downloads\Clipboard Bridge`. Files already saved are not moved.
+In **Server mode**, use **Settings > Connection** to set the maximum upload
+size (1–1024 MiB, default 256) and upload inactivity timeout (30–300 seconds,
+default 30). The size also limits ZIP expansion. Raising it increases memory use.
+These settings do not change the Docker server: set its own
+`CLIPBOARD_MAX_UPLOAD_MB` separately when needed.
 - **Send clipboard → server**: uploads whatever you copied (text, an image, or files
   selected in File Explorer). Also bound to `Ctrl+Alt+C` by default.
 - **Receive latest ← server**: puts the latest item back on your clipboard (files are
