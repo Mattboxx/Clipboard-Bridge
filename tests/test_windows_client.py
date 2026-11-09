@@ -48,6 +48,89 @@ def embedded(tmp_path, monkeypatch):
     thread.join(timeout=5)
 
 
+def test_host_upload_limit_applies_to_raw_and_expanded_archive(embedded):
+    client, (host, port) = embedded
+    url = f"http://{host}:{port}"
+    payload = b"x" * (1024 * 1024 + 1)
+    headers = {"Content-Type": "application/octet-stream", "X-Clipboard-Filename": "test.bin"}
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as group:
+        group.writestr("test.bin", payload)
+    client.config["host_max_upload_mb"] = 1
+    assert requests.post(url + "/clipboard", data=payload, headers=headers, timeout=5).status_code == 413
+    refused = requests.post(url + "/clipboard/bundle", data=archive.getvalue(), timeout=5)
+    assert refused.status_code == 400
+    assert "expanded archive exceeds" in refused.json()["error"]
+    client.config["host_max_upload_mb"] = 2
+    assert requests.post(url + "/clipboard", data=payload, headers=headers, timeout=5).ok
+    assert requests.post(url + "/clipboard/bundle", data=archive.getvalue(), timeout=5).ok
+
+
+def test_received_folder_is_fixed_for_each_group_and_can_change_on_next_receive(tmp_path, monkeypatch):
+    client = load_client(tmp_path, monkeypatch)
+    first, second = tmp_path / "First folder", tmp_path / "Second folder"
+    client.config["received_files_dir"] = str(first)
+    item = {"id": "group-test", "type": "bundle", "files": [{"index": 0}, {"index": 1}]}
+
+    def fetch(_, index):
+        client._apply_config(dict(client.config, received_files_dir=str(second)))
+        return f"file-{index}.bin", bytes([index])
+
+    monkeypatch.setattr(client, "fetch_bundle_member", fetch)
+    saved = [Path(path) for path in client.save_remote_files(item)]
+    assert [path.parent for path in saved] == [first, first]
+    saved_again = [Path(path) for path in client.save_remote_files(item)]
+    assert [path.parent for path in saved_again] == [second, second]
+    assert [path.read_bytes() for path in saved + saved_again] == [b"\x00", b"\x01"] * 2
+
+
+def test_transfer_settings_reject_invalid_values_and_save_choices(tmp_path, monkeypatch, tk_test_root):
+    client = load_client(tmp_path, monkeypatch)
+    client.config.update(mode="server", hotkeys_enabled=False)
+    monkeypatch.setattr(client, "_root", tk_test_root)
+    monkeypatch.setattr(client, "_run_bg", lambda *_: None)
+    monkeypatch.setattr(client, "notify", lambda *_: None)
+    client.open_settings()
+    tk_test_root.update()
+    window = next(child for child in tk_test_root.winfo_children()
+                  if getattr(child, "_view_name", None) == "settings")
+
+    def descendants(widget):
+        for child in widget.winfo_children():
+            yield child
+            yield from descendants(child)
+
+    try:
+        widgets = list(descendants(window))
+        fields = {widget.winfo_name(): widget for widget in widgets if isinstance(widget, client.ttk.Entry)}
+        save = next(widget for widget in widgets if isinstance(widget, client.ttk.Button)
+                    and widget.cget("text") == client.t("save"))
+
+        def enter(name, value):
+            fields[name].delete(0, "end")
+            fields[name].insert(0, value)
+
+        enter("host_max_upload_mb", "1025")
+        save.invoke()
+        assert window.winfo_exists()
+        enter("host_max_upload_mb", "1024")
+        enter("host_upload_idle_seconds", "300")
+        enter("received_files_dir", "relative-folder")
+        save.invoke()
+        assert window.winfo_exists()
+        selected = tmp_path / "Downloads test"
+        enter("received_files_dir", str(selected))
+        save.invoke()
+        saved = client.load_config()
+        assert saved["host_max_upload_mb"] == 1024
+        assert saved["host_upload_idle_seconds"] == 300
+        assert saved["received_files_dir"] == str(selected)
+        assert list(selected.iterdir()) == []
+    finally:
+        if window.winfo_exists():
+            tk_test_root.tk.call(window.protocol("WM_DELETE_WINDOW"))
+
+
 def test_linux_desktop_transport_connects_to_windows_host(embedded, tmp_path):
     from clipboard_linux_transport import Connection
 

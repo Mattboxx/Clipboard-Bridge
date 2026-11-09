@@ -25,6 +25,7 @@ import http.server
 import ctypes
 import shutil
 import subprocess
+import tempfile
 import time
 import zipfile
 import webbrowser
@@ -177,6 +178,8 @@ DEFAULT_CONFIG = {
     "server_address": "",
     "host_port": 5088,         # port this PC listens on in server mode
     "host_max_upload_mb": 256, # compressed and expanded limit for local server uploads
+    "host_upload_idle_seconds": 30,
+    "received_files_dir": "",
     "token": "",
     "username": "",            # server account name (empty = shared space)
     "password": "",            # server account password
@@ -292,6 +295,15 @@ STRINGS = {
         "addr_copied": "Address copied: {addr}",
         "server_err": "Cannot start server: {e}",
         "lbl_host_port": "Server port (server mode)",
+        "lbl_host_upload": "Upload limit (MiB)",
+        "lbl_host_upload_idle": "Upload idle timeout (s)",
+        "host_upload_hint": "1–1024 MiB, 30–300 seconds. Larger uploads require more memory.",
+        "lbl_received_files_dir": "Received files folder",
+        "browse_folder": "Browse...",
+        "default_folder": "Default",
+        "err_received_folder": "Choose a writable folder: {error}",
+        "err_absolute_folder": "Enter a full folder path.",
+        "err_host_transfer": "Enter 1–1024 MiB and a timeout between 30 and 300 seconds.",
         "settings": "Settings…",
         "version_label": "Version {version}",
         "exit": "Exit",
@@ -446,6 +458,15 @@ STRINGS = {
         "addr_copied": "Indirizzo copiato: {addr}",
         "server_err": "Impossibile avviare il server: {e}",
         "lbl_host_port": "Porta server (modalità server)",
+        "lbl_host_upload": "Limite upload (MiB)",
+        "lbl_host_upload_idle": "Inattività upload (s)",
+        "host_upload_hint": "1–1024 MiB, 30–300 secondi. Gli upload grandi richiedono più memoria.",
+        "lbl_received_files_dir": "Cartella file ricevuti",
+        "browse_folder": "Sfoglia...",
+        "default_folder": "Predefinita",
+        "err_received_folder": "Scegli una cartella scrivibile: {error}",
+        "err_absolute_folder": "Inserisci il percorso completo della cartella.",
+        "err_host_transfer": "Inserisci da 1 a 1024 MiB e un timeout da 30 a 300 secondi.",
         "settings": "Impostazioni…",
         "version_label": "Versione {version}",
         "exit": "Esci",
@@ -560,7 +581,8 @@ def _normalize_config(values):
     for key, minimum, maximum in (
         ("server_port", 1, 65535), ("host_port", 1, 65535),
         ("poll_interval", 1, 3600), ("max_local_history", 1, 100000),
-        ("host_max_upload_mb", 1, 1024), ("_legacy_migration_version", 0, 2),
+        ("host_max_upload_mb", 1, 1024), ("host_upload_idle_seconds", 30, 300),
+        ("_legacy_migration_version", 0, 2),
     ):
         default = DEFAULT_CONFIG.get(key, 0)
         try:
@@ -574,7 +596,27 @@ def _normalize_config(values):
         cfg["mode"] = "client"
     if cfg.get("appearance") not in ("light", "dark"):
         cfg["appearance"] = "dark"
+    try:
+        cfg["received_files_dir"] = _normalize_received_directory(cfg.get("received_files_dir", ""))
+    except ValueError:
+        cfg["received_files_dir"] = ""
     return cfg
+
+
+def _normalize_received_directory(value):
+    value = os.path.expandvars(os.path.expanduser(value.strip()))
+    if not value:
+        return ""
+    drive, tail = os.path.splitdrive(value)
+    rooted = os.name != "nt" or (drive and (tail.startswith(("\\", "/")) or drive.startswith("\\\\")))
+    if not rooted or not os.path.isabs(value) or "\x00" in value:
+        raise ValueError(t("err_absolute_folder"))
+    return os.path.normpath(value)
+
+
+def received_directory(settings=None):
+    values = _request_settings() if settings is None else settings
+    return values.get("received_files_dir") or RECEIVED_DIR
 
 
 def load_config():
@@ -1113,7 +1155,8 @@ def _take_local_upload_marker():
 
 
 def save_received(filename, raw):
-    os.makedirs(RECEIVED_DIR, exist_ok=True)
+    directory = received_directory()
+    os.makedirs(directory, exist_ok=True)
     name = os.path.basename(str(filename or "file.bin").replace("\\", "/"))
     name = "".join("_" if c in '<>:"/\\|?*' or ord(c) < 32 else c for c in name)
     name = name.strip(" .") or "file.bin"
@@ -1126,14 +1169,14 @@ def save_received(filename, raw):
         name = "_" + name
         stem, ext = os.path.splitext(name)
     # Leave room for the download directory and collision suffix on Windows.
-    budget = max(40, min(180, 240 - len(RECEIVED_DIR.encode("utf-16-le")) // 2))
+    budget = max(40, min(180, 240 - len(directory.encode("utf-16-le")) // 2))
     ext = ext.encode("utf-16-le")[:64].decode("utf-16-le", errors="ignore")
     stem_budget = max(8, budget - len(ext.encode("utf-16-le")) // 2 - 16)
     stem = stem.encode("utf-16-le")[:stem_budget * 2].decode("utf-16-le", errors="ignore")
     i = 0
     while True:
         suffix = f" ({i})" if i else ""
-        dest = os.path.join(RECEIVED_DIR, f"{stem}{suffix}{ext}")
+        dest = os.path.join(directory, f"{stem}{suffix}{ext}")
         try:
             stream = open(dest, "xb")
         except FileExistsError:
@@ -1152,17 +1195,15 @@ def save_received(filename, raw):
 
 
 def reveal_received_file(path):
-    os.makedirs(RECEIVED_DIR, exist_ok=True)
     try:
         if os.path.isfile(path):
             subprocess.Popen(["explorer.exe", "/select,", os.path.normpath(path)])
+        elif os.path.isdir(os.path.dirname(path)):
+            open_received_folder(directory=os.path.dirname(path))
         else:
-            os.startfile(RECEIVED_DIR)
+            open_received_folder()
     except Exception:
-        try:
-            os.startfile(RECEIVED_DIR)
-        except Exception:
-            pass
+        open_received_folder()
 
 
 # ---------------------------------------------------------------- network
@@ -1192,7 +1233,7 @@ def push_bytes(filename, raw):
             files=[("files", (filename, raw, mime))],
             headers=auth_headers(),
             params=auth_params(),
-            timeout=30,
+            timeout=(5, 300),
         )
         r.raise_for_status()
         try:
@@ -1229,7 +1270,7 @@ def push_files(paths):
                 files=parts,
                 headers=auth_headers(),
                 params=auth_params(),
-                timeout=120,
+                timeout=(5, 300),
             )
             r.raise_for_status()
             item_id = r.json().get("id")
@@ -1304,7 +1345,7 @@ def fetch_bundle_member(item_id, member_index):
             f"{server_url()}/clipboard/item/{item_id}/file/{member_index}/raw",
             headers=auth_headers(),
             params=auth_params(),
-            timeout=60,
+            timeout=(5, 300),
         )
         r.raise_for_status()
         filename = r.headers.get("X-Clipboard-Filename", "file.bin")
@@ -1321,7 +1362,9 @@ def save_remote_files(item):
         key, item_id = _sync_source_key(), item.get("id")
         with _sync_state_lock:
             saved = _load_sync_state().get("downloads", {}).get(key, {}).get(item_id, [])
-        if saved and all(os.path.isfile(path) for path in saved):
+        directory = os.path.normcase(received_directory())
+        if saved and all(os.path.isfile(path) and
+                         os.path.normcase(os.path.dirname(path)) == directory for path in saved):
             return saved
         paths = []
         try:
@@ -1334,7 +1377,7 @@ def save_remote_files(item):
                     raw = base64.b64decode(item["data"])
                 else:
                     r = requests.get(f"{server_url()}/clipboard/item/{item_id}/raw",
-                                     headers=auth_headers(), params=auth_params(), timeout=60)
+                                     headers=auth_headers(), params=auth_params(), timeout=(5, 300))
                     r.raise_for_status()
                     raw = r.content
                 fallback = "image.png" if item.get("type") == "image" else "file.bin"
@@ -1495,7 +1538,8 @@ def _auto_receive_remote_files():
             message = (t("files_arrived", n=len(paths)) if len(paths) > 1
                        else t("file_arrived", name=os.path.basename(paths[0])))
             notify_received("file", message,
-                            action=(lambda: open_received_folder()) if len(paths) > 1
+                            action=(lambda path=paths[0]: open_received_folder(directory=os.path.dirname(path)))
+                            if len(paths) > 1
                             else (lambda path=paths[0]: reveal_received_file(path)))
     # Retry a busy clipboard using the saved files, without downloading/notifying twice.
     if latest.get("type") in ("file", "bundle") and latest.get("id") != _last_remembered_item():
@@ -1827,7 +1871,7 @@ def _host_bundle_bytes(entry):
     return output.getvalue()
 
 
-def _host_uploads_from_zip(raw):
+def _host_uploads_from_zip(raw, max_bytes=None):
     if not raw:
         raise ValueError("empty archive")
     try:
@@ -1842,7 +1886,8 @@ def _host_uploads_from_zip(raw):
                 raise ValueError("archive contains no files")
             if len(members) > 500:
                 raise ValueError("archive contains too many files")
-            max_bytes = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
+            if max_bytes is None:
+                max_bytes = config.get("host_max_upload_mb", DEFAULT_CONFIG["host_max_upload_mb"]) * 1024 * 1024
             if sum(info.file_size for info in members) > max_bytes:
                 raise ValueError("expanded archive exceeds the upload limit")
             uploads = []
@@ -1988,15 +2033,20 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
                 self.close_connection = True
                 return self._json({"error": "invalid or missing Content-Length"}, 400)
             n = int(lengths[0])
-            max_request = int(config.get("host_max_upload_mb", 256)) * 1024 * 1024
+            settings = config
+            max_request = settings.get("host_max_upload_mb", DEFAULT_CONFIG["host_max_upload_mb"]) * 1024 * 1024
             if n > max_request:
                 self.close_connection = True
                 return self._json({"error": "upload exceeds the server limit"}, 413)
+            header_timeout = self.connection.gettimeout()
             try:
+                self.connection.settimeout(settings.get("host_upload_idle_seconds", 30))
                 body = self.rfile.read(n) if n else b""
             except socket.timeout:
                 self.close_connection = True
                 return self._json({"error": "upload timed out"}, 408)
+            finally:
+                self.connection.settimeout(header_timeout)
             if len(body) != n:
                 self.close_connection = True
                 return self._json({"error": "incomplete request body"}, 400)
@@ -2018,7 +2068,7 @@ class _SrvHandler(http.server.BaseHTTPRequestHandler):
 
             if path == "/clipboard/bundle":
                 try:
-                    e = _host_add_bundle(_host_uploads_from_zip(body))
+                    e = _host_add_bundle(_host_uploads_from_zip(body, max_request))
                 except ValueError as error:
                     return self._json({"error": str(error)}, 400)
                 return self._json({
@@ -2407,7 +2457,8 @@ def action_get_latest(icon=None, item=None):
                 _try_local_history(record_local_files, paths)
                 notify_received("file", t("files_arrived", n=len(paths)) if kind == "bundle"
                                 else t("file_arrived", name=os.path.basename(paths[0])),
-                                action=(lambda: open_received_folder()) if kind == "bundle"
+                                action=(lambda path=paths[0]: open_received_folder(directory=os.path.dirname(path)))
+                                if kind == "bundle"
                                 else (lambda path=paths[0]: reveal_received_file(path)))
             else:
                 notify(t("no_items"))
@@ -2433,10 +2484,11 @@ def action_send_file(icon=None, item=None):
     _run_bg(work)
 
 
-def open_received_folder(icon=None, item=None):
-    os.makedirs(RECEIVED_DIR, exist_ok=True)
+def open_received_folder(icon=None, item=None, *, directory=None):
+    directory = directory or received_directory(config)
     try:
-        os.startfile(RECEIVED_DIR)
+        os.makedirs(directory, exist_ok=True)
+        os.startfile(directory)
     except Exception:
         pass
 
@@ -3748,7 +3800,8 @@ def open_history_window(icon=None, item=None):
                             _try_local_history(record_local_files, paths)
                             notify_received("file", t("files_arrived", n=len(paths)) if len(paths) > 1
                                             else t("file_arrived", name=os.path.basename(paths[0])),
-                                            action=(lambda: open_received_folder()) if len(paths) > 1
+                                            action=(lambda path=paths[0]: open_received_folder(directory=os.path.dirname(path)))
+                                            if len(paths) > 1
                                             else (lambda path=paths[0]: reveal_received_file(path)))
                     elif kind:
                         with _remote_commit():
@@ -4147,7 +4200,7 @@ def open_settings(icon=None, item=None):
         parent.grid_columnconfigure(1, weight=1)
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 14), pady=6)
         variable = tk.StringVar(value=str(config.get(key, "")))
-        entry = ttk.Entry(parent, textvariable=variable, show="*" if secret else "")
+        entry = ttk.Entry(parent, name=key, textvariable=variable, show="*" if secret else "")
         entry.grid(row=row, column=1, sticky="ew", pady=6)
         entries[key] = variable
         connection_fields[key] = entry
@@ -4212,6 +4265,30 @@ def open_settings(icon=None, item=None):
         ttk.Radiobutton(appearance_controls, text=t(key), value=value, variable=appearance,
                         command=preview_appearance, style="Segment.TRadiobutton").pack(side="left")
 
+    received_folder = tk.StringVar(master=root, value=received_directory(config))
+    ttk.Label(application_box, text=t("lbl_received_files_dir")).grid(
+        row=2, column=0, sticky="w", padx=(0, 14), pady=6)
+    folder_controls = ttk.Frame(application_box)
+    folder_controls.grid(row=2, column=1, sticky="ew", pady=6)
+    folder_controls.grid_columnconfigure(0, weight=1)
+    ttk.Entry(folder_controls, name="received_files_dir", textvariable=received_folder).grid(
+        row=0, column=0, sticky="ew")
+
+    def browse_received_folder():
+        try:
+            initial = _normalize_received_directory(received_folder.get()) or RECEIVED_DIR
+        except ValueError:
+            initial = RECEIVED_DIR
+        selected = filedialog.askdirectory(parent=root, title=t("lbl_received_files_dir"),
+                                           initialdir=initial, mustexist=True)
+        if selected:
+            received_folder.set(selected)
+
+    ttk.Button(folder_controls, text=t("browse_folder"), command=browse_received_folder).grid(
+        row=0, column=1, padx=(8, 0))
+    ttk.Button(folder_controls, text=t("default_folder"), command=lambda: received_folder.set(RECEIVED_DIR)).grid(
+        row=0, column=2, padx=(8, 0))
+
     status_box = ttk.LabelFrame(
         connection_tab,
         text=t("section_status"),
@@ -4247,6 +4324,10 @@ def open_settings(icon=None, item=None):
     add_field(server_box, 0, "Indirizzo completo" if italian else "Full server address", "server_address")
     entries["server_address"].set(server_url(dict(config, mode="client")))
     add_field(server_box, 1, t("lbl_host_port"), "host_port")
+    add_field(server_box, 3, t("lbl_host_upload"), "host_max_upload_mb")
+    add_field(server_box, 4, t("lbl_host_upload_idle"), "host_upload_idle_seconds")
+    ttk.Label(server_box, text=t("host_upload_hint"), wraplength=330).grid(
+        row=5, column=1, sticky="w", pady=(0, 6))
 
     def show_setup():
         try:
@@ -4284,7 +4365,7 @@ def open_settings(icon=None, item=None):
     def reflect_mode(*_args):
         client_mode = mode.get() == "client"
         for key, entry in connection_fields.items():
-            editable = not client_mode if key == "host_port" else client_mode
+            editable = not client_mode if key.startswith("host_") else client_mode
             entry.configure(state="normal" if editable else "disabled")
     mode.trace_add("write", reflect_mode)
     reflect_mode()
@@ -4509,6 +4590,30 @@ def open_settings(icon=None, item=None):
         values = pending_connection_values()
         if values is None:
             return
+        if values["mode"] == "server":
+            try:
+                limit = int(entries["host_max_upload_mb"].get())
+                idle = int(entries["host_upload_idle_seconds"].get())
+                if not 1 <= limit <= 1024 or not 30 <= idle <= 300:
+                    raise ValueError
+            except ValueError:
+                msg.config(text=t("err_host_transfer"))
+                notebook.select(connection_page)
+                return
+            values.update(host_max_upload_mb=limit, host_upload_idle_seconds=idle)
+        try:
+            directory = _normalize_received_directory(received_folder.get())
+            if os.path.normcase(directory) == os.path.normcase(RECEIVED_DIR):
+                directory = ""
+            if directory and directory != config.get("received_files_dir"):
+                os.makedirs(directory, exist_ok=True)
+                with tempfile.TemporaryFile(dir=directory):
+                    pass
+        except (OSError, ValueError) as error:
+            msg.config(text=t("err_received_folder", error=error))
+            notebook.select(general_page)
+            return
+        values["received_files_dir"] = directory
         hotkey_names = ("hotkey_send", "hotkey_receive", "hotkey_history")
         for key in hotkey_names:
             values[key] = entries[key].get().strip().lower() or DEFAULT_CONFIG[key]

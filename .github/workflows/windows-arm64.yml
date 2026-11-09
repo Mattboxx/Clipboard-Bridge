@@ -62,7 +62,7 @@ jobs:
         run: |
           python scripts/release_metadata.py --check
           if ($LASTEXITCODE -ne 0) { throw 'Release metadata is inconsistent' }
-          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file packaging/windows/windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --hidden-import pystray._win32 --collect-submodules keyboard --copy-metadata striprtf --copy-metadata qrcode --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
+          python -m PyInstaller --noconfirm --clean --icon icon.ico --name "Clipboard Bridge" --version-file packaging/windows/windows_version_info.txt --add-data "icon.ico;." --add-data "VERSION;." --add-data "LICENSE;." --add-data "LICENSE-MIT-legacy.txt;." --add-data "THIRD_PARTY_NOTICES.md;." --hidden-import pystray._win32 --collect-submodules keyboard --copy-metadata striprtf --copy-metadata qrcode --collect-all pypdfium2_raw --collect-data pypdfium2 --copy-metadata pypdfium2 --exclude-module numpy --onefile --windowed clipboard_bridge_windows.py
           if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
           python scripts/verify_windows_build.py "dist/Clipboard Bridge.exe" --architecture arm64 --smoke
           if ($LASTEXITCODE -ne 0) { throw 'Native portable verification failed' }

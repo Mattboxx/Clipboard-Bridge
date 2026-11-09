@@ -6,6 +6,20 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Windows 2.0.22 - 2026-11-09
+
+- Choose where received files are saved in **Settings > General**. Restore the
+  default Downloads folder at any time; previously saved files are not moved.
+- In Windows **Server mode**, configure the upload limit (1–1024 MiB) and the
+  upload inactivity timeout (30–300 seconds) in **Settings > Connection**.
+  The size limit also applies after ZIP expansion.
+- Keep the existing defaults of 256 MiB and 30 seconds. Larger uploads can use
+  more memory. The Docker server limit and the signed Apple Shortcuts are unchanged.
+- Allow longer read waits for Windows file transfers without extending the
+  connection timeout. No change to text or metadata timeouts.
+
+The transfer settings were inspired by [SuperS-1's contribution](https://github.com/SuperS-1/Clipboard-Bridge/commit/cc0fe9546e9dd15a3fe612d15751b39a7fb6b6db).
+
 ## Linux 0.1.0-preview.1
 
 - First Ubuntu desktop beta, installable from an architecture-independent .deb.
