@@ -28,7 +28,7 @@
   <meta name="twitter:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png">
   <meta name="twitter:image:alt" content="Clipboard Bridge: testo, foto e file tra Windows, Android e dispositivi Apple.">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"TechArticle","headline":"Condividere clipboard tra Windows, iPhone e Android","description":"Configura il tuo PC o Docker come host della clipboard e collega il telefono.","datePublished":"2026-10-14","dateModified":"2026-11-09","inLanguage":"it","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Condividere clipboard tra Windows, iPhone e Android","description":"Configura il tuo PC o Docker come host della clipboard e collega il telefono.","datePublished":"2026-10-14","dateModified":"2026-11-17","inLanguage":"it","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.it.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
   </script>
 </head>
 <body>
@@ -45,7 +45,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Parti da Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows e iPhone</a></div>
     <p><strong>Su iPhone, tieni Invia e Ricevi nel Centro di Controllo o invia dal menu Condividi di un'altra app.</strong> Dopo la configurazione, non serve riaprire l'editor a ogni trasferimento.</p>
     <p>Guide specifiche in inglese: <a href="windows-iphone-clipboard.html" lang="en">Windows e iPhone</a> e <a href="apple-android-clipboard.html" lang="en">Apple e Android</a>.</p>
-    <div class="tutorial-meta">Aggiornato il 9 novembre 2026 &middot; Windows 2.0.22 &middot; Android beta.12 &middot; server 1.0.13</div>
+    <div class="tutorial-meta">Aggiornato il 17 novembre 2026 &middot; Windows 2.0.22 &middot; Android beta.12 &middot; server 1.0.13</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Sezioni della guida"><strong>In questa pagina</strong><a href="#before">Prima di iniziare</a><a href="#windows">Windows come server</a><a href="#iphone">iPhone e iPad</a><a href="#android">Android</a><a href="#daily">Testo e file</a><a href="#docker">Docker facoltativo</a><a href="#accounts">Account facoltativi</a><a href="#demo">Windows e iPhone</a><a href="#help">Problemi comuni</a></aside>
@@ -76,7 +76,7 @@
         <p>Bastano due Comandi Rapidi: uno invia l'elemento corrente, l'altro riceve il pi&ugrave; recente. Si eseguono quando li avvii: non esiste una sincronizzazione continua in background su iPhone.</p>
         <ol>
           <li>Dall'iPhone scarica e apri <a href="https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut">iPhone Load Clipboard</a> e <a href="https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut">iPhone Download Clipboard</a>. Aggiungili all'app Comandi Rapidi di Apple.</li>
-          <li>Modifica <strong>Load Clipboard</strong>: in <strong>Ottieni contenuti dell'URL</strong> sostituisci l'intero URL di esempio con l'indirizzo del tuo host seguito da <code>/clipboard</code>. Mantieni <strong>POST</strong>.</li>
+          <li>Mentre aggiungi <strong>Load Clipboard</strong>, Comandi Rapidi chiede l'indirizzo del server: sostituisci tutto il valore di esempio con l'indirizzo del tuo host seguito da <code>/clipboard</code>. Il metodo resta <strong>POST</strong>.</li>
           <li>Modifica <strong>Download Clipboard</strong>: inserisci lo stesso host seguito da <code>/clipboard/latest/raw</code>. Mantieni <strong>GET</strong>.</li>
           <li>Per la clipboard generale non protetta su rete fidata, lascia vuoti token e account. Se l'amministratore li ha impostati, segui le <a href="#accounts">istruzioni sugli account</a> in entrambi i comandi.</li>
         </ol>
@@ -93,7 +93,7 @@ Ricezione: GET  http://TUO_HOST:5088/clipboard/latest/raw</code></pre>
         <p class="apple-credit">Esempi ufficiali iOS 26, &copy; Apple, caricati dal sito Apple. Non mostrano Clipboard Bridge configurato; l'aspetto cambia secondo la versione iOS. Clipboard Bridge &egrave; un progetto indipendente.</p>
         <details class="apple-tips"><summary>Menu Condividi, schermata Home e altri consigli utili</summary>
           <dl>
-            <dt>Invia senza copiare prima</dt><dd>Nei dettagli del comando di invio, attiva <strong>Mostra in Condivisione</strong>. Seleziona una foto, un file o un link in un'altra app e usa <strong>Condividi &gt; Load Clipboard</strong>. Il comando deve usare l'input ricevuto quando presente: segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">guida per input e gruppi di file</a>. <a href="https://support.apple.com/it-it/guide/shortcuts/apd163eb9f95/ios">Guida Apple per Condividi</a>.</dd>
+            <dt>Invia senza copiare prima</dt><dd>Il comando di invio compare già nel menu Condividi. Seleziona una foto, un file o un link in un'altra app e usa <strong>Condividi &gt; Load Clipboard</strong>. Un link viene inviato come indirizzo, non come pagina scaricata; avviato senza input, il comando invia gli appunti. Per inviare più file come un unico gruppo segui la <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">guida per i gruppi di file</a>. <a href="https://support.apple.com/it-it/guide/shortcuts/apd163eb9f95/ios">Guida Apple per Condividi</a>.</dd>
             <dt>Preferisci un'icona sulla schermata Home?</dt><dd>Apri i dettagli del comando e scegli <strong>Aggiungi alla schermata Home</strong>. Ripeti per Ricevi. <a href="https://support.apple.com/it-it/guide/shortcuts/apd735880972/ios">Guida Apple per la schermata Home</a>.</dd>
             <dt>Il comando non compare?</dt><dd>Importalo e configuralo prima. Nel Centro di Controllo cerca <strong>Comando rapido</strong>, non un controllo separato dell'app Clipboard Bridge. In Condividi scorri verso il basso; se manca, verifica l'opzione Mostra in Condivisione e i tipi di input accettati.</dd>
             <dt>Fai una prova prima dell'uso quotidiano</dt><dd>Tieni l'host acceso e usa la stessa rete fidata o una VPN privata. Invia un breve messaggio e ricevilo sull'altro dispositivo. Se iOS lo chiede, consenti l'accesso alla rete locale.</dd>
