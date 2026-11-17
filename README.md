@@ -80,7 +80,7 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.12
+**Current releases:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.13
 
 | Your device | Ready-to-use downloads |
 |---|---|
@@ -357,7 +357,7 @@ Use **Connection settings** for optional credentials; they are kept in memory.
 
 ## Standalone server
 
-**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`
+**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.13`
 
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file

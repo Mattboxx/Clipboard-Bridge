@@ -92,7 +92,6 @@ def test_native_shortcut_direct_round_trip_with_account_and_no_token(server):
 @pytest.mark.parametrize("lang", ["en", "it", "es", "fr", "de", "pt", "zh"])
 def test_public_setup_has_platform_steps_and_no_account_secrets(server, lang):
     client = server.app.test_client()
-    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
     response = client.get("/setup", query_string={"lang": lang})
     assert response.status_code == 200
     html = response.text
@@ -101,10 +100,14 @@ def test_public_setup_has_platform_steps_and_no_account_secrets(server, lang):
     for platform in ("apple", "windows", "android", "container"):
         assert f'id="guide-{platform}"' in html
         assert server.WEB_STRINGS[lang][platform + "_2"] in html
-    for secret in ("p&ss?word", "shared-token", "shared-web-password"):
+    for secret in ("p&ss?word", "p%26ss%3Fword", "second", "shared-token", "shared-web-password"):
         assert secret not in html
-    assert "X-Clipboard-User" in html and "X-Clipboard-Password" in html
+    assert "?user=" not in html and "password=" not in html
+    assert f'href="/login?lang={lang}"' in html
     assert "/clipboard/latest/raw" in html
+    for _, url in server.SHORTCUT_DOWNLOADS:
+        assert f'href="{url}"' in html
+    assert "/releases/download/shortcuts-" in html
     assert 'data-theme-selector' in html
     assert response.headers["Cache-Control"] == "no-store"
 
@@ -926,7 +929,7 @@ def test_raw_iphone_upload_can_preserve_an_unusual_filename_in_the_url(server):
     assert latest.headers["Content-Disposition"].startswith("attachment;")
 
 
-def test_web_login_shows_shortcut_urls_without_account_password(server):
+def test_web_login_shows_ready_shortcut_urls_for_own_account(server):
     client = server.app.test_client()
     response = client.post(
         "/login",
@@ -937,11 +940,48 @@ def test_web_login_shows_shortcut_urls_without_account_password(server):
     assert response.status_code == 200
     assert 'href="/setup?lang=en"' in response.text
     html = client.get("/setup").text
-    assert "http://localhost/clipboard/latest/raw" in html
-    assert "X-Clipboard-User" in html and "X-Clipboard-Password" in html
-    assert "p%26ss%3Fword" not in html
-    assert "p&amp;ss?word" not in html
-    assert "p&ss?word" not in html
+    query = "?user=alice&amp;password=p%26ss%3Fword"
+    for path in ("/clipboard", "/clipboard/latest/raw", "/clipboard/bundle", "/clipboard/latest/meta"):
+        assert f"<code>http://localhost{path}{query}</code>" in html
+    assert "<b>alice</b>" in html
+    for secret in ("second", "shared-token", "shared-web-password", "p&ss?word"):
+        assert secret not in html
+    assert 'href="/login' not in html
+
+    # The copied URLs authenticate on their own, without the browser session.
+    shortcut = server.app.test_client()
+    assert shortcut.post("/clipboard?user=alice&password=p%26ss%3Fword",
+                         data="from a Shortcut URL", content_type="text/plain").status_code == 200
+    assert shortcut.get("/clipboard/latest/raw?user=alice&password=p%26ss%3Fword").text == "from a Shortcut URL"
+    assert server.app.test_client().get(
+        "/clipboard/latest", query_string={"user": "bob", "password": "second"}).get_json() == {"type": "empty"}
+
+
+def test_setup_never_shows_credentials_to_shared_space_or_removed_accounts(server):
+    client = server.app.test_client()
+    client.post("/login", data={"password": "shared-web-password"})
+    html = client.get("/setup").text
+    assert "?user=" not in html and "shared-web-password" not in html and "shared-token" not in html
+
+    client = server.app.test_client()
+    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
+    server.ACCOUNTS.pop("alice")
+    html = client.get("/setup").text
+    assert "?user=" not in html and "p%26ss%3Fword" not in html
+
+
+def test_web_pages_keep_content_clear_of_the_iphone_status_bar(server):
+    client = server.app.test_client()
+    pages = [client.get("/login"), client.get("/setup")]
+    client.post("/login", data={"username": "alice", "password": "p&ss?word"})
+    pages.append(client.get("/"))
+    for page in pages:
+        assert 'content="width=device-width, initial-scale=1, viewport-fit=cover"' in page.text
+        assert "--safe-top:env(safe-area-inset-top,0px)" in page.text
+    css = server._HOME_CSS
+    assert ".wrap{width:100%;max-width:1000px;margin:auto;padding:calc(28px + var(--safe-top))" in css
+    assert "@media(max-width:600px){.wrap{padding:calc(20px + var(--safe-top))" in css
+    assert "bottom:calc(24px + var(--safe-bottom))" in css
 
 
 def test_history_limit_and_upload_limit(server):
@@ -965,7 +1005,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.12"
+    assert response.get_json()["version"] == "1.0.13"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):

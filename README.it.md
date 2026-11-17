@@ -82,7 +82,7 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.12
+**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.13
 
 In Windows puoi scegliere la cartella dei file ricevuti in **Impostazioni > Generale**.
 In modalità Server puoi impostare fino a 1024 MiB per upload e fino a 300 secondi
@@ -367,7 +367,7 @@ Inserisci eventuali credenziali in **Connection settings**: restano in memoria.
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.13`
 
 La pagina web e l'accesso supportano **inglese, italiano, spagnolo, francese,
 tedesco, portoghese e cinese semplificato**. Scegli la lingua in **Impostazioni**:

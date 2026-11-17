@@ -6,6 +6,19 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Server 1.0.13 - 2026-11-17
+
+- On iPhone Safari, the web pages keep the header and settings clear of the
+  status bar and keep notifications above the bottom toolbar.
+- When signed in to an account, the **Connect your devices** page shows the
+  Send, Receive and multi-file URLs with that account's username and password
+  already URL-encoded, ready to paste into the Shortcuts. Anonymous visitors and
+  the shared space never see credentials; signed-out visitors get a sign-in link.
+  This reverses the 1.0.12 choice to omit passwords from these URLs.
+- The Apple setup steps link directly to the signed Send and Receive Shortcuts.
+- Existing accounts, history, tokens, header authentication and the `/data`
+  volume remain compatible.
+
 ## iPhone Shortcuts 2026.11.17
 
 - The signed **Load Clipboard** Shortcut runs from the Share Sheet and uses the

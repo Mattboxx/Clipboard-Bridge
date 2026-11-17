@@ -58,7 +58,7 @@ from qrcode.image.svg import SvgPathImage
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.12"
+SERVER_VERSION = "1.0.13"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -845,7 +845,7 @@ def _upload_too_large(_error):
 
 
 LOGIN_HTML = """<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
 <title>Clipboard Bridge</title>{theme_init}<style>{css}</style></head>
 <body><main class="login-wrap"><div class="login-panel">
@@ -1253,17 +1253,19 @@ _HOME_CSS = """
 :root{color-scheme:light;--bg:#f7f8fa;--surface:#fff;--field:#f0f2f5;--hover:#e8ecf2;
 --ink:#20242c;--muted:#606b7a;--line:#dce1e8;--accent:#2367d1;--accent-hover:#1b55b0;
 --tint:#eaf1ff;--good:#16734c;--good-bg:#e9f6ee;--warning:#815513;--warning-bg:#fff6e4;
---danger:#b82a43;--danger-bg:#fff0f3}
+--danger:#b82a43;--danger-bg:#fff0f3;
+--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);
+--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px)}
 :root[data-theme=dark]{color-scheme:dark;--bg:#17181b;--surface:#202226;--field:#24272d;
 --hover:#30343c;--ink:#f0f2f6;--muted:#a9b2c0;--line:#373c45;--accent:#8ab6ff;
 --accent-hover:#aacbff;--tint:#26344c;--good:#8bdbb0;--good-bg:#20372b;
 --warning:#f0cd8a;--warning-bg:#342c1e;--danger:#ff9eac;--danger-bg:#38232b}
-*{box-sizing:border-box}[hidden]{display:none!important}html{scroll-behavior:smooth;scroll-padding-top:20px}
+*{box-sizing:border-box}[hidden]{display:none!important}html{scroll-behavior:smooth;scroll-padding-top:calc(20px + var(--safe-top))}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 button,input,select,textarea{font:inherit;letter-spacing:0}button,a,summary{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 a{color:var(--accent);text-underline-offset:3px}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .ui-icon{display:block;width:18px;height:18px;aspect-ratio:1;flex:0 0 auto}
-.wrap{width:100%;max-width:1000px;margin:auto;padding:28px 32px 40px}
+.wrap{width:100%;max-width:1000px;margin:auto;padding:calc(28px + var(--safe-top)) calc(32px + var(--safe-right)) calc(40px + var(--safe-bottom)) calc(32px + var(--safe-left))}
 .head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding-bottom:20px}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}.brand-copy{min-width:0}
 .logo{width:40px;height:40px;flex:0 0 auto}.head h1{font-size:22px;line-height:1.25;margin:0;font-weight:650;overflow-wrap:normal}
@@ -1348,10 +1350,10 @@ code{font-size:12px;background:var(--tint);color:var(--ink);border-radius:4px;pa
 .shortcut-content{padding:8px 0}.shortcut-content h3{font-size:13px;margin-bottom:6px}
 .foot{border-top:1px solid var(--line);padding-top:18px;font-size:12px;color:var(--muted)}.foot .resource-links{margin:6px 0}
 .support-note{max-width:680px;margin-bottom:0}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);background:var(--ink);
+.toast{position:fixed;bottom:calc(24px + var(--safe-bottom));left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);background:var(--ink);
 color:var(--surface);padding:10px 18px;border-radius:6px;opacity:0;transition:opacity .15s;pointer-events:none;z-index:10}
 .toast.show{opacity:1}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left))}
 .login-panel{width:420px;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:24px}
 .login-panel .head{padding-bottom:16px}.login-panel .head h1{font-size:20px}.login-panel .logo{width:32px;height:32px}
 .login-panel .web-settings{padding-top:16px}.login-panel .preferences{grid-template-columns:minmax(0,1fr);gap:16px}
@@ -1359,7 +1361,7 @@ color:var(--surface);padding:10px 18px;border-radius:6px;opacity:0;transition:op
 .login-panel input:not([type=radio]){width:100%;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:12px;margin:0 0 12px;font-size:16px}
 .login-panel button[type=submit]{width:100%}.err{color:var(--danger);font-size:13px;margin-bottom:12px}
 .setup-page{max-width:900px}.setup-page>h2{font-size:20px;line-height:1.35;margin:22px 0 16px}
-@media(max-width:600px){.wrap{padding:20px 16px 28px}.head{gap:12px;padding-bottom:16px}.head h1{font-size:20px}.logo{width:36px;height:36px}.brand{gap:10px}
+@media(max-width:600px){.wrap{padding:calc(20px + var(--safe-top)) calc(16px + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(16px + var(--safe-left))}.head{gap:12px;padding-bottom:16px}.head h1{font-size:20px}.logo{width:36px;height:36px}.brand{gap:10px}
 .preferences{grid-template-columns:minmax(0,1fr);gap:18px}.theme-option>span{flex-direction:column;min-height:64px;padding:10px 6px;gap:6px}
 .project-nav{margin-bottom:20px;gap:10px}.composer-tabs{width:100%}.composer-tabs button{min-height:44px}
 .composer{padding-bottom:22px;margin-bottom:24px}.composer .row .btn{flex:1;min-width:0}
@@ -1472,6 +1474,13 @@ WEB_LANGUAGES = {
     "de": "Deutsch", "pt": "Português", "zh": "简体中文",
 }
 PROJECT_SITE = "https://mattboxx.github.io/Clipboard-Bridge/"
+# Signed Apple Shortcuts live in their own release; its tag is ignored by the Windows updater.
+SHORTCUT_DOWNLOADS = (
+    ("dl_send", "https://github.com/Mattboxx/Clipboard-Bridge/releases/download/"
+                "shortcuts-2026.11.17/iPhone.Load.Clipboard.shortcut"),
+    ("dl_recv", "https://github.com/Mattboxx/Clipboard-Bridge/releases/download/"
+                "shortcuts-2026.11.17/iPhone.Download.Clipboard.shortcut"),
+)
 
 
 def _language_selector(lang, action="/"):
@@ -1518,12 +1527,19 @@ def _preferences_panel(lang, action="/", account_bar=""):
             f'{_language_selector(lang, action)}{_theme_selector(lang)}</div>{account_bar}</section>')
 
 
-def _shortcut_endpoints(lang, base, suffix="", account=None, token=""):
+def _account_query(account):
+    """Credentials in the form the server parses from ?user=NAME&password=PASS."""
+    return "?" + urlencode({"user": account, "password": ACCOUNTS[account]}, quote_via=quote, safe="")
+
+
+def _shortcut_endpoints(lang, base, suffix="", account=None, token="", login_hint=False):
     strings = WEB_STRINGS[lang]
     notice = f'<div class="nota">{strings["auth_optional"]}</div>'
     if account:
-        notice += (f'<p>{strings["acct_note"].format(name=escape(account))}</p>'
-                   '<p><code>X-Clipboard-User</code> &middot; <code>X-Clipboard-Password</code></p>')
+        suffix = _account_query(account)
+        notice += f'<p>{strings["acct_note"].format(name=escape(account))}</p>'
+    elif login_hint:
+        notice += f'<p>{strings["acct_login_hint"].format(url="/login?lang=" + lang)}</p>'
     elif token:
         notice += f'<p>{strings["token_note"]} <code>X-Auth-Token</code></p>'
     return (f'<div class="shortcut-content">{notice}<p>{strings["iphone_intro"]}</p>'
@@ -1550,6 +1566,9 @@ def _connection_guide(lang, base, *, expanded=False, shortcut_details=""):
         ("container", strings["container_title"], "docker"),
     ):
         steps = "".join(f'<li>{strings[f"{key}_{n}"]}</li>' for n in (1, 2, 3))
+        if key == "apple":
+            downloads = "".join(_public_link(url, strings[label]) for label, url in SHORTCUT_DOWNLOADS)
+            steps = steps.replace("</li>", f'<div class="resource-links">{downloads}</div></li>', 1)
         opened = " open" if expanded and key == "apple" else ""
         extra = shortcut_details if key == "apple" else ""
         guide_url = (PROJECT_SITE + "#server" if key == "container" else tutorial + "#" + fragment)
@@ -1650,7 +1669,7 @@ def render_home():
                  f"const T_CLEAR={json.dumps(S['js_clear'])};")
 
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
 <title>Clipboard Bridge</title>{_THEME_INIT}<style>{_HOME_CSS}</style>
 <noscript><style>#web-settings[hidden]{{display:block!important}}.composer-tabs,[data-settings-toggle]{{display:none}}</style></noscript></head>
@@ -1724,11 +1743,15 @@ def setup():
         address = PUBLIC_ADDRESS or base_address(request.host_url)
     except ValueError:
         return Response("Invalid server address", status=400)
-    # Public setup deliberately does not read the active account or expose its data.
-    guide = _connection_guide(lang, address, expanded=True,
-                              shortcut_details=_shortcut_endpoints(lang, address))
+    # Anonymous visitors and the shared space never see credentials. Only a signed session
+    # that already belongs to an account receives that account's own ready-to-use URLs.
+    account = session.get("acct")
+    account = account if account in ACCOUNTS else None
+    endpoints = _shortcut_endpoints(lang, address, account=account,
+                                    login_hint=bool(ACCOUNTS) and account is None)
+    guide = _connection_guide(lang, address, expanded=True, shortcut_details=endpoints)
     html = f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
 <title>{strings["connect"]} | Clipboard Bridge</title>{_THEME_INIT}<style>{_HOME_CSS}</style></head>
 <body><main class="wrap setup-page"><header class="head"><div class="brand">{LOGO_SVG}
