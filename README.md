@@ -101,6 +101,12 @@ with an **Add Shortcut** button. Nothing else needs to be installed.
 | **Send Clipboard** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** | Sends the clipboard, or the photo, file or link you share |
 | **Receive Clipboard** | **[Add Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)** | Copies the newest item from your server |
 
+On a computer? Scan these codes with the iPhone Camera app and tap the link that appears:
+
+| Send Clipboard | Receive Clipboard |
+|:---:|:---:|
+| <img src="docs/assets/qr/send-clipboard.svg" width="164" alt="QR code that opens Add Send Clipboard"> | <img src="docs/assets/qr/receive-clipboard.svg" width="164" alt="QR code that opens Add Receive Clipboard"> |
+
 1. Tap **Add Send Clipboard**, then **Add Shortcut**. When it asks for the server
    address, replace the whole example with your host's address followed by
    `/clipboard`, for example `http://SERVER_IP:5088/clipboard`.

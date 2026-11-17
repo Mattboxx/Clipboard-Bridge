@@ -380,3 +380,19 @@ def test_python_sources_are_developer_only_not_release_downloads():
     attachments = build.split("echo [4/5]", 1)[1]
     assert 'scripts\\prepare_release_assets.py --version "%VERSION%"' in attachments
     assert not re.search(r"(?im)^copy\s+.*\.py(?:\s|\")", attachments)
+
+
+def test_static_shortcut_qr_codes_match_the_icloud_links():
+    spec = importlib.util.spec_from_file_location("make_shortcut_qr", ROOT / "scripts/make_shortcut_qr.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    links = module.shortcut_links()
+    assert set(links) == {"dl_send", "dl_recv"}
+    for label, url in links.items():
+        path = module.QR_DIR / module.NAMES[label]
+        # Regenerate with scripts/make_shortcut_qr.py after changing an iCloud link.
+        assert path.read_bytes() == module.render(url), path.name
+        relative = "docs/assets/qr/" + path.name
+        for readme in ("README.md", "README.it.md"):
+            assert f'<img src="{relative}"' in (ROOT / readme).read_text(encoding="utf-8")
+        assert f'<img src="assets/qr/{path.name}"' in (ROOT / "docs/index.html").read_text(encoding="utf-8")

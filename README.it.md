@@ -107,6 +107,12 @@ con il pulsante **Aggiungi comando rapido**. Non serve installare altro.
 | **Send Clipboard** | **[Aggiungi Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** | Invia gli appunti, oppure la foto, il file o il link che condividi |
 | **Receive Clipboard** | **[Aggiungi Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)** | Copia l'elemento più recente dal tuo server |
 
+Sei al computer? Inquadra questi codici con l'app Fotocamera dell'iPhone e tocca il link che compare:
+
+| Send Clipboard | Receive Clipboard |
+|:---:|:---:|
+| <img src="docs/assets/qr/send-clipboard.svg" width="164" alt="Codice QR che apre Aggiungi Send Clipboard"> | <img src="docs/assets/qr/receive-clipboard.svg" width="164" alt="Codice QR che apre Aggiungi Receive Clipboard"> |
+
 1. Tocca **Aggiungi Send Clipboard**, poi **Aggiungi comando rapido**. Quando chiede
    l'indirizzo del server, sostituisci tutto l'esempio con l'indirizzo del tuo host
    seguito da `/clipboard`, ad esempio `http://IP_SERVER:5088/clipboard`.
