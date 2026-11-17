@@ -74,3 +74,5 @@ body.support-dialog-open{overflow:hidden}
 @media(max-width:900px) and (min-width:651px){.nav-links a[href="#start"]{display:none}}
 @media(max-width:350px){.nav-links .nav-download{display:none}}
 @media(max-width:480px){.support-dialog{padding:20px}.support-dialog h2{font-size:21px}}
+/* Phones: the bar scrolls with the page so it never covers the cover image or a linked section. */
+@media(max-width:650px){nav{position:relative;top:auto;margin-top:8px}html{scroll-padding-top:12px}}
