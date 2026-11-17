@@ -48,6 +48,11 @@ def test_readmes_offer_the_same_icloud_shortcut_links_with_setup_steps():
         assert text.index(heading) < text.index("## Start here" if filename == "README.md" else "## Da dove iniziare")
         links[filename] = set(found)
     assert links["README.md"] == links["README.it.md"]
+    for page in ("index.html", "tutorial.html", "tutorial.it.html",
+                 "windows-iphone-clipboard.html", "apple-android-clipboard.html"):
+        html = (ROOT / "docs" / page).read_text(encoding="utf-8")
+        for link in links["README.md"]:
+            assert f'href="{link}"' in html, (page, link)
 
 
 def test_current_component_versions_match_docs_and_catalog_mirror():
