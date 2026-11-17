@@ -82,7 +82,7 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.12
+**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.13
 
 In Windows puoi scegliere la cartella dei file ricevuti in **Impostazioni > Generale**.
 In modalità Server puoi impostare fino a 1024 MiB per upload e fino a 300 secondi
@@ -93,7 +93,7 @@ di inattività in **Connessione**. Il limite del server Docker rimane indipenden
 | **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.22.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.x64.V2.0.22.exe) |
 | **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.22.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.arm64.V2.0.22.exe) |
 | **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Load.Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.21/iPhone.Download.Clipboard.shortcut) |
+| **iPhone e iPad** | [Comando per inviare](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) e [comando per ricevere](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
@@ -367,7 +367,7 @@ Inserisci eventuali credenziali in **Connection settings**: restano in memoria.
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.12`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.13`
 
 La pagina web e l'accesso supportano **inglese, italiano, spagnolo, francese,
 tedesco, portoghese e cinese semplificato**. Scegli la lingua in **Impostazioni**:

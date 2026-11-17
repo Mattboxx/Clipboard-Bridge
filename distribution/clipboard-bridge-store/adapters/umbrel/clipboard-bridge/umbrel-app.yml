@@ -2,7 +2,7 @@ manifestVersion: 1
 id: clipboard-bridge
 category: utilities
 name: Clipboard Bridge
-version: "1.0.12"
+version: "1.0.13"
 tagline: Share clipboard text and files across your devices
 description: >-
   A private clipboard and file bridge with history, multiple accounts,
@@ -13,6 +13,6 @@ repo: https://github.com/Mattboxx/Clipboard-Bridge
 support: https://github.com/Mattboxx/Clipboard-Bridge/issues
 port: 5088
 defaultPassword: $APP_PASSWORD
-releaseNotes: Simpler mobile-friendly browser UI, Light/Dark/System themes and a dedicated device setup page. Existing data mounts, accounts and Apple Shortcut URLs stay compatible.
+releaseNotes: iPhone Safari keeps the header clear of the status bar; signed-in accounts get ready-to-paste Shortcut URLs and direct Shortcut downloads. Existing data mounts, accounts and Apple Shortcut URLs stay compatible.
 submitter: Mattboxx
 submission: https://github.com/Mattboxx/Clipboard-Bridge-AppStore

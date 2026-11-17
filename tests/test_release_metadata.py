@@ -2,6 +2,7 @@ import importlib.util
 import re
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 import pytest
 from packaging.requirements import Requirement
@@ -17,6 +18,23 @@ def load_release_metadata():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+SHORTCUT_RAW = "https://github.com/Mattboxx/Clipboard-Bridge/raw/main/"
+SHORTCUT_LINKS = tuple(SHORTCUT_RAW + quote(f"Iphone Shortcuts/{name}.shortcut")
+                       for name in ("Load Clipboard", "Download Clipboard"))
+
+
+def test_shortcut_downloads_point_to_the_signed_exports_in_the_repository():
+    for link in SHORTCUT_LINKS:
+        exported = ROOT / unquote(link[len(SHORTCUT_RAW):])
+        assert exported.is_file() and exported.read_bytes().startswith(b"AEA1"), link
+    for filename in ("README.md", "README.it.md", "GUIDE.md", "docs/index.html",
+                     "docs/tutorial.html", "docs/tutorial.it.html", "clipboard_bridge-Server.py"):
+        text = (ROOT / filename).read_text(encoding="utf-8").replace('"\n                "', "")
+        for link in SHORTCUT_LINKS:
+            assert link in text, (filename, link)
+        assert "iPhone.Load.Clipboard.shortcut" not in text, filename
 
 
 def test_current_component_versions_match_docs_and_catalog_mirror():
@@ -245,6 +263,7 @@ def test_website_local_images_and_device_downloads_exist():
             super().__init__()
             self.images = []
             self.downloads = set()
+            self.shortcuts = set()
             self.main_ids = []
 
         def handle_starttag(self, tag, attrs):
@@ -254,6 +273,8 @@ def test_website_local_images_and_device_downloads_exist():
                 assert "alt" in values
             if tag == "a" and "/releases/download/" in values.get("href", ""):
                 self.downloads.add(values["href"].rsplit("/", 1)[1])
+            if tag == "a" and values.get("href", "").startswith(SHORTCUT_RAW):
+                self.shortcuts.add(values["href"])
             if tag == "main":
                 self.main_ids.append(values.get("id"))
 
@@ -273,7 +294,7 @@ def test_website_local_images_and_device_downloads_exist():
     for architecture in ("x64", "arm64"):
         assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
         assert f"Clipboard.Bridge_windows_client_and_server_setup_{architecture}_V{version}.exe" in assets.downloads
-    assert {"iPhone.Load.Clipboard.shortcut", "iPhone.Download.Clipboard.shortcut"} <= assets.downloads
+    assert assets.shortcuts == set(SHORTCUT_LINKS)
     assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk" in assets.downloads
     assert (ROOT / "docs/assets/icons/LICENSE").is_file()
 
