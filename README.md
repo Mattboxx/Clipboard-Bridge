@@ -87,9 +87,38 @@ the same shared content without Docker or a separate computer.
 | **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.22.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.x64.V2.0.22.exe) |
 | **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.22.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.arm64.V2.0.22.exe) |
 | **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), currently a public beta |
-| **iPhone and iPad** | [Send Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) and [Receive Shortcut](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
+| **iPhone and iPad** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** and **[Add Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)**: one tap in the Shortcuts app ([setup](#add-the-iphone-shortcuts)). Signed files: [Send](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Receive](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
+
+### Add the iPhone Shortcuts
+
+Open these links **on your iPhone or iPad**. Each one opens Apple's Shortcuts app
+with an **Add Shortcut** button. Nothing else needs to be installed.
+
+| Shortcut | One-tap install | What it does |
+|---|---|---|
+| **Send Clipboard** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** | Sends the clipboard, or the photo, file or link you share |
+| **Receive Clipboard** | **[Add Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)** | Copies the newest item from your server |
+
+1. Tap **Add Send Clipboard**, then **Add Shortcut**. When it asks for the server
+   address, replace the whole example with your host's address followed by
+   `/clipboard`, for example `http://SERVER_IP:5088/clipboard`.
+2. Tap **Add Receive Clipboard**, then **Add Shortcut**. Open it with the **⋯**
+   button and, in **Get Contents of URL**, replace `http://<your-ip-server>/clipboard/raw`
+   with your host's address followed by `/clipboard/latest/raw`, for example
+   `http://SERVER_IP:5088/clipboard/latest/raw`. Include the port.
+3. Using a separate account on the Docker server? Sign in to its web page and open
+   **Connect your devices**: copy the two URLs shown there, which already contain
+   your username and password.
+4. Add both to **Control Center > + > Add a Control > Shortcut**. Send also appears
+   in the Share Sheet of other apps.
+5. Test once: send a short text from the iPhone and receive it on another device,
+   then the other way round.
+
+If an iCloud link does not open, download the signed files instead:
+[Send](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Receive](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut).
+When the Shortcuts are updated, remove the old ones and add them again from these links.
 
 The installer is the easiest Windows option. The portable EXE needs no installation.
 Both save settings and history in your user folder and preserve them across updates.
