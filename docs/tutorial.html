@@ -28,7 +28,7 @@
   <meta name="twitter:image" content="https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png">
   <meta name="twitter:image:alt" content="Clipboard Bridge: text, photos and files across Windows, Android and Apple devices.">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-11-09","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Share clipboard between Windows, iPhone and Android","description":"Set up a local clipboard host on Windows or Docker and connect your phone.","datePublished":"2026-10-14","dateModified":"2026-11-17","inLanguage":"en","author":{"@type":"Person","name":"Mattboxx"},"mainEntityOfPage":"https://mattboxx.github.io/Clipboard-Bridge/tutorial.html","about":{"@id":"https://mattboxx.github.io/Clipboard-Bridge/#software"},"image":"https://mattboxx.github.io/Clipboard-Bridge/assets/clipboard-bridge-cover.png"}
   </script>
 </head>
 <body>
@@ -45,7 +45,7 @@
     <div class="actions"><a class="button primary" href="#windows"><img class="icon" src="assets/icons/monitor.svg" alt="">Start with Windows</a><a class="button" href="#demo"><img class="icon" src="assets/icons/arrow-right.svg" alt="">Windows and iPhone workflow</a></div>
     <p><strong>On iPhone, keep Send and Receive in Control Center, or send from another app's Share Sheet.</strong> After setup, the actions are within reach without reopening the Shortcut editor.</p>
     <p>Prefer a guide for your devices? Read <a href="windows-iphone-clipboard.html">Windows and iPhone clipboard sharing</a> or <a href="apple-android-clipboard.html">sharing between Apple and Android devices</a>.</p>
-    <div class="tutorial-meta">Updated 9 November 2026 &middot; Windows 2.0.22 &middot; Android beta.12 &middot; server 1.0.13</div>
+    <div class="tutorial-meta">Updated 17 November 2026 &middot; Windows 2.0.22 &middot; Android beta.12 &middot; server 1.0.13</div>
   </header>
   <main class="tutorial-layout">
     <aside class="tutorial-toc" aria-label="Tutorial sections"><strong>On this page</strong><a href="#before">Before you start</a><a href="#windows">Windows as host</a><a href="#iphone">iPhone and iPad</a><a href="#android">Android</a><a href="#daily">Text and files</a><a href="#docker">Optional Docker host</a><a href="#accounts">Optional accounts</a><a href="#demo">Windows and iPhone</a><a href="#help">Troubleshooting</a></aside>
@@ -76,7 +76,7 @@
         <p>Apple devices use two user-triggered Shortcuts: one sends the current item, the other receives the newest item. There is no native iOS app or continuous background clipboard synchronization.</p>
         <ol>
           <li>On your iPhone, download and open <a href="https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut">iPhone Load Clipboard</a> and <a href="https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut">iPhone Download Clipboard</a>. Add both to Apple's Shortcuts app.</li>
-          <li>Edit <strong>Load Clipboard</strong>. In <strong>Get Contents of URL</strong>, replace the entire example URL with your host's address followed by <code>/clipboard</code>. Keep the method <strong>POST</strong>.</li>
+          <li>While you add <strong>Load Clipboard</strong>, Shortcuts asks for the server address. Replace the whole example value with your host's address followed by <code>/clipboard</code>. The method stays <strong>POST</strong>.</li>
           <li>Edit <strong>Download Clipboard</strong>. Replace its URL with the same host followed by <code>/clipboard/latest/raw</code>. Keep the method <strong>GET</strong>.</li>
           <li>Leave accounts and tokens empty for an unprotected shared clipboard on a trusted network. If your administrator enabled them, use the <a href="#accounts">account instructions</a> below in both Shortcuts.</li>
         </ol>
@@ -93,7 +93,7 @@ Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
         <p class="apple-credit">Official iOS 26 examples, &copy; Apple, loaded from Apple's website. They do not show Clipboard Bridge configured; appearance varies by iOS version. Clipboard Bridge is an independent project.</p>
         <details class="apple-tips"><summary>Share menu, Home Screen and other useful tips</summary>
           <dl>
-            <dt>Send without copying first</dt><dd>In the Send Shortcut's details, enable <strong>Show in Share Sheet</strong>. Then select a photo, file or link in another app and use <strong>Share &gt; Load Clipboard</strong>. The Shortcut must use Shortcut Input when present: follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">input and multi-file recipe</a>. <a href="https://support.apple.com/guide/shortcuts/apd163eb9f95/ios">Apple's Share Sheet guide</a>.</dd>
+            <dt>Send without copying first</dt><dd>The Send Shortcut already appears in the Share Sheet. Select a photo, file or link in another app and use <strong>Share &gt; Load Clipboard</strong>. A single link is sent as its address, not as the downloaded page; started without input, the Shortcut sends the clipboard. To send several files as one group, follow the <a href="https://github.com/Mattboxx/Clipboard-Bridge/blob/main/GUIDE.md#51-send-clipboard-to-server">multi-file recipe</a>. <a href="https://support.apple.com/guide/shortcuts/apd163eb9f95/ios">Apple's Share Sheet guide</a>.</dd>
             <dt>Prefer an icon on your Home Screen?</dt><dd>Open the Shortcut's details and choose <strong>Add to Home Screen</strong>. Repeat for Receive. <a href="https://support.apple.com/guide/shortcuts/apd735880972/ios">Apple's Home Screen guide</a>.</dd>
             <dt>Cannot find the Shortcut?</dt><dd>Import and configure it first. Control Center uses the <strong>Shortcut</strong> control, not a separate Clipboard Bridge app control. In Share, scroll down; if the action is missing, check Show in Share Sheet and the accepted input types.</dd>
             <dt>Test once before using it every day</dt><dd>Keep the host awake and use the same trusted network or private VPN. Send a short message and receive it on the other device. Allow local-network access if iOS asks.</dd>
