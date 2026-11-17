@@ -76,3 +76,11 @@ body.support-dialog-open{overflow:hidden}
 @media(max-width:480px){.support-dialog{padding:20px}.support-dialog h2{font-size:21px}}
 /* Phones: the bar scrolls with the page so it never covers the cover image or a linked section. */
 @media(max-width:650px){nav{position:relative;top:auto;margin-top:8px}html{scroll-padding-top:12px}}
+/* iPhone Shortcut QR codes under the download buttons. */
+.shortcut-qr-panel{margin-top:14px;border:1px solid #34393e;border-radius:8px;padding:0 14px}
+.shortcut-qr-panel summary{cursor:pointer;padding:12px 0;font-size:14px;font-weight:600;color:#c7d6ee}
+.shortcut-qr-panel p{font-size:13px;color:#b5c0cf;margin:0 0 12px}
+.shortcut-qr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;padding-bottom:14px}
+.shortcut-qr-grid figure{margin:0;text-align:center}
+.shortcut-qr-grid img{display:block;width:100%;max-width:164px;height:auto;margin:auto;border-radius:6px;background:#fff}
+.shortcut-qr-grid figcaption{margin-top:8px;font-size:13px;font-weight:600;color:#e7effa}

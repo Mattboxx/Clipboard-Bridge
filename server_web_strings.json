@@ -24,15 +24,16 @@
     "android_1": "Download the Android APK from the project website. Android may ask you to allow installation from that download source.",
     "android_2": "Open the app's Settings, enter this server address and any configured account/token, then check the connection.",
     "android_3": "Use Send, Receive or Android's Share menu. Background clipboard access is restricted by Android; the app is a public beta.",
-    "apple_1": "Download the Send and Receive Shortcuts and add them to Apple's Shortcuts app:",
-    "apple_2": "Send asks for its URL while you add it; in Receive, edit the Get Contents of URL action. Use the complete URLs shown below, including http:// and the port. For an account, sign in on this page first: the URLs then include your username and password. Otherwise leave credentials empty unless a token is configured. No additional app or Base64 step is needed.",
-    "apple_3": "Run them manually, add them to iPhone Control Center or enable Send in the Share Sheet. They can also be used on iPad and Mac; iPhone synchronization is not automatic.",
+    "apple_1": "Scan the two QR codes below with your iPhone or iPad, then tap <b>Add Shortcut</b> for each.",
+    "apple_2": "Each Shortcut asks for its server URL while you add it. Paste the Send and Receive URLs shown below, including http:// and the port. For an account, sign in on this page first: the URLs then include your username and password. Otherwise leave credentials empty unless a token is configured. No additional app or Base64 step is needed.",
+    "apple_3": "Add both to iPhone Control Center or run them manually; Send also appears in the Share Sheet of other apps. They work on iPad and Mac too; iPhone synchronization is not automatic.",
     "container_title": "Install or update the container", "container_1": "Use the project's ZimaOS store source, or follow the Docker Compose guide on any Docker host.",
     "container_2": "Publish TCP port 5088 and keep /data on persistent storage. Configure optional accounts, token and web password before sharing with other users.",
     "container_3": "To update, back up /data, pull the new image and recreate only this container with the same configuration and storage mount. Do not delete its data.",
     "project_site": "Project website", "setup_guide": "Setup guide", "downloads": "Downloads", "platform_guide": "Full instructions", "docker_guide": "Docker installation guide",
     "theme":"Theme","theme_system":"System","theme_light":"Light","theme_dark":"Dark","qr_note":"Scan for downloads and instructions. This QR does not pair your device.","settings":"Settings","status_online":"Online",
-    "acct_login_hint": "Using a separate account? <a href=\"{url}\">Sign in</a> and reopen this page: the URLs will include your username and password.", "dl_send": "Send Shortcut", "dl_recv": "Receive Shortcut"
+    "acct_login_hint": "Using a separate account? <a href=\"{url}\">Sign in</a> and reopen this page: the URLs will include your username and password.", "dl_send": "Send Shortcut", "dl_recv": "Receive Shortcut",
+    "qr_scan_title": "Scan with your iPhone camera", "qr_scan_note": "Open the Camera app, point it at a code and tap the link that appears: Shortcuts opens with an <b>Add Shortcut</b> button. Already on the iPhone? Tap the code instead."
   },
   "it": {
     "subtitle": "Condividi testo e file tra i tuoi dispositivi", "online": "Online &middot; {n} in cronologia",
@@ -59,15 +60,16 @@
     "android_1": "Scarica l'APK Android dal sito del progetto. Android può chiedere di autorizzare l'installazione da quella sorgente.",
     "android_2": "Apri le impostazioni dell'app, inserisci l'indirizzo del server ed eventuali account o token configurati, poi verifica la connessione.",
     "android_3": "Usa Invia, Ricevi o il menu Condividi di Android. Android limita l'accesso alla clipboard in background; l'app è una beta pubblica.",
-    "apple_1": "Scarica i comandi Invia e Ricevi e aggiungili all'app Comandi Rapidi Apple:",
-    "apple_2": "Invia chiede il suo URL mentre lo aggiungi; in Ricevi modifica l'azione Ottieni contenuti dell'URL. Usa gli URL completi mostrati sotto, con http:// e la porta. Per un account accedi prima a questa pagina: gli URL conterranno nome utente e password. Altrimenti lascia vuote le credenziali, salvo un token configurato. Non servono app aggiuntive o passaggi Base64.",
-    "apple_3": "Avviali manualmente, aggiungili al Centro di Controllo iPhone oppure abilita Invia nel menu Condividi. Funzionano anche su iPad e Mac; su iPhone la sincronizzazione non è automatica.",
+    "apple_1": "Inquadra i due codici QR qui sotto con l'iPhone o l'iPad, poi tocca <b>Aggiungi comando rapido</b> per ciascuno.",
+    "apple_2": "Ogni comando chiede l'URL del server mentre lo aggiungi. Incolla gli URL di Invio e Ricezione mostrati sotto, con http:// e la porta. Per un account accedi prima a questa pagina: gli URL conterranno nome utente e password. Altrimenti lascia vuote le credenziali, salvo un token configurato. Non servono app aggiuntive o passaggi Base64.",
+    "apple_3": "Aggiungili entrambi al Centro di Controllo iPhone o avviali manualmente; Invia compare anche nel menu Condividi delle altre app. Funzionano anche su iPad e Mac; su iPhone la sincronizzazione non è automatica.",
     "container_title": "Installa o aggiorna il container", "container_1": "Usa la sorgente dello store ZimaOS del progetto oppure segui la guida Docker Compose su qualsiasi host Docker.",
     "container_2": "Pubblica la porta TCP 5088 e collega /data a uno spazio persistente. Configura account, token e password web opzionali prima di condividere con altri utenti.",
     "container_3": "Per aggiornare, salva una copia di /data, scarica la nuova immagine e ricrea solo questo container con la stessa configurazione e lo stesso volume. Non eliminare i dati.",
     "project_site": "Sito del progetto", "setup_guide": "Guida alla configurazione", "downloads": "Download", "platform_guide": "Istruzioni complete", "docker_guide": "Guida all'installazione Docker",
     "theme":"Tema","theme_system":"Sistema","theme_light":"Chiaro","theme_dark":"Scuro","qr_note":"Scansiona per download e istruzioni. Il QR non associa il dispositivo.","settings":"Impostazioni","status_online":"Online",
-    "acct_login_hint": "Usi un account separato? <a href=\"{url}\">Accedi</a> e riapri questa pagina: gli URL conterranno nome utente e password.", "dl_send": "Comando Invia", "dl_recv": "Comando Ricevi"
+    "acct_login_hint": "Usi un account separato? <a href=\"{url}\">Accedi</a> e riapri questa pagina: gli URL conterranno nome utente e password.", "dl_send": "Comando Invia", "dl_recv": "Comando Ricevi",
+    "qr_scan_title": "Inquadra con la fotocamera dell'iPhone", "qr_scan_note": "Apri l'app Fotocamera, inquadra un codice e tocca il link che compare: si apre Comandi Rapidi con il pulsante <b>Aggiungi comando rapido</b>. Sei già sull'iPhone? Tocca direttamente il codice."
   },
   "es": {
     "subtitle": "Comparte texto y archivos entre tus dispositivos", "online": "En línea &middot; {n} en el historial",
@@ -94,15 +96,16 @@
     "android_1": "Descarga el APK de Android desde el sitio del proyecto. Android puede pedir permiso para instalar desde esa fuente.",
     "android_2": "Abre la configuración de la aplicación, introduce la dirección del servidor y la cuenta o token configurados y comprueba la conexión.",
     "android_3": "Usa Enviar, Recibir o el menú Compartir de Android. Android limita el acceso al portapapeles en segundo plano; la aplicación es una beta pública.",
-    "apple_1": "Descarga los atajos Enviar y Recibir y añádelos a la aplicación Atajos de Apple:",
-    "apple_2": "Enviar pide su URL al añadirlo; en Recibir, edita la acción Obtener contenido de URL. Usa las URL completas que aparecen abajo, con http:// y el puerto. Para una cuenta, inicia sesión antes en esta página: las URL incluirán tu usuario y contraseña. Si no, deja las credenciales vacías salvo que haya un token configurado. No necesitas otra aplicación ni Base64.",
-    "apple_3": "Ejecútalos manualmente, añádelos al Centro de control del iPhone o activa Enviar en la hoja Compartir. También funcionan en iPad y Mac; la sincronización en iPhone no es automática.",
+    "apple_1": "Escanea los dos códigos QR de abajo con tu iPhone o iPad y toca <b>Añadir atajo</b> en cada uno.",
+    "apple_2": "Cada atajo pide la URL del servidor al añadirlo. Pega las URL de Enviar y Recibir que aparecen abajo, con http:// y el puerto. Para una cuenta, inicia sesión antes en esta página: las URL incluirán tu usuario y contraseña. Si no, deja las credenciales vacías salvo que haya un token configurado. No necesitas otra aplicación ni Base64.",
+    "apple_3": "Añade ambos al Centro de control del iPhone o ejecútalos manualmente; Enviar también aparece en el menú Compartir de otras apps. También funcionan en iPad y Mac; en iPhone la sincronización no es automática.",
     "container_title": "Instalar o actualizar el contenedor", "container_1": "Usa la fuente de la tienda ZimaOS del proyecto o sigue la guía de Docker Compose en cualquier host Docker.",
     "container_2": "Publica el puerto TCP 5088 y monta /data en almacenamiento persistente. Configura cuentas, token y contraseña web opcionales antes de compartirlo con otros usuarios.",
     "container_3": "Para actualizar, haz una copia de /data, descarga la nueva imagen y recrea solo este contenedor con la misma configuración y volumen. No borres sus datos.",
     "project_site": "Sitio del proyecto", "setup_guide": "Guía de configuración", "downloads": "Descargas", "platform_guide": "Instrucciones completas", "docker_guide": "Guía de instalación Docker",
     "theme":"Tema","theme_system":"Sistema","theme_light":"Claro","theme_dark":"Oscuro","qr_note":"Escanea para descargas e instrucciones. El QR no vincula tu dispositivo.","settings":"Ajustes","status_online":"En línea",
-    "acct_login_hint": "¿Usas una cuenta separada? <a href=\"{url}\">Inicia sesión</a> y vuelve a abrir esta página: las URL incluirán tu usuario y contraseña.", "dl_send": "Atajo Enviar", "dl_recv": "Atajo Recibir"
+    "acct_login_hint": "¿Usas una cuenta separada? <a href=\"{url}\">Inicia sesión</a> y vuelve a abrir esta página: las URL incluirán tu usuario y contraseña.", "dl_send": "Atajo Enviar", "dl_recv": "Atajo Recibir",
+    "qr_scan_title": "Escanea con la cámara del iPhone", "qr_scan_note": "Abre la app Cámara, apunta a un código y toca el enlace que aparece: se abre Atajos con el botón <b>Añadir atajo</b>. ¿Ya estás en el iPhone? Toca el código."
   },
   "fr": {
     "subtitle": "Partagez du texte et des fichiers entre vos appareils", "online": "En ligne &middot; {n} dans l’historique",
@@ -129,15 +132,16 @@
     "android_1": "Téléchargez l’APK Android sur le site du projet. Android peut demander l’autorisation d’installer depuis cette source.",
     "android_2": "Ouvrez les paramètres de l’application, saisissez l’adresse du serveur et les éventuels compte ou jeton configurés, puis vérifiez la connexion.",
     "android_3": "Utilisez Envoyer, Recevoir ou le menu Partager d’Android. Android limite l’accès au presse-papiers en arrière-plan ; l’application est en bêta publique.",
-    "apple_1": "Téléchargez les raccourcis Envoyer et Recevoir et ajoutez-les à l’application Raccourcis d’Apple :",
-    "apple_2": "Envoyer demande son URL lors de l'ajout ; dans Recevoir, modifiez l'action Obtenir le contenu de l'URL. Utilisez les URL complètes ci-dessous, avec http:// et le port. Pour un compte, connectez-vous d'abord à cette page : les URL contiendront votre identifiant et votre mot de passe. Sinon, laissez les identifiants vides sauf si un jeton est configuré. Aucune autre application ni étape Base64 n'est nécessaire.",
-    "apple_3": "Lancez-les manuellement, ajoutez-les au Centre de contrôle de l’iPhone ou activez Envoyer dans la feuille de partage. Ils fonctionnent aussi sur iPad et Mac ; la synchronisation iPhone n’est pas automatique.",
+    "apple_1": "Scannez les deux codes QR ci-dessous avec votre iPhone ou iPad, puis touchez <b>Ajouter le raccourci</b> pour chacun.",
+    "apple_2": "Chaque raccourci demande l'URL du serveur lors de l'ajout. Collez les URL Envoyer et Recevoir affichées ci-dessous, avec http:// et le port. Pour un compte, connectez-vous d'abord à cette page : les URL contiendront votre identifiant et votre mot de passe. Sinon, laissez les identifiants vides sauf si un jeton est configuré. Aucune autre application ni étape Base64 n'est nécessaire.",
+    "apple_3": "Ajoutez-les tous deux au Centre de contrôle de l'iPhone ou lancez-les manuellement ; Envoyer apparaît aussi dans le menu Partager des autres apps. Ils fonctionnent aussi sur iPad et Mac ; sur iPhone, la synchronisation n'est pas automatique.",
     "container_title": "Installer ou mettre à jour le conteneur", "container_1": "Utilisez la source de la boutique ZimaOS du projet ou suivez le guide Docker Compose sur tout hôte Docker.",
     "container_2": "Publiez le port TCP 5088 et montez /data sur un stockage persistant. Configurez les comptes, le jeton et le mot de passe web facultatifs avant de partager avec d’autres utilisateurs.",
     "container_3": "Pour mettre à jour, sauvegardez /data, téléchargez la nouvelle image et recréez uniquement ce conteneur avec la même configuration et le même volume. Ne supprimez pas ses données.",
     "project_site": "Site du projet", "setup_guide": "Guide de configuration", "downloads": "Téléchargements", "platform_guide": "Instructions complètes", "docker_guide": "Guide d’installation Docker",
     "theme":"Thème","theme_system":"Système","theme_light":"Clair","theme_dark":"Sombre","qr_note":"Scannez pour les téléchargements et les instructions. Ce QR n'associe pas votre appareil.","settings":"Paramètres","status_online":"En ligne",
-    "acct_login_hint": "Vous utilisez un compte séparé ? <a href=\"{url}\">Connectez-vous</a> puis rouvrez cette page : les URL contiendront votre identifiant et votre mot de passe.", "dl_send": "Raccourci Envoyer", "dl_recv": "Raccourci Recevoir"
+    "acct_login_hint": "Vous utilisez un compte séparé ? <a href=\"{url}\">Connectez-vous</a> puis rouvrez cette page : les URL contiendront votre identifiant et votre mot de passe.", "dl_send": "Raccourci Envoyer", "dl_recv": "Raccourci Recevoir",
+    "qr_scan_title": "Scannez avec l'appareil photo de l'iPhone", "qr_scan_note": "Ouvrez l'app Appareil photo, visez un code et touchez le lien qui apparaît : Raccourcis s'ouvre avec le bouton <b>Ajouter le raccourci</b>. Déjà sur l'iPhone ? Touchez le code."
   },
   "de": {
     "subtitle": "Text und Dateien zwischen deinen Geräten teilen", "online": "Online &middot; {n} im Verlauf",
@@ -164,15 +168,16 @@
     "android_1": "Lade die Android-APK von der Projektwebsite herunter. Android fragt möglicherweise nach der Erlaubnis zur Installation aus dieser Quelle.",
     "android_2": "Öffne die App-Einstellungen, gib Serveradresse und gegebenenfalls Konto oder Token ein und prüfe die Verbindung.",
     "android_3": "Nutze Senden, Empfangen oder das Teilen-Menü von Android. Android beschränkt den Zugriff auf die Zwischenablage im Hintergrund; die App ist eine öffentliche Beta.",
-    "apple_1": "Lade die Kurzbefehle Senden und Empfangen herunter und füge sie zu Apples Kurzbefehle-App hinzu:",
-    "apple_2": "Senden fragt beim Hinzufügen nach seiner URL; in Empfangen bearbeitest du die Aktion Inhalte von URL abrufen. Verwende die vollständigen URLs unten mit http:// und Port. Für ein Konto melde dich zuerst auf dieser Seite an: Die URLs enthalten dann Benutzername und Passwort. Sonst bleiben die Zugangsdaten leer, sofern kein Token eingerichtet wurde. Keine zusätzliche App oder Base64-Schritte nötig.",
-    "apple_3": "Starte sie manuell, füge sie zum iPhone-Kontrollzentrum hinzu oder aktiviere Senden im Teilen-Menü. Sie funktionieren auch auf iPad und Mac; die iPhone-Synchronisierung erfolgt nicht automatisch.",
+    "apple_1": "Scanne die beiden QR-Codes unten mit iPhone oder iPad und tippe jeweils auf <b>Kurzbefehl hinzufügen</b>.",
+    "apple_2": "Jeder Kurzbefehl fragt beim Hinzufügen nach seiner Server-URL. Füge die unten angezeigten Senden- und Empfangen-URLs mit http:// und Port ein. Für ein Konto melde dich zuerst auf dieser Seite an: Die URLs enthalten dann Benutzername und Passwort. Sonst bleiben die Zugangsdaten leer, sofern kein Token eingerichtet wurde. Keine zusätzliche App oder Base64-Schritte nötig.",
+    "apple_3": "Füge beide zum Kontrollzentrum des iPhone hinzu oder starte sie manuell; Senden erscheint auch im Teilen-Menü anderer Apps. Sie funktionieren auch auf iPad und Mac; auf dem iPhone erfolgt keine automatische Synchronisierung.",
     "container_title": "Container installieren oder aktualisieren", "container_1": "Nutze die ZimaOS-Store-Quelle des Projekts oder die Docker-Compose-Anleitung auf einem beliebigen Docker-Host.",
     "container_2": "Veröffentliche TCP-Port 5088 und binde /data an dauerhaften Speicher. Richte optionale Konten, Token und Webpasswort ein, bevor du den Server mit anderen teilst.",
     "container_3": "Sichere zum Aktualisieren /data, lade das neue Image und erstelle nur diesen Container mit derselben Konfiguration und demselben Volume neu. Lösche die Daten nicht.",
     "project_site": "Projektwebsite", "setup_guide": "Einrichtungsanleitung", "downloads": "Downloads", "platform_guide": "Vollständige Anleitung", "docker_guide": "Docker-Installationsanleitung",
     "theme":"Design","theme_system":"System","theme_light":"Hell","theme_dark":"Dunkel","qr_note":"Für Downloads und Anleitungen scannen. Dieser QR-Code koppelt kein Gerät.","settings":"Einstellungen","status_online":"Online",
-    "acct_login_hint": "Du nutzt ein eigenes Konto? <a href=\"{url}\">Melde dich an</a> und öffne diese Seite erneut: Die URLs enthalten dann Benutzername und Passwort.", "dl_send": "Kurzbefehl Senden", "dl_recv": "Kurzbefehl Empfangen"
+    "acct_login_hint": "Du nutzt ein eigenes Konto? <a href=\"{url}\">Melde dich an</a> und öffne diese Seite erneut: Die URLs enthalten dann Benutzername und Passwort.", "dl_send": "Kurzbefehl Senden", "dl_recv": "Kurzbefehl Empfangen",
+    "qr_scan_title": "Mit der iPhone-Kamera scannen", "qr_scan_note": "Öffne die Kamera-App, richte sie auf einen Code und tippe auf den angezeigten Link: Kurzbefehle öffnet sich mit der Taste <b>Kurzbefehl hinzufügen</b>. Schon auf dem iPhone? Tippe direkt auf den Code."
   },
   "pt": {
     "subtitle": "Compartilhe textos e arquivos entre seus dispositivos", "online": "Online &middot; {n} no histórico",
@@ -199,15 +204,16 @@
     "android_1": "Baixe o APK Android no site do projeto. O Android pode pedir autorização para instalar a partir dessa fonte.",
     "android_2": "Abra as configurações do aplicativo, informe o endereço do servidor e a conta ou token configurados e verifique a conexão.",
     "android_3": "Use Enviar, Receber ou o menu Compartilhar do Android. O Android restringe o acesso à área de transferência em segundo plano; o aplicativo é uma beta pública.",
-    "apple_1": "Baixe os atalhos Enviar e Receber e adicione-os ao aplicativo Atalhos da Apple:",
-    "apple_2": "Enviar pede a URL ao ser adicionado; em Receber, edite a ação Obter Conteúdo da URL. Use as URLs completas mostradas abaixo, com http:// e a porta. Para uma conta, entre antes nesta página: as URLs incluirão seu usuário e senha. Caso contrário, deixe as credenciais vazias, exceto se existir um token configurado. Não precisa de outra aplicação nem de Base64.",
-    "apple_3": "Execute-os manualmente, adicione-os à Central de Controle do iPhone ou ative Enviar no menu Compartilhar. Eles também funcionam no iPad e Mac; a sincronização no iPhone não é automática.",
+    "apple_1": "Escaneie os dois códigos QR abaixo com o iPhone ou iPad e toque em <b>Adicionar Atalho</b> em cada um.",
+    "apple_2": "Cada atalho pede a URL do servidor ao ser adicionado. Cole as URLs de Enviar e Receber mostradas abaixo, com http:// e a porta. Para uma conta, entre antes nesta página: as URLs incluirão seu usuário e senha. Caso contrário, deixe as credenciais vazias, exceto se existir um token configurado. Não precisa de outra aplicação nem de Base64.",
+    "apple_3": "Adicione ambos à Central de Controle do iPhone ou execute-os manualmente; Enviar também aparece no menu Compartilhar de outros apps. Também funcionam no iPad e no Mac; no iPhone a sincronização não é automática.",
     "container_title": "Instalar ou atualizar o contêiner", "container_1": "Use a fonte da loja ZimaOS do projeto ou siga o guia Docker Compose em qualquer host Docker.",
     "container_2": "Publique a porta TCP 5088 e monte /data em armazenamento persistente. Configure contas, token e senha web opcionais antes de compartilhar com outros usuários.",
     "container_3": "Para atualizar, faça backup de /data, baixe a nova imagem e recrie somente este contêiner com a mesma configuração e volume. Não exclua os dados.",
     "project_site": "Site do projeto", "setup_guide": "Guia de configuração", "downloads": "Downloads", "platform_guide": "Instruções completas", "docker_guide": "Guia de instalação Docker",
     "theme":"Tema","theme_system":"Sistema","theme_light":"Claro","theme_dark":"Escuro","qr_note":"Digitalize para downloads e instruções. Este QR não emparelha o dispositivo.","settings":"Definições","status_online":"Online",
-    "acct_login_hint": "Usa uma conta separada? <a href=\"{url}\">Entre</a> e abra esta página de novo: as URLs incluirão seu usuário e senha.", "dl_send": "Atalho Enviar", "dl_recv": "Atalho Receber"
+    "acct_login_hint": "Usa uma conta separada? <a href=\"{url}\">Entre</a> e abra esta página de novo: as URLs incluirão seu usuário e senha.", "dl_send": "Atalho Enviar", "dl_recv": "Atalho Receber",
+    "qr_scan_title": "Escaneie com a câmera do iPhone", "qr_scan_note": "Abra o app Câmera, aponte para um código e toque no link que aparece: o Atalhos abre com o botão <b>Adicionar Atalho</b>. Já está no iPhone? Toque no código."
   },
   "zh": {
     "subtitle": "在设备之间共享文本和文件", "online": "在线 &middot; {n} 条历史记录",
@@ -234,14 +240,15 @@
     "android_1": "从项目网站下载 Android APK。Android 可能要求允许从该来源安装应用。",
     "android_2": "打开应用设置，填写服务器地址及已配置的账户或令牌，然后检查连接。",
     "android_3": "使用发送、接收或 Android 的分享菜单。Android 限制后台剪贴板访问；该应用目前为公开测试版。",
-    "apple_1": "下载发送和接收快捷指令，并添加到 Apple 的快捷指令应用：",
-    "apple_2": "添加“发送”时会要求输入其 URL；在“接收”中编辑“获取 URL 内容”操作。使用下方显示的完整 URL，包含 http:// 和端口。使用独立账户时，请先登录此页面：URL 将包含你的用户名和密码。否则留空，除非配置了令牌。无需额外应用或 Base64 步骤。",
-    "apple_3": "手动运行快捷指令，将其添加到 iPhone 控制中心，或在分享菜单中启用发送。也可在 iPad 和 Mac 上使用；iPhone 不会自动同步剪贴板。",
+    "apple_1": "用 iPhone 或 iPad 扫描下方两个二维码，然后分别轻点<b>添加快捷指令</b>。",
+    "apple_2": "添加时每个快捷指令都会要求输入服务器 URL。粘贴下方显示的发送和接收 URL，包含 http:// 和端口。使用独立账户时，请先登录此页面：URL 将包含你的用户名和密码。否则留空，除非配置了令牌。无需额外应用或 Base64 步骤。",
+    "apple_3": "将两者添加到 iPhone 控制中心或手动运行；“发送”也会出现在其他应用的共享菜单中。它们也可在 iPad 和 Mac 上使用；iPhone 不会自动同步。",
     "container_title": "安装或更新容器", "container_1": "使用项目提供的 ZimaOS 商店源，或在任何 Docker 主机上按照 Docker Compose 指南安装。",
     "container_2": "映射 TCP 端口 5088，并将 /data 挂载到持久存储。与其他用户共享前，可按需配置账户、令牌和网页密码。",
     "container_3": "更新前备份 /data，拉取新镜像，然后使用相同配置和挂载重新创建此容器。不要删除数据。",
     "project_site": "项目网站", "setup_guide": "设置指南", "downloads": "下载", "platform_guide": "完整说明", "docker_guide": "Docker 安装指南",
     "theme":"主题","theme_system":"跟随系统","theme_light":"浅色","theme_dark":"深色","qr_note":"扫码查看下载和说明。此二维码不会配对设备。","settings":"设置","status_online":"在线",
-    "acct_login_hint": "使用独立账户？请先<a href=\"{url}\">登录</a>，再重新打开此页面：URL 将包含你的用户名和密码。", "dl_send": "发送快捷指令", "dl_recv": "接收快捷指令"
+    "acct_login_hint": "使用独立账户？请先<a href=\"{url}\">登录</a>，再重新打开此页面：URL 将包含你的用户名和密码。", "dl_send": "发送快捷指令", "dl_recv": "接收快捷指令",
+    "qr_scan_title": "用 iPhone 相机扫描", "qr_scan_note": "打开“相机”应用，对准二维码并轻点出现的链接：快捷指令会打开并显示<b>添加快捷指令</b>按钮。已经在 iPhone 上？直接轻点二维码。"
   }
 }

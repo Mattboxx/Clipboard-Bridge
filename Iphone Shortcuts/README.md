@@ -3,9 +3,17 @@
 The two `.shortcut` files in this folder are Apple-signed exports. Apple does not allow a
 signed Shortcut to be edited and re-signed on Windows.
 
+| Shortcut | File in this folder | One-tap iCloud link |
+|---|---|---|
+| **Send Clipboard** | `Load Clipboard.shortcut` | [Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12) |
+| **Receive Clipboard** | `Download Clipboard.shortcut` | [Add Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090) |
+
+Keep each file identical to the Shortcut behind its iCloud link: when a Shortcut is
+re-shared, replace the file and the link together.
+
 To enable automatic multiple-file sharing, install the two Shortcuts, then apply the
 actions described in [GUIDE.md](../GUIDE.md#51-send-clipboard-to-server) on the iPhone.
-The updated **Load Clipboard** Shortcut automatically:
+The updated **Send Clipboard** Shortcut automatically:
 
 - uses Share Sheet input when available, otherwise the current clipboard;
 - detects whether it received one item or several items;
@@ -15,7 +23,7 @@ The updated **Load Clipboard** Shortcut automatically:
 - creates a temporary transport ZIP for several items and sends it to
   `/clipboard/bundle`.
 
-The updated **Download Clipboard** Shortcut checks `/clipboard/latest/meta`, extracts a
+The updated **Receive Clipboard** Shortcut checks `/clipboard/latest/meta`, extracts a
 group only when required, and copies every member together. Users never choose a content
 type manually.
 
@@ -26,14 +34,14 @@ Copied RTF text is converted by the updated servers; real `.rtf` documents remai
 
 ## Links must be sent as text, not downloaded pages
 
-In Load Clipboard, turn a URL into a **Text** result. For a Safari Web Page, extract
+In Send Clipboard, turn a URL into a **Text** result. For a Safari Web Page, extract
 its **URL** property first. Send that result to the host's `/clipboard` endpoint
 with **POST > Request Body: JSON > text (Text)**. Keep the request URL pointed at
 your Clipboard Bridge host; do not GET the shared address or pass the original URL
 object as a File body. Actual files and multi-file ZIP uploads keep their existing
 branches. See the [link troubleshooting steps](../GUIDE.md#sharing-a-link-sends-html-instead-of-its-address).
 
-The signed **Load Clipboard** export from 2026-11-17 already does this: a single
+The signed **Send Clipboard** export from 2026-11-17 already does this: a single
 `http://` or `https://` address is sent as text, and anything else is sent as before.
 It also runs from the Share Sheet, falls back to the clipboard when started without
 input, and asks for the server address during import. The other steps above remain

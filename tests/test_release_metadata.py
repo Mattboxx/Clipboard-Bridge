@@ -29,7 +29,7 @@ def test_shortcut_downloads_point_to_the_signed_exports_in_the_repository():
     for link in SHORTCUT_LINKS:
         exported = ROOT / unquote(link[len(SHORTCUT_RAW):])
         assert exported.is_file() and exported.read_bytes().startswith(b"AEA1"), link
-    for filename in ("README.md", "README.it.md", "GUIDE.md", "clipboard_bridge-Server.py"):
+    for filename in ("README.md", "README.it.md", "GUIDE.md"):
         text = (ROOT / filename).read_text(encoding="utf-8").replace('"\n                "', "")
         for link in SHORTCUT_LINKS:
             assert link in text, (filename, link)
@@ -53,6 +53,9 @@ def test_readmes_offer_the_same_icloud_shortcut_links_with_setup_steps():
         for link in links["README.md"]:
             assert f'href="{link}"' in html, (page, link)
         assert '.shortcut"' not in html, page
+    server = (ROOT / "clipboard_bridge-Server.py").read_text(encoding="utf-8")
+    assert set(re.findall(r"https://www\.icloud\.com/shortcuts/[0-9a-f]{32}", server)) == links["README.md"]
+    assert "Iphone%20Shortcuts" not in server
 
 
 def test_current_component_versions_match_docs_and_catalog_mirror():
@@ -377,3 +380,19 @@ def test_python_sources_are_developer_only_not_release_downloads():
     attachments = build.split("echo [4/5]", 1)[1]
     assert 'scripts\\prepare_release_assets.py --version "%VERSION%"' in attachments
     assert not re.search(r"(?im)^copy\s+.*\.py(?:\s|\")", attachments)
+
+
+def test_static_shortcut_qr_codes_match_the_icloud_links():
+    spec = importlib.util.spec_from_file_location("make_shortcut_qr", ROOT / "scripts/make_shortcut_qr.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    links = module.shortcut_links()
+    assert set(links) == {"dl_send", "dl_recv"}
+    for label, url in links.items():
+        path = module.QR_DIR / module.NAMES[label]
+        # Regenerate with scripts/make_shortcut_qr.py after changing an iCloud link.
+        assert path.read_bytes() == module.render(url), path.name
+        relative = "docs/assets/qr/" + path.name
+        for readme in ("README.md", "README.it.md"):
+            assert f'<img src="{relative}"' in (ROOT / readme).read_text(encoding="utf-8")
+        assert f'<img src="assets/qr/{path.name}"' in (ROOT / "docs/index.html").read_text(encoding="utf-8")
