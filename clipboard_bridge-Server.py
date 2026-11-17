@@ -1474,12 +1474,13 @@ WEB_LANGUAGES = {
     "de": "Deutsch", "pt": "Português", "zh": "简体中文",
 }
 PROJECT_SITE = "https://mattboxx.github.io/Clipboard-Bridge/"
-# Signed Apple Shortcuts live in their own release; its tag is ignored by the Windows updater.
+# The signed Apple Shortcuts are served from the repository folder on main, so a newly
+# committed export is offered without a new server or Windows release.
 SHORTCUT_DOWNLOADS = (
-    ("dl_send", "https://github.com/Mattboxx/Clipboard-Bridge/releases/download/"
-                "shortcuts-2026.11.17/iPhone.Load.Clipboard.shortcut"),
-    ("dl_recv", "https://github.com/Mattboxx/Clipboard-Bridge/releases/download/"
-                "shortcuts-2026.11.17/iPhone.Download.Clipboard.shortcut"),
+    ("dl_send", "https://github.com/Mattboxx/Clipboard-Bridge/raw/main/"
+                "Iphone%20Shortcuts/Load%20Clipboard.shortcut"),
+    ("dl_recv", "https://github.com/Mattboxx/Clipboard-Bridge/raw/main/"
+                "Iphone%20Shortcuts/Download%20Clipboard.shortcut"),
 )
 
 

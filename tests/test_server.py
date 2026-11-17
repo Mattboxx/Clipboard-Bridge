@@ -107,7 +107,7 @@ def test_public_setup_has_platform_steps_and_no_account_secrets(server, lang):
     assert "/clipboard/latest/raw" in html
     for _, url in server.SHORTCUT_DOWNLOADS:
         assert f'href="{url}"' in html
-    assert "/releases/download/shortcuts-" in html
+    assert "github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/" in html
     assert 'data-theme-selector' in html
     assert response.headers["Cache-Control"] == "no-store"
 

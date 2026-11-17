@@ -28,6 +28,9 @@ No pending release changes.
 - The server address is requested while importing the Shortcut.
 - **Download Clipboard** is unchanged. No change to Windows 2.0.22, Android,
   Ubuntu, Docker or the App Store catalog.
+- The website, README files, guide and server setup page now download both
+  Shortcuts directly from the repository's `Iphone Shortcuts` folder, so a
+  newly committed export is offered without a separate release.
 
 ## Windows 2.0.22 - 2026-11-09
 

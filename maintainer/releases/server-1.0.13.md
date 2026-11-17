@@ -11,7 +11,7 @@
   shared space never see credentials; signed-out visitors get a sign-in link.
   This reverses the 1.0.12 choice to omit passwords from these URLs.
 - The Apple setup steps link directly to the signed Send and Receive Shortcuts
-  from the `shortcuts-2026.11.17` release.
+  in the repository's `Iphone Shortcuts` folder, so they always offer the current export.
 
 URLs that contain a password are as sensitive as the password: anyone who sees a
 screenshot of them, or reads logs of a proxy in front of the server, can use the
@@ -30,4 +30,4 @@ VPN and do not expose the service directly to the Internet.
 ## Coordinated Delivery
 
 Windows stays at 2.0.22 and Android at 1.0.0-beta.12. The signed Apple Shortcuts
-are published separately in `shortcuts-2026.11.17`.
+are downloaded directly from the repository's `Iphone Shortcuts` folder.
