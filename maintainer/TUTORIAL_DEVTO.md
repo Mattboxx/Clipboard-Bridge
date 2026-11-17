@@ -133,7 +133,7 @@ folder:
 ```yaml
 services:
   clipboard-bridge:
-    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.13
+    image: ghcr.io/mattboxx/clipboard-bridge-server:1.0.14
     restart: unless-stopped
     ports:
       - "5088:5088"

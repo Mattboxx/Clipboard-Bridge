@@ -58,7 +58,7 @@ from qrcode.image.svg import SvgPathImage
 app = Flask(__name__)
 
 # ---------- Configuration ----------
-SERVER_VERSION = "1.0.13"
+SERVER_VERSION = "1.0.14"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("CLIPBOARD_DATA_DIR", os.path.join(BASE_DIR, "clipboard_data"))
 ITEMS_DIR = os.path.join(DATA_DIR, "items")
@@ -1338,7 +1338,14 @@ summary{cursor:pointer;color:var(--ink);font-weight:600;padding:12px 0}summary::
 .setup-intro{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:24px;margin:0 0 20px}
 .setup-address{min-width:0}.setup-address>p{margin-top:6px}.qr{margin:0;text-align:center}
 .qr svg{width:124px;height:124px;display:block;margin:auto;background:#fff;border:8px solid #fff;border-radius:6px}
-.qr figcaption{font-size:12px;color:var(--muted);margin-top:8px}.setup-section{border-top:1px solid var(--line);padding:4px 0}
+.qr figcaption{font-size:12px;color:var(--muted);margin-top:8px}
+.shortcut-codes{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:16px;margin:4px 0 18px}
+.shortcut-codes>p{margin:0 0 6px;color:var(--muted)}.shortcut-codes-title{display:flex;align-items:center;gap:8px;color:var(--ink)!important;font-size:15px}
+.shortcut-codes-title svg{width:18px;height:18px;flex:0 0 18px}
+.shortcut-code-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.shortcut-code{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;border-radius:8px;color:var(--ink);text-decoration:none;text-align:center}
+.shortcut-code:hover,.shortcut-code:focus-visible{background:var(--hover)}.shortcut-code strong{font-size:15px}
+.shortcut-qr svg{display:block;width:168px;height:168px;background:#fff;border:10px solid #fff;border-radius:8px}.setup-section{border-top:1px solid var(--line);padding:4px 0}
 .setup-section summary{font-size:15px}.setup-section ol{padding-left:22px;max-width:800px}.setup-section li{padding-left:4px;margin:12px 0}
 .resource-links{display:flex;gap:10px 18px;flex-wrap:wrap;margin:12px 0}.resource-link{font-size:13px;overflow-wrap:anywhere;display:inline-flex;align-items:center;min-height:32px}
 .url{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;background:var(--field);
@@ -1369,7 +1376,7 @@ color:var(--surface);padding:10px 18px;border-radius:6px;opacity:0;transition:op
 .history-title{gap:8px}.history-title h2{font-size:16px}.history-tools{gap:6px}.history-tools .btn{min-height:44px}
 .item{grid-template-columns:36px minmax(0,1fr);gap:10px}.thumb,.ico{width:36px;height:36px}.actions{grid-column:2;justify-content:flex-start}
 .actions .btn{min-height:44px}.setup-intro{grid-template-columns:minmax(0,1fr)}.qr{display:flex;align-items:center;gap:16px;text-align:left}
-.qr svg{width:90px;height:90px;margin:0}.qr>div{flex:0 0 90px}.qr figcaption{max-width:240px}
+.shortcut-qr svg{width:136px;height:136px;border-width:8px}.shortcut-codes{padding:12px}.qr svg{width:90px;height:90px;margin:0}.qr>div{flex:0 0 90px}.qr figcaption{max-width:240px}
 .url{grid-template-columns:auto minmax(0,1fr);gap:8px}.url .btn{grid-column:2;justify-self:start}.url code{line-height:1.6}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
@@ -1474,13 +1481,11 @@ WEB_LANGUAGES = {
     "de": "Deutsch", "pt": "Português", "zh": "简体中文",
 }
 PROJECT_SITE = "https://mattboxx.github.io/Clipboard-Bridge/"
-# The signed Apple Shortcuts are served from the repository folder on main, so a newly
-# committed export is offered without a new server or Windows release.
-SHORTCUT_DOWNLOADS = (
-    ("dl_send", "https://github.com/Mattboxx/Clipboard-Bridge/raw/main/"
-                "Iphone%20Shortcuts/Load%20Clipboard.shortcut"),
-    ("dl_recv", "https://github.com/Mattboxx/Clipboard-Bridge/raw/main/"
-                "Iphone%20Shortcuts/Download%20Clipboard.shortcut"),
+# Public iCloud links of the signed Apple Shortcuts. The setup page shows them as QR codes
+# to scan with the iPhone camera; they contain no server address, account or secret.
+SHORTCUT_LINKS = (
+    ("dl_send", "https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12"),
+    ("dl_recv", "https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090"),
 )
 
 
@@ -1551,9 +1556,25 @@ def _shortcut_endpoints(lang, base, suffix="", account=None, token="", login_hin
             f'<h3>{strings["ip_meta"]}</h3>{_urlrow("GET", base + "/clipboard/latest/meta" + suffix, strings["copy"])}</details></div>')
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
+def _url_qr(url):
+    return qrcode.make(url, image_factory=SvgPathImage).to_string().decode("ascii")
+
+
 def _download_qr():
-    return qrcode.make(DOWNLOAD_URL, image_factory=SvgPathImage).to_string().decode("ascii")
+    return _url_qr(DOWNLOAD_URL)
+
+
+def _shortcut_codes(lang):
+    strings = WEB_STRINGS[lang]
+    codes = "".join(
+        f'<a class="shortcut-code" href="{escape(url)}" target="_blank" rel="noopener noreferrer">'
+        f'<span class="shortcut-qr" aria-hidden="true">{_url_qr(url)}</span>'
+        f'<strong>{strings[label]}</strong></a>'
+        for label, url in SHORTCUT_LINKS)
+    return (f'<div class="shortcut-codes"><p class="shortcut-codes-title">{IC_PHONE}'
+            f'<strong>{strings["qr_scan_title"]}</strong></p><p>{strings["qr_scan_note"]}</p>'
+            f'<div class="shortcut-code-grid">{codes}</div></div>')
 
 
 def _connection_guide(lang, base, *, expanded=False, shortcut_details=""):
@@ -1567,11 +1588,8 @@ def _connection_guide(lang, base, *, expanded=False, shortcut_details=""):
         ("container", strings["container_title"], "docker"),
     ):
         steps = "".join(f'<li>{strings[f"{key}_{n}"]}</li>' for n in (1, 2, 3))
-        if key == "apple":
-            downloads = "".join(_public_link(url, strings[label]) for label, url in SHORTCUT_DOWNLOADS)
-            steps = steps.replace("</li>", f'<div class="resource-links">{downloads}</div></li>', 1)
         opened = " open" if expanded and key == "apple" else ""
-        extra = shortcut_details if key == "apple" else ""
+        extra = (_shortcut_codes(lang) + shortcut_details) if key == "apple" else ""
         guide_url = (PROJECT_SITE + "#server" if key == "container" else tutorial + "#" + fragment)
         sections += (f'<details class="setup-section" id="guide-{key}"{opened}>'
                      f'<summary>{title}</summary><ol>{steps}</ol>{extra}'

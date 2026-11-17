@@ -80,7 +80,7 @@ the same shared content without Docker or a separate computer.
 
 ## Download
 
-**Current releases:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.13
+**Current releases:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.14
 
 | Your device | Ready-to-use downloads |
 |---|---|
@@ -305,8 +305,8 @@ Updates signed with the same project key preserve the configuration.
 
 ### iPhone and iPad
 
-Use two Shortcuts for every content type: **Load Clipboard** sends and
-**Download Clipboard** receives. Add both to the iPhone Control Center for quick access.
+Use two Shortcuts for every content type: **Send Clipboard** sends and
+**Receive Clipboard** receives. Add both to the iPhone Control Center for quick access.
 
 <details>
 <summary>Shortcut URLs, accounts, photos and multiple files</summary>
@@ -316,8 +316,8 @@ Both Shortcuts ask for their URL while you add them.
 
 | Shortcut | Request | Shared-space URL |
 |---|---|---|
-| Load Clipboard | `POST` | `http://SERVER_IP:5088/clipboard` |
-| Download Clipboard | `GET` | `http://SERVER_IP:5088/clipboard/latest/raw` |
+| Send Clipboard | `POST` | `http://SERVER_IP:5088/clipboard` |
+| Receive Clipboard | `GET` | `http://SERVER_IP:5088/clipboard/latest/raw` |
 
 For an isolated account, append the URL-encoded credentials to **both** URLs:
 
@@ -334,10 +334,10 @@ configured, use the plain URLs. **Token and account are optional; URL credential
 are in plain text.** The web login uses the same account; an empty username selects
 the general clipboard.
 
-Load Clipboard already appears in the Share Sheet: it sends the shared photo, file or
+Send Clipboard already appears in the Share Sheet: it sends the shared photo, file or
 link (a link as its address), or the clipboard when started without input. For the
-Control Center, add a **Shortcut** control, select Load Clipboard, and add a second
-one for Download Clipboard.
+Control Center, add a **Shortcut** control, select Send Clipboard, and add a second
+one for Receive Clipboard.
 
 **For grouped files and uncommon extensions, apply the actions in the
 [complete Shortcut guide](GUIDE.md#51-send-clipboard-to-server) after importing the
@@ -391,7 +391,7 @@ Use **Connection settings** for optional credentials; they are kept in memory.
 
 ## Standalone server
 
-**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.13`
+**Stable Docker image:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.14`
 
 Supports Linux `amd64` and `arm64`. The service listens on `5088`, stores persistent
 data in `/data`, and needs no separate database. The web page supports text/file

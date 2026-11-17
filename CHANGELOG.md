@@ -6,6 +6,18 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## Server 1.0.14 - 2026-11-17
+
+- **Connect your devices** shows the Send and Receive Shortcuts as two large QR
+  codes: scan them with the iPhone camera and tap **Add Shortcut**. On the iPhone
+  itself, tap a code instead. They replace the links to the `.shortcut` files.
+- The Apple steps say that both Shortcuts ask for their server URL while they are
+  added, and that Send already appears in the Share Sheet.
+- The Shortcuts are named Send Clipboard and Receive Clipboard across the server,
+  website, READMEs and guide; the signed files keep their file names.
+- Existing accounts, history, tokens, header authentication and the `/data`
+  volume remain compatible.
+
 ## Server 1.0.13 - 2026-11-17
 
 - On iPhone Safari, the web pages keep the header and settings clear of the

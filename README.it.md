@@ -82,7 +82,7 @@ Windows gestisce gli stessi contenuti senza Docker o un computer separato.
 
 ## Download
 
-**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.13
+**Versioni attuali:** Windows 2.0.22 | Android 1.0.0-beta.12 | Server 1.0.14
 
 In Windows puoi scegliere la cartella dei file ricevuti in **Impostazioni > Generale**.
 In modalità Server puoi impostare fino a 1024 MiB per upload e fino a 300 secondi
@@ -315,8 +315,8 @@ Gli aggiornamenti firmati con la stessa chiave mantengono la configurazione.
 
 ### iPhone e iPad
 
-Due Comandi rapidi gestiscono ogni tipo di contenuto: **Load Clipboard** invia,
-**Download Clipboard** riceve. Aggiungili al Centro di Controllo iPhone per accedervi rapidamente.
+Due Comandi rapidi gestiscono ogni tipo di contenuto: **Send Clipboard** invia,
+**Receive Clipboard** riceve. Aggiungili al Centro di Controllo iPhone per accedervi rapidamente.
 
 <details>
 <summary>URL, account, foto e condivisione di più file</summary>
@@ -326,8 +326,8 @@ Entrambi i comandi chiedono il loro URL mentre li aggiungi.
 
 | Comando rapido | Richiesta | URL dello spazio condiviso |
 |---|---|---|
-| Load Clipboard | `POST` | `http://IP_SERVER:5088/clipboard` |
-| Download Clipboard | `GET` | `http://IP_SERVER:5088/clipboard/latest/raw` |
+| Send Clipboard | `POST` | `http://IP_SERVER:5088/clipboard` |
+| Receive Clipboard | `GET` | `http://IP_SERVER:5088/clipboard/latest/raw` |
 
 Per un account isolato aggiungi le credenziali codificate per l'URL a **entrambi**:
 
@@ -344,10 +344,10 @@ configurata usa gli URL semplici. **Token e account sono opzionali; le credenzia
 nell'URL sono in chiaro.** Il login web usa lo stesso account; il nome utente vuoto
 seleziona la clipboard generale.
 
-Load Clipboard compare già nel menu Condividi: invia la foto, il file o il link condiviso
+Send Clipboard compare già nel menu Condividi: invia la foto, il file o il link condiviso
 (un link come indirizzo), oppure gli appunti se avviato senza input.
-Nel Centro di Controllo aggiungi un controllo **Comando rapido**, seleziona Load Clipboard
-e aggiungine un secondo per Download Clipboard.
+Nel Centro di Controllo aggiungi un controllo **Comando rapido**, seleziona Send Clipboard
+e aggiungine un secondo per Receive Clipboard.
 
 **Per gruppi di file ed estensioni insolite, applica dopo l'importazione dei file firmati
 le azioni nella [guida completa](GUIDE.md#51-send-clipboard-to-server).** Le esportazioni
@@ -401,7 +401,7 @@ Inserisci eventuali credenziali in **Connection settings**: restano in memoria.
 
 ## Server indipendente
 
-**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.13`
+**Immagine Docker stabile:** `ghcr.io/mattboxx/clipboard-bridge-server:1.0.14`
 
 La pagina web e l'accesso supportano **inglese, italiano, spagnolo, francese,
 tedesco, portoghese e cinese semplificato**. Scegli la lingua in **Impostazioni**:

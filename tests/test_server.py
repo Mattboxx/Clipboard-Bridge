@@ -105,9 +105,12 @@ def test_public_setup_has_platform_steps_and_no_account_secrets(server, lang):
     assert "?user=" not in html and "password=" not in html
     assert f'href="/login?lang={lang}"' in html
     assert "/clipboard/latest/raw" in html
-    for _, url in server.SHORTCUT_DOWNLOADS:
-        assert f'href="{url}"' in html
-    assert "github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/" in html
+    for label, url in server.SHORTCUT_LINKS:
+        assert f'class="shortcut-code" href="{url}"' in html
+        assert server.WEB_STRINGS[lang][label] in html
+    assert html.count('<span class="shortcut-qr" aria-hidden="true"><svg') == 2
+    assert server.WEB_STRINGS[lang]["qr_scan_title"] in html
+    assert '.shortcut"' not in html
     assert 'data-theme-selector' in html
     assert response.headers["Cache-Control"] == "no-store"
 
@@ -218,7 +221,10 @@ def test_localized_device_guide_login_and_external_links(server, lang):
     public = [link for link in parser.links if urlsplit(link.get("href", "")).scheme == "https"]
     assert any(link["href"] == server.PROJECT_SITE for link in public)
     for link in public:
-        assert urlsplit(link["href"]).hostname in {"mattboxx.github.io", "ko-fi.com", "github.com"}
+        parts = urlsplit(link["href"])
+        assert parts.hostname in {"mattboxx.github.io", "ko-fi.com", "github.com", "www.icloud.com"}
+        if parts.hostname == "www.icloud.com":
+            assert parts.path.startswith("/shortcuts/")
         assert not urlsplit(link["href"]).query
         assert "alice" not in link["href"] and "password" not in link["href"]
         assert set(link["rel"].split()) == {"noopener", "noreferrer"}
@@ -1005,7 +1011,7 @@ def test_history_limit_and_upload_limit(server):
 def test_health_reports_server_version(server):
     response = server.app.test_client().get("/health")
     assert response.status_code == 200
-    assert response.get_json()["version"] == "1.0.13"
+    assert response.get_json()["version"] == "1.0.14"
 
 
 def test_web_session_duration_is_configurable(tmp_path, monkeypatch):

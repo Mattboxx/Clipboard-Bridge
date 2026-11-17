@@ -29,7 +29,7 @@ def test_shortcut_downloads_point_to_the_signed_exports_in_the_repository():
     for link in SHORTCUT_LINKS:
         exported = ROOT / unquote(link[len(SHORTCUT_RAW):])
         assert exported.is_file() and exported.read_bytes().startswith(b"AEA1"), link
-    for filename in ("README.md", "README.it.md", "GUIDE.md", "clipboard_bridge-Server.py"):
+    for filename in ("README.md", "README.it.md", "GUIDE.md"):
         text = (ROOT / filename).read_text(encoding="utf-8").replace('"\n                "', "")
         for link in SHORTCUT_LINKS:
             assert link in text, (filename, link)
@@ -53,6 +53,9 @@ def test_readmes_offer_the_same_icloud_shortcut_links_with_setup_steps():
         for link in links["README.md"]:
             assert f'href="{link}"' in html, (page, link)
         assert '.shortcut"' not in html, page
+    server = (ROOT / "clipboard_bridge-Server.py").read_text(encoding="utf-8")
+    assert set(re.findall(r"https://www\.icloud\.com/shortcuts/[0-9a-f]{32}", server)) == links["README.md"]
+    assert "Iphone%20Shortcuts" not in server
 
 
 def test_current_component_versions_match_docs_and_catalog_mirror():

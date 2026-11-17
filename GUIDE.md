@@ -350,19 +350,25 @@ to each shortcut.
 
 ### Download the ready-made Shortcuts
 
-Both prepared iPhone Shortcuts are in the repository's
-[Iphone Shortcuts folder](https://github.com/Mattboxx/Clipboard-Bridge/tree/main/Iphone%20Shortcuts).
-These links always download the current version:
+Open these links on the iPhone or iPad and tap **Add Shortcut**; the server's
+**Connect your devices** page shows the same links as QR codes to scan with the
+iPhone camera:
 
-- [iPhone Load Clipboard - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut)
-- [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut)
+- **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** - send to the server
+- **[Add Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)** - receive the latest item
 
-Open the downloaded files on the iPhone and add them to the Shortcuts app.
+The same signed Shortcuts are also in the repository's
+[Iphone Shortcuts folder](https://github.com/Mattboxx/Clipboard-Bridge/tree/main/Iphone%20Shortcuts)
+as `Load Clipboard.shortcut` (Send) and `Download Clipboard.shortcut` (Receive):
+
+- [Send Clipboard file - send to the server](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut)
+- [Receive Clipboard file - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut)
+
 Both Shortcuts ask for the server address while you add them; replace the whole
 example value. The complete URLs are:
 
-- **Load Clipboard:** `http://SERVER_IP:5088/clipboard`
-- **Download Clipboard:** `http://SERVER_IP:5088/clipboard/latest/raw`
+- **Send Clipboard:** `http://SERVER_IP:5088/clipboard`
+- **Receive Clipboard:** `http://SERVER_IP:5088/clipboard/latest/raw`
 
 Use the address displayed by Clipboard Bridge in place of `SERVER_IP`. If applicable,
 also add the API token. For an isolated account, append
@@ -374,8 +380,8 @@ To run them without opening the Shortcuts app:
 
 1. Open **Control Center** and tap the **Add (+)** button.
 2. Tap **Add a Control**, select **Shortcut**, and tap **Choose**.
-3. Choose **Load Clipboard**.
-4. Add another Shortcut control and choose **Download Clipboard**.
+3. Choose **Send Clipboard**.
+4. Add another Shortcut control and choose **Receive Clipboard**.
 
 You can now send or receive the latest item from the iPhone's pull-down Control Center.
 Apple documents the same procedure in its
@@ -431,7 +437,7 @@ Clipboard Bridge stores the received content; its upload endpoints do not visit
 URLs or recover an original link from a downloaded page.
 [Apple documents automatic type conversion in Shortcuts](https://support.apple.com/guide/shortcuts/the-content-graph-engine-apd4618db957/ios).
 
-In **Load Clipboard**, keep the URL in **Get Contents of URL** fixed to your
+In **Send Clipboard**, keep the URL in **Get Contents of URL** fixed to your
 Clipboard Bridge host, not the shared Reddit address. Use the URL/Safari branches
 above and send **JSON > text (Text) > text result**, not **File > original input**.
 Do not add **Get Contents of Web Page** or an extra GET to the shared address.
@@ -441,7 +447,7 @@ To diagnose your installed variant, temporarily put **Show Result** immediately
 before the POST and select the outgoing text value. It should show only the link
 (or intended copied text), never HTML or an article. If it already shows HTML,
 inspect the preceding actions or the source app's Share Sheet output. As a quick
-fallback, use the source app's **Copy Link**, then run Load Clipboard on that copied
+fallback, use the source app's **Copy Link**, then run Send Clipboard on that copied
 text. Remove the temporary preview after testing; it can display private content.
 The signed downloads have not been edited or re-signed by this documentation change;
 the change must be applied and tested on the Apple device.
