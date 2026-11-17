@@ -6,6 +6,16 @@ All notable user-facing changes are documented here.
 
 No pending release changes.
 
+## iPhone Shortcuts 2026.11.17
+
+- The signed **Load Clipboard** Shortcut runs from the Share Sheet and uses the
+  current clipboard when started without input (Control Center, Siri, search).
+- A shared link that is a single `http://` or `https://` address is sent as text,
+  not as the downloaded page.
+- The server address is requested while importing the Shortcut.
+- **Download Clipboard** is unchanged. No change to Windows 2.0.22, Android,
+  Ubuntu, Docker or the App Store catalog.
+
 ## Windows 2.0.22 - 2026-11-09
 
 - Choose where received files are saved in **Settings > General**. Restore the

@@ -33,8 +33,11 @@ your Clipboard Bridge host; do not GET the shared address or pass the original U
 object as a File body. Actual files and multi-file ZIP uploads keep their existing
 branches. See the [link troubleshooting steps](../GUIDE.md#sharing-a-link-sends-html-instead-of-its-address).
 
-These are edits to make on the Apple device, not changes already included in the
-signed exports in this folder.
+The signed **Load Clipboard** export from 2026-11-17 already does this: a single
+`http://` or `https://` address is sent as text, and anything else is sent as before.
+It also runs from the Share Sheet, falls back to the clipboard when started without
+input, and asks for the server address during import. The other steps above remain
+edits to make on the Apple device.
 
 ## Nota in italiano
 
