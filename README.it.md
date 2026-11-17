@@ -293,6 +293,8 @@ Due Comandi rapidi gestiscono ogni tipo di contenuto: **Load Clipboard** invia,
 <summary>URL, account, foto e condivisione di più file</summary>
 
 Sostituisci `IP_SERVER` con l'indirizzo del server; usa la porta configurata se diversa da `5088`.
+**Load Clipboard** chiede il suo URL mentre lo aggiungi; in **Download Clipboard** modifica
+**Ottieni contenuti dell'URL**.
 
 | Comando rapido | Richiesta | URL dello spazio condiviso |
 |---|---|---|
@@ -306,12 +308,16 @@ http://IP_SERVER:5088/clipboard?user=alice&password=LA_TUA_PASSWORD_CODIFICATA
 http://IP_SERVER:5088/clipboard/latest/raw?user=alice&password=LA_TUA_PASSWORD_CODIFICATA
 ```
 
+Se accedi alla pagina web del server Docker con quell'account, **Collega i tuoi dispositivi**
+mostra entrambi gli URL già compilati e codificati: copiali così come sono.
+
 Per lo spazio condiviso protetto usa invece `?token=IL_TUO_TOKEN`. Senza protezione
 configurata usa gli URL semplici. **Token e account sono opzionali; le credenziali
 nell'URL sono in chiaro.** Il login web usa lo stesso account; il nome utente vuoto
 seleziona la clipboard generale.
 
-Abilita **Mostra nel foglio di condivisione** per inviare da Foto, File e altre app.
+Load Clipboard compare già nel menu Condividi: invia la foto, il file o il link condiviso
+(un link come indirizzo), oppure gli appunti se avviato senza input.
 Nel Centro di Controllo aggiungi un controllo **Comando rapido**, seleziona Load Clipboard
 e aggiungine un secondo per Download Clipboard.
 

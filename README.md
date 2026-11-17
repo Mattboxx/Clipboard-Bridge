@@ -283,6 +283,8 @@ Use two Shortcuts for every content type: **Load Clipboard** sends and
 <summary>Shortcut URLs, accounts, photos and multiple files</summary>
 
 Replace `SERVER_IP` with your host's address; use its configured port if not `5088`.
+**Load Clipboard** asks for its URL while you add it; in **Download Clipboard**, edit
+**Get Contents of URL**.
 
 | Shortcut | Request | Shared-space URL |
 |---|---|---|
@@ -296,12 +298,16 @@ http://SERVER_IP:5088/clipboard?user=alice&password=YOUR_ENCODED_PASSWORD
 http://SERVER_IP:5088/clipboard/latest/raw?user=alice&password=YOUR_ENCODED_PASSWORD
 ```
 
+Signed in to the Docker server's web page with that account, **Connect your devices**
+shows both URLs already filled in and encoded: copy them as they are.
+
 For a protected shared space, use `?token=YOUR_TOKEN` instead. With no protection
 configured, use the plain URLs. **Token and account are optional; URL credentials
 are in plain text.** The web login uses the same account; an empty username selects
 the general clipboard.
 
-Enable **Show in Share Sheet** to send from Photos, Files and other apps. For the
+Load Clipboard already appears in the Share Sheet: it sends the shared photo, file or
+link (a link as its address), or the clipboard when started without input. For the
 Control Center, add a **Shortcut** control, select Load Clipboard, and add a second
 one for Download Clipboard.
 
