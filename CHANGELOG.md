@@ -26,11 +26,14 @@ No pending release changes.
 - A shared link that is a single `http://` or `https://` address is sent as text,
   not as the downloaded page.
 - The server address is requested while importing the Shortcut.
-- **Download Clipboard** is unchanged. No change to Windows 2.0.22, Android,
-  Ubuntu, Docker or the App Store catalog.
+- No change to Windows 2.0.22, Android, Ubuntu, Docker or the App Store catalog.
 - The website, README files, guide and server setup page now download both
   Shortcuts directly from the repository's `Iphone Shortcuts` folder, so a
   newly committed export is offered without a separate release.
+- **Download Clipboard** (Receive) now copies a received link as text instead
+  of the downloaded page.
+- Both READMEs offer one-tap iCloud links for the two Shortcuts, with setup
+  steps; the signed files remain available as a fallback.
 
 ## Windows 2.0.22 - 2026-11-09
 

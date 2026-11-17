@@ -37,6 +37,19 @@ def test_shortcut_downloads_point_to_the_signed_exports_in_the_repository():
         assert "iPhone.Load.Clipboard.shortcut" not in text, filename
 
 
+def test_readmes_offer_the_same_icloud_shortcut_links_with_setup_steps():
+    links = {}
+    for filename, heading in (("README.md", "### Add the iPhone Shortcuts"),
+                              ("README.it.md", "### Aggiungi i Comandi Rapidi iPhone")):
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert heading in text
+        found = re.findall(r"https://www\.icloud\.com/shortcuts/[0-9a-f]{32}", text)
+        assert len(set(found)) == 2, filename
+        assert text.index(heading) < text.index("## Start here" if filename == "README.md" else "## Da dove iniziare")
+        links[filename] = set(found)
+    assert links["README.md"] == links["README.it.md"]
+
+
 def test_current_component_versions_match_docs_and_catalog_mirror():
     server_source = (ROOT / "clipboard_bridge-Server.py").read_text(encoding="utf-8")
     server = re.search(r'^SERVER_VERSION = "([0-9.]+)"', server_source, re.M).group(1)
