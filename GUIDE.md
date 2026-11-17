@@ -358,9 +358,8 @@ These links always download the current version:
 - [iPhone Download Clipboard - receive the latest item](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut)
 
 Open the downloaded files on the iPhone and add them to the Shortcuts app.
-**Load Clipboard** asks for the server address while you add it; replace the whole
-example value. In **Download Clipboard**, edit the **Get Contents of URL** action.
-The complete URLs are:
+Both Shortcuts ask for the server address while you add them; replace the whole
+example value. The complete URLs are:
 
 - **Load Clipboard:** `http://SERVER_IP:5088/clipboard`
 - **Download Clipboard:** `http://SERVER_IP:5088/clipboard/latest/raw`

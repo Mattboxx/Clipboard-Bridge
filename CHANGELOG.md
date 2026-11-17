@@ -32,6 +32,8 @@ No pending release changes.
   newly committed export is offered without a separate release.
 - **Download Clipboard** (Receive) now copies a received link as text instead
   of the downloaded page.
+- **Download Clipboard** (Receive) also asks for the server URL while it is added,
+  like Send, so it no longer needs editing by hand.
 - Both READMEs offer one-tap iCloud links for the two Shortcuts, with setup
   steps; the signed files remain available as a fallback.
 

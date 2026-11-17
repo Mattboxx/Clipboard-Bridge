@@ -93,7 +93,7 @@ di inattività in **Connessione**. Il limite del server Docker rimane indipenden
 | **Windows 10/11, Intel o AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.22.exe) oppure [EXE portable](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.x64.V2.0.22.exe) |
 | **Windows 11 ARM, ad esempio PC Snapdragon** | [Installer ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.22.exe) oppure [EXE portable ARM64 nativo](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.arm64.V2.0.22.exe) |
 | **Android 10 o successivo** | [APK Android](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), attualmente una beta pubblica |
-| **iPhone e iPad** | **[Aggiungi Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** e **[Aggiungi Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)**: un tocco nell'app Comandi Rapidi ([configurazione](#aggiungi-i-comandi-rapidi-iphone)). File firmati: [Invia](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Ricevi](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
+| **iPhone e iPad** | **[Aggiungi Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** e **[Aggiungi Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)**: un tocco nell'app Comandi Rapidi ([configurazione](#aggiungi-i-comandi-rapidi-iphone)). File firmati: [Invia](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Ricevi](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
 | **Mac** | [Guida ai Comandi Rapidi](GUIDE.md#mac-compatibility); nessuna app Mac nativa |
 | **NAS o home server** | [Installazione dagli store](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) oppure [configurazione Docker](#server-indipendente) |
 
@@ -105,14 +105,13 @@ con il pulsante **Aggiungi comando rapido**. Non serve installare altro.
 | Comando | Installazione con un tocco | Cosa fa |
 |---|---|---|
 | **Send Clipboard** | **[Aggiungi Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** | Invia gli appunti, oppure la foto, il file o il link che condividi |
-| **Receive Clipboard** | **[Aggiungi Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)** | Copia l'elemento più recente dal tuo server |
+| **Receive Clipboard** | **[Aggiungi Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)** | Copia l'elemento più recente dal tuo server |
 
 1. Tocca **Aggiungi Send Clipboard**, poi **Aggiungi comando rapido**. Quando chiede
    l'indirizzo del server, sostituisci tutto l'esempio con l'indirizzo del tuo host
    seguito da `/clipboard`, ad esempio `http://IP_SERVER:5088/clipboard`.
-2. Tocca **Aggiungi Receive Clipboard**, poi **Aggiungi comando rapido**. Aprilo con il
-   pulsante **⋯** e in **Ottieni contenuti dell'URL** sostituisci
-   `http://<your-ip-server>/clipboard/raw` con l'indirizzo del tuo host seguito da
+2. Tocca **Aggiungi Receive Clipboard**, poi **Aggiungi comando rapido**. Quando chiede
+   l'URL del server, sostituisci tutto l'esempio con l'indirizzo del tuo host seguito da
    `/clipboard/latest/raw`, ad esempio `http://IP_SERVER:5088/clipboard/latest/raw`.
    Includi la porta.
 3. Usi un account separato sul server Docker? Accedi alla sua pagina web e apri
@@ -323,8 +322,7 @@ Due Comandi rapidi gestiscono ogni tipo di contenuto: **Load Clipboard** invia,
 <summary>URL, account, foto e condivisione di più file</summary>
 
 Sostituisci `IP_SERVER` con l'indirizzo del server; usa la porta configurata se diversa da `5088`.
-**Load Clipboard** chiede il suo URL mentre lo aggiungi; in **Download Clipboard** modifica
-**Ottieni contenuti dell'URL**.
+Entrambi i comandi chiedono il loro URL mentre li aggiungi.
 
 | Comando rapido | Richiesta | URL dello spazio condiviso |
 |---|---|---|
