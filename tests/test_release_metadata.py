@@ -29,8 +29,7 @@ def test_shortcut_downloads_point_to_the_signed_exports_in_the_repository():
     for link in SHORTCUT_LINKS:
         exported = ROOT / unquote(link[len(SHORTCUT_RAW):])
         assert exported.is_file() and exported.read_bytes().startswith(b"AEA1"), link
-    for filename in ("README.md", "README.it.md", "GUIDE.md", "docs/index.html",
-                     "docs/tutorial.html", "docs/tutorial.it.html", "clipboard_bridge-Server.py"):
+    for filename in ("README.md", "README.it.md", "GUIDE.md", "clipboard_bridge-Server.py"):
         text = (ROOT / filename).read_text(encoding="utf-8").replace('"\n                "', "")
         for link in SHORTCUT_LINKS:
             assert link in text, (filename, link)
@@ -53,6 +52,7 @@ def test_readmes_offer_the_same_icloud_shortcut_links_with_setup_steps():
         html = (ROOT / "docs" / page).read_text(encoding="utf-8")
         for link in links["README.md"]:
             assert f'href="{link}"' in html, (page, link)
+        assert '.shortcut"' not in html, page
 
 
 def test_current_component_versions_match_docs_and_catalog_mirror():
@@ -312,7 +312,8 @@ def test_website_local_images_and_device_downloads_exist():
     for architecture in ("x64", "arm64"):
         assert f"Clipboard.Bridge.Portable.Windows.{architecture}.V{version}.exe" in assets.downloads
         assert f"Clipboard.Bridge_windows_client_and_server_setup_{architecture}_V{version}.exe" in assets.downloads
-    assert assets.shortcuts == set(SHORTCUT_LINKS)
+    # The website offers only the one-tap iCloud links, never the raw signed files.
+    assert assets.shortcuts == set()
     assert "Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk" in assets.downloads
     assert (ROOT / "docs/assets/icons/LICENSE").is_file()
 

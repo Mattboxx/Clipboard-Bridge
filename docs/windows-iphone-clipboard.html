@@ -51,7 +51,7 @@
           <li><a href="./#download">Download Clipboard Bridge for Windows</a>. Choose x64 for most Intel/AMD PCs, or ARM64 for Windows 11 ARM devices. Installer and portable editions have the same sharing features.</li>
           <li>Open the app. Right-click its system tray icon, open <strong>Settings &gt; General</strong>, select <strong>Server mode</strong> and save.</li>
           <li>Copy the server address shown in the tray menu. Allow access through the Windows firewall on your trusted private network. Keep the PC and app running.</li>
-          <li>On iPhone, tap <strong><a href="https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12">Add Send Shortcut</a></strong> and <strong><a href="https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150">Add Receive Shortcut</a></strong>. Send asks for its address while you add it; in Receive, edit <strong>Get Contents of URL</strong>. Use your host address and the matching path below.</li>
+          <li>On iPhone, tap both buttons, then <strong>Add Shortcut</strong> for each.<div class="actions shortcut-buttons"><a class="button primary" href="https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12"><img class="icon" src="assets/icons/command.svg" alt="">Add Send Shortcut</a><a class="button primary" href="https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150"><img class="icon" src="assets/icons/command.svg" alt="">Add Receive Shortcut</a></div> Send asks for its address while you add it; in Receive, edit <strong>Get Contents of URL</strong>. Use your host address and the matching path below.</li>
         </ol>
         <pre><code>Send:    POST http://YOUR_HOST:5088/clipboard
 Receive: GET  http://YOUR_HOST:5088/clipboard/latest/raw</code></pre>
