@@ -253,7 +253,7 @@ def test_apple_visual_steps_have_sources_translations_and_fallbacks(filename):
                 if a.get("class") == "apple-shot" and a["href"].startswith("https://support.apple.com/")]) == 2
     visible = " ".join(page.texts)
     assert "Apple" in visible and "iOS 26" in visible
-    assert "Load Clipboard" in visible and "Download Clipboard" in visible
+    assert "Send Clipboard" in visible and "Receive Clipboard" in visible
     assert "Mostra in Condivisione" in visible or "Show in Share Sheet" in visible
 
 

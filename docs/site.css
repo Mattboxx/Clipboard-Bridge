@@ -192,3 +192,6 @@ footer a{color:inherit}
 }
 @media(max-height:700px) and (max-width:360px){.hero-inner{padding-top:12px;padding-bottom:100px}.hero-visual{height:70px;bottom:24px}.hero-facts{font-size:10px;gap:4px 8px}#download{padding-top:14px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button{transition:none}}
+.shortcut-action .button{width:100%}
+.shortcut-buttons{margin:14px 0 12px}
+.shortcut-buttons .button{flex:1 1 220px}
