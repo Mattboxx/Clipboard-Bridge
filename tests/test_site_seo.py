@@ -444,3 +444,10 @@ def test_indexnow_does_not_submit_when_live_key_differs(monkeypatch):
     with pytest.raises(ValueError, match="live key"):
         notifier.submit(notifier.build_payload())
     assert len(calls) == 1
+
+
+def test_phone_navigation_does_not_float_over_the_cover():
+    css = (DOCS / "bridge-ui.css").read_text(encoding="utf-8")
+    assert "@media(max-width:650px){nav{position:relative;top:auto;margin-top:8px}" in css
+    # The phone rule must come after the sticky desktop rules so it wins the cascade.
+    assert css.rindex("nav{position:relative") > css.rindex("nav{top:")

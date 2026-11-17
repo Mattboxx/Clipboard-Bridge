@@ -87,7 +87,7 @@ the same shared content without Docker or a separate computer.
 | **Windows 10/11, Intel or AMD (x64)** | [Installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_x64_V2.0.22.exe) or [portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.x64.V2.0.22.exe) |
 | **Windows 11 ARM, such as Snapdragon PCs** | [Native ARM64 installer](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge_windows_client_and_server_setup_arm64_V2.0.22.exe) or [native ARM64 portable EXE](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/2.0.22/Clipboard.Bridge.Portable.Windows.arm64.V2.0.22.exe) |
 | **Android 10 or newer** | [Android APK](https://github.com/Mattboxx/Clipboard-Bridge/releases/download/android-v1.0.0-beta.12/Clipboard.Bridge.Android.universal.V1.0.0-beta.12.apk), currently a public beta |
-| **iPhone and iPad** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** and **[Add Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)**: one tap in the Shortcuts app ([setup](#add-the-iphone-shortcuts)). Signed files: [Send](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Receive](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
+| **iPhone and iPad** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** and **[Add Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)**: one tap in the Shortcuts app ([setup](#add-the-iphone-shortcuts)). Signed files: [Send](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Load%20Clipboard.shortcut) · [Receive](https://github.com/Mattboxx/Clipboard-Bridge/raw/main/Iphone%20Shortcuts/Download%20Clipboard.shortcut) |
 | **Mac** | [Apple Shortcuts setup guide](GUIDE.md#mac-compatibility); no native Mac app |
 | **NAS or home server** | [App-store installation](https://github.com/Mattboxx/Clipboard-Bridge-AppStore#readme) or [Docker setup](#standalone-server) |
 
@@ -99,15 +99,15 @@ with an **Add Shortcut** button. Nothing else needs to be installed.
 | Shortcut | One-tap install | What it does |
 |---|---|---|
 | **Send Clipboard** | **[Add Send Clipboard](https://www.icloud.com/shortcuts/586c96eee2724bac9417804e1538ef12)** | Sends the clipboard, or the photo, file or link you share |
-| **Receive Clipboard** | **[Add Receive Clipboard](https://www.icloud.com/shortcuts/6824ec0a878b4561b74440de31e03150)** | Copies the newest item from your server |
+| **Receive Clipboard** | **[Add Receive Clipboard](https://www.icloud.com/shortcuts/26a8fd90afde44c2a2771ec0c90d9090)** | Copies the newest item from your server |
 
 1. Tap **Add Send Clipboard**, then **Add Shortcut**. When it asks for the server
    address, replace the whole example with your host's address followed by
    `/clipboard`, for example `http://SERVER_IP:5088/clipboard`.
-2. Tap **Add Receive Clipboard**, then **Add Shortcut**. Open it with the **⋯**
-   button and, in **Get Contents of URL**, replace `http://<your-ip-server>/clipboard/raw`
-   with your host's address followed by `/clipboard/latest/raw`, for example
-   `http://SERVER_IP:5088/clipboard/latest/raw`. Include the port.
+2. Tap **Add Receive Clipboard**, then **Add Shortcut**. When it asks for the server
+   URL, replace the whole example with your host's address followed by
+   `/clipboard/latest/raw`, for example `http://SERVER_IP:5088/clipboard/latest/raw`.
+   Include the port.
 3. Using a separate account on the Docker server? Sign in to its web page and open
    **Connect your devices**: copy the two URLs shown there, which already contain
    your username and password.
@@ -312,8 +312,7 @@ Use two Shortcuts for every content type: **Load Clipboard** sends and
 <summary>Shortcut URLs, accounts, photos and multiple files</summary>
 
 Replace `SERVER_IP` with your host's address; use its configured port if not `5088`.
-**Load Clipboard** asks for its URL while you add it; in **Download Clipboard**, edit
-**Get Contents of URL**.
+Both Shortcuts ask for their URL while you add them.
 
 | Shortcut | Request | Shared-space URL |
 |---|---|---|
